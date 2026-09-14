@@ -39,6 +39,20 @@ function Hero() {
       <div className="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-[linear-gradient(0deg,rgba(14,21,32,0.92),transparent)]" />
 
       <div className={`${WRAP} pb-12 pt-[150px] md:pt-[200px]`}>
+        {h.badge && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.05, ease: EASE }}
+            className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.07)] px-4 py-1.5 text-[13.5px] font-medium text-[rgba(255,255,255,0.92)] backdrop-blur-md"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#34D399] opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#10B981]" />
+            </span>
+            <span>{h.badge}</span>
+          </motion.div>
+        )}
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}

@@ -1327,6 +1327,7 @@ export const uz = {
       caseItems: ["Zo'ravonlik va qurol", "Tezkor javob", "Xarajatlarni kamaytirish", "Ko'p so'raladigan savollar"],
     },
     hero: {
+      badge: "CI/CD • Tizim faol",
       titleA: "Ta'lim muassasalari xavfsizligi",
       titleB: "sun'iy intellekt nazoratida",
       text: "Yuz tanish orqali avtomatik davomat, xavfli hodisalarni real vaqtda aniqlash va butun respublika bo'ylab geo-analitika — hammasi bitta boshqaruv panelida.",
