@@ -104,10 +104,14 @@ jobs:
           cp ~/campus-ai-secrets/.env.local .env.local
           chmod 600 .env.local
 
+      # `cache: "npm"` ATAYLAB YO'Q: u npm keshini GitHub'ning kesh xizmatidan
+      # yuklaydi. 2026-09-14 da bu serverda yuklash 12 daqiqa davom etib
+      # timeout bilan uzildi ("Aborting cache download as the download time
+      # exceeded the timeout"). Self-hosted runnerda `~/.npm` keshi baribir
+      # diskda turadi va `npm ci` undan o'zi foydalanadi.
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - run: npm ci
 
