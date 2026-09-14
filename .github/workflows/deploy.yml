@@ -1,0 +1,104 @@
+name: Deploy (self-hosted)
+
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  Campus AI — production deploy (self-hosted runner)                  ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+#
+# ⚠️ **BU WORKFLOW HALI HAQIQIY SERVERDA SINALMAGAN** — birinchi marta
+# ishlatishdan oldin qo'lda (workflow_dispatch) ishga tushirib tekshiring.
+#
+# ── ISHLASH TARTIBI ───────────────────────────────────────────────────
+# 1. `CI` workflow (`ci.yml`) `main`ga push bo'lganda lint/typecheck/test/
+#    build'ni GitHub'ning bepul (ubuntu-latest) runnerida tekshiradi.
+# 2. `CI` MUVAFFAQIYATLI tugagandan keyingina shu workflow ishga tushadi
+#    (`workflow_run`) va HAQIQIY serverda (self-hosted) qayta build qilib,
+#    pm2 orqali qayta ishga tushiradi. Shu tartib tufayli sinovdan
+#    o'tmagan kod hech qachon productionga tushmaydi.
+# 3. Kerak bo'lsa Actions sahifasidan qo'lda ham (workflow_dispatch)
+#    ishga tushirish mumkin.
+#
+# ── SELF-HOSTED RUNNERNI SERVERDA O'RNATISH (BIR MARTA) ───────────────
+#   1. GitHub'da: repo → Settings → Actions → Runners → "New self-hosted
+#      runner" → Linux/x64 tanlang, GitHub bergan token va buyruqlarni
+#      nusxalang.
+#   2. Serverda (masalan /opt/actions-runner ostida, alohida deploy
+#      user bilan, root emas):
+#        mkdir actions-runner && cd actions-runner
+#        curl -o actions-runner-linux-x64-<versiya>.tar.gz -L <github url>
+#        tar xzf actions-runner-linux-x64-<versiya>.tar.gz
+#        ./config.sh --url https://github.com/jamshidsaminjonov05-debug/campusAI \
+#                     --token <GITHUB_BERGAN_TOKEN>
+#          # Label so'ralganda ENTER — standart "self-hosted" label qoladi
+#          # (shu workflow shu labelni kutadi: `runs-on: self-hosted`).
+#        sudo ./svc.sh install
+#        sudo ./svc.sh start
+#   3. Runner repo Settings → Actions → Runners'da "Idle" holatda
+#      ko'rinishi kerak.
+#   4. Serverda bir marta global o'rnating: `npm install -g pm2`
+#      va `node --version` 20.x ekanini tekshiring (Dockerfile'dagi
+#      `node:20-bookworm-slim` bilan mos bo'lishi uchun).
+#
+# ── PROD ENV (.env.local) — OFFLINE QOIDASI ────────────────────────────
+# Bu workflow haqiqiy IP/kalitlarni O'ZI YARATMAYDI va repoga yozmaydi.
+# Serverda (deploy user'ning HOME papkasida, checkout papkasidan
+# TASHQARIDA — chunki `actions/checkout` har run'da workspace'ni
+# tozalaydi) BIR MARTA quyidagi faylni tayyorlang:
+#
+#   mkdir -p ~/campus-ai-secrets
+#   nano ~/campus-ai-secrets/.env.local
+#     BACKEND_ORIGIN=http://<backend-ip>:7005
+#     TILES_ORIGIN=http://<tiles-ip>:8080
+#     NVR_ORIGIN=http://<nvr-ip>:7007
+#     NVR_API_KEY=<haqiqiy-kalit>
+#     WEAPON2_ORIGIN=http://<weapon2-ip>:<port>
+#     WEAPON2_USERNAME=<haqiqiy-user>
+#     WEAPON2_PASSWORD=<haqiqiy-parol>
+#     # Quyidagilarni bo'sh qoldirish TAVSIYA qilinadi (proxy rejimi):
+#     NEXT_PUBLIC_API_ORIGIN=
+#     NEXT_PUBLIC_TILES_ORIGIN=
+#
+# Har deploy'da shu fayldan nusxa olinadi (build uchun) va shell'ga
+# export qilinadi (pm2 runtime uchun) — pastdagi qadamlarga qarang.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: .env.local'ni serverdagi maxfiy joydan nusxalash
+        run: cp ~/campus-ai-secrets/.env.local .env.local
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Build (haqiqiy ENV bilan)
+        run: npm run build
+
+      - name: PM2 orqali qayta ishga tushirish
+        run: |
+          set -a
+          source .env.local
+          set +a
+          pm2 startOrReload ecosystem.config.cjs --update-env
+          pm2 save
