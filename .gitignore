@@ -58,3 +58,7 @@ coverage/
 playwright-report/
 test-results/
 *.local
+
+# Terminal chiqishlari (typecheck/test) — ish jarayonidagi artefaktlar
+*output*.txt
+test_output.txt
