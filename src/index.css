@@ -1,0 +1,3419 @@
+/* ---------- Lokal shriftlar (OFFLINE) ----------
+   Google Fonts CDN OLIB TASHLANDI — ichki tarmoqda u yopiq bo'ladi va sahifa
+   tizim shriftiga tushib qolardi. Fayllar: public/fonts/ (woff2, ~215KB).
+   Yangilash: fayllarni almashtiring, nomlar shu yerda qattiq yozilgan. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/IBMPlexMono-400-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/IBMPlexMono-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/IBMPlexMono-500-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/IBMPlexMono-500-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/IBMPlexMono-600-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/IBMPlexMono-600-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('/fonts/Inter-100_900-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('/fonts/Inter-100_900-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+body { @apply bg-ink font-sans antialiased; }
+
+/* ---------- Harakatni kamaytirish ----------
+   SpaceBackground'dagi nebula dog'lari `repeat: Infinity` bilan to'xtovsiz
+   suzadi. Ular ORTIDA turgan har bir `backdrop-filter` paneli fon o'zgargani
+   uchun HAR KADRDA qaytadan blur hisoblaydi — panel ko'p bo'lsa qimmat.
+   Foydalanuvchi harakatni kamaytirishni so'rasa, hammasini to'xtatamiz:
+   ham a11y, ham sezilarli tejash. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Chop etish (hisobotlar) — faqat kontent qolsin ---------- */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+}
+
+/* ── BLUEPRINT SETKASI — ilova qobig'ining foni ────────────────────────
+   72 px qadam, `SpaceBackground` dagi setka bilan AYNI. Panellar shaffof
+   va `backdrop-blur` bilan chizilgani uchun u ular ORTIDAN ko'rinadi.
+
+   ⚠️ Nega `SpaceBackground` dagi qatlam yetmadi: u `fixed … -z-10` da
+   turadi va sahifa tuzilmasi o'zgarganda panellar ostida ko'rinmay
+   qolardi. Fon sifatida qo'yilgani ishonchli. */
+/* Kosmik fon ranglari — `SpaceBackground` inline uslubda SHU
+   o'zgaruvchilarni ishlatadi (inline uslub CSS qoidasini bosib ketadi,
+   shuning uchun rang o'zgaruvchi orqali beriladi). */
+.space-bg {
+  --space-line: rgba(170, 200, 255, 0.75);
+  --space-spot: rgba(142, 183, 255, 0.07);
+}
+
+.app-grid {
+  background-image:
+    linear-gradient(rgba(142, 183, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(142, 183, 255, 0.075) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+:root[data-scheme="light"] .app-grid {
+  /* Setka rangi mavzu tokenidan — Qumda jigarrang, Yalpizda yashil… */
+  background-image:
+    linear-gradient(var(--lm-grid, rgba(29, 78, 216, 0.13)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lm-grid, rgba(29, 78, 216, 0.13)) 1px, transparent 1px);
+}
+
+/* Mavzu tanlash paneli — o'ng tomondan chiqadi (`theme/index.tsx`).
+   Sirt OPAQ: u xarita va 3D kampus ustida turadi. */
+.theme-panel {
+  background: rgba(9, 15, 28, 0.97);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -30px 0 70px -40px rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(18px);
+}
+:root[data-scheme="light"] .theme-panel {
+  background: color-mix(in srgb, var(--lm-surface) 96%, transparent);
+  border-left-color: var(--lm-line);
+  color: var(--lm-text);
+  box-shadow: -30px 0 70px -46px rgba(15, 27, 46, 0.4);
+}
+
+/* ---------- Premium scrollbar ---------- */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(143, 184, 255, 0.14);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: rgba(143, 184, 255, 0.28); }
+
+/* ---------- Dizayn-tizim: suzuvchi glass kartalar ----------
+   Barcha sahifalar shu klasslardan meros oladi — uslubni faqat shu yerda o'zgartiring. */
+.nexa-card {
+  @apply rounded-3xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 20px 50px -20px rgba(0, 0, 0, 0.55),
+    0 0 44px -30px rgba(143, 184, 255, 0.45);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+.nexa-card:hover {
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.07) inset,
+    0 26px 60px -22px rgba(0, 0, 0, 0.6),
+    0 0 54px -26px rgba(143, 184, 255, 0.55);
+}
+.nexa-hero {
+  @apply rounded-3xl border border-ice/25 bg-gradient-to-br from-[#31477E] via-[#22335C] to-[#141D38];
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
+    0 20px 50px -18px rgba(0, 0, 0, 0.6),
+    0 0 60px -22px rgba(143, 184, 255, 0.55);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+.nexa-hero:hover { border-color: rgba(143, 184, 255, 0.4); }
+.nexa-icon-btn {
+  @apply grid h-8 w-8 flex-none place-items-center rounded-full bg-white/10 text-white transition-[background-color,box-shadow] hover:bg-ice/25 hover:shadow-[0_0_16px_-4px_rgba(143,184,255,0.6)];
+}
+
+/* ---------- Data-viz panellari (Figma dashboard dizayni) ----------
+   Burchak qavslari + sianli sarlavha — "katta ekran" monitoring uslubi. */
+/* Sirt SHAFFOF (`/45`) — ortidagi blueprint setkasi ko'rinib tursin.
+   Ilgari `/70` edi va setka panel ostida yo'qolardi. */
+.dv-panel {
+  @apply relative rounded-lg border border-ice-cyan/20 bg-[#0A1526]/45 backdrop-blur-md;
+  box-shadow: inset 0 0 30px -12px rgba(133, 224, 255, 0.25), 0 8px 28px -18px rgba(0, 0, 0, 0.8);
+  /* Panel ichidagi o'zgarish (raqam yangilanishi, hover) tashqariga layout/style
+     qayta hisobini tarqatmasin — dashboard'da 12+ panel bor.
+     DIQQAT: `paint` ATAYLAB yo'q — burchak qavslari (::before/::after) qutidan
+     1px tashqarida turadi, `contain: paint` ularni qirqib tashlaydi. */
+  contain: layout style;
+}
+/* Burchak qavslari — ::before yuqori-chap, ::after pastki-o'ng */
+.dv-panel::before,
+.dv-panel::after {
+  content: "";
+  @apply pointer-events-none absolute h-3 w-3 border-ice-cyan/70;
+}
+.dv-panel::before {
+  @apply left-[-1px] top-[-1px] rounded-tl-lg border-l-2 border-t-2;
+}
+.dv-panel::after {
+  @apply bottom-[-1px] right-[-1px] rounded-br-lg border-b-2 border-r-2;
+}
+.dv-title {
+  @apply flex items-baseline gap-2 border-b border-ice-cyan/15 px-3 py-2;
+}
+.dv-title b {
+  @apply text-[13px] font-bold tracking-wide text-white;
+}
+.dv-title span {
+  @apply truncate text-[9.5px] uppercase tracking-[0.14em] text-ice-cyan/50;
+}
+/**
+ * KO'RSATKICH RAQAMI — statistika kartochkalari va jadval qiymatlari uchun.
+ *
+ * `tabular-nums` SHART: IBM Plex Mono da ham proporsional raqamlar bo'lishi
+ * mumkin va ustma-ust turgan sonlar (1 234 / 987) chetlari bo'yicha
+ * tekislanmay "raqsga tushadi". Manfiy `letter-spacing` esa mono shriftning
+ * keng oralig'ini yig'ib, katta sonlarni bir qatorda ushlab turadi.
+ */
+.stat-num {
+  @apply font-mono font-bold;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.015em;
+}
+
+/* Panel ichidagi raqamli ko'rsatkich uyasi */
+/* Shisha kafel — `dv-slot` (kichik uya) va `glass-tile` (davomat taxtasi)
+   bitta ko'rinishda. Bosiladigan bo'lsa `.glass-tile-btn` qo'shiladi —
+   hover'da ko'tariladi. */
+.glass-tile,
+.dv-slot {
+  @apply relative rounded-xl border border-white/[0.07] px-2.5 py-2;
+  backdrop-filter: blur(8px);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.glass-tile-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(143, 184, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 14px 26px -18px rgba(0, 0, 0, 0.8),
+    0 0 26px -14px rgba(143, 184, 255, 0.55);
+}
+.glass-tile-btn:active { transform: translateY(0); }
+/* Tanlangan kafel — "Shaxslar" bo'limida qaysi toifa ochiqligini bildiradi */
+.glass-tile.is-active {
+  border-color: rgba(143, 184, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(143, 184, 255, 0.25), 0 0 24px -14px rgba(143, 184, 255, 0.7);
+}
+
+/* ═════════ Dashboard HUD — "katta ekran" ramkasi ═════════
+   Boshqaruv panelida ma'lumot panellari yo'q: orqa fonda xarita, ustida shu
+   ramka (burchak qavslari + sarlavha kapsulasi), pastda yoysimon footer va
+   o'ngda begona shaxs ogohlantirishlari. */
+/* DIQQAT — geometriya bog'langan: ramka radiusi 34px, burchak SVG'lari
+   -12px chetlatiladi va ularning `A34,34` yoyi shu chiziq ustiga tushadi.
+   Radiusni o'zgartirsangiz `HudFrame.tsx` dagi yoylarni ham o'zgartiring. */
+.hud-frame {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  padding: 14px;
+  border-radius: 34px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%),
+    linear-gradient(180deg, #070c1a 0%, #04070f 100%);
+  box-shadow: inset 0 0 100px -40px rgba(133, 224, 255, 0.45), 0 30px 80px -46px rgba(0, 0, 0, 0.95);
+}
+/* Asosiy ramka chizig'i — xira; yorqinligini chekka gradientlari beradi */
+.hud-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 34px;
+  border: 1px solid rgba(133, 224, 255, 0.16);
+  pointer-events: none;
+}
+/* Tashqi yumshoq porlash */
+.hud-frame::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 35px;
+  box-shadow: 0 0 40px -10px rgba(90, 168, 240, 0.35);
+  pointer-events: none;
+}
+/* Ekran — kontent (xarita) shu yerda qirqiladi */
+.hud-screen {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(133, 224, 255, 0.1);
+  background: #04070f;
+}
+/* Ichki vinyetka + yuqoridan ko'k yorug' — reference'dagi chuqurlik */
+.hud-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(46, 114, 227, 0.1), transparent 55%);
+  box-shadow: inset 0 0 130px -46px rgba(0, 0, 0, 0.95);
+}
+.hud-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* bezak bosishga xalaqit bermasin */
+}
+
+/* ── Chekka chiziqlari: burchak qavslaridan boshlanadi, o'rtada so'nadi ── */
+.hud-edge {
+  position: absolute;
+  background: linear-gradient(
+    var(--dir, 90deg),
+    rgba(191, 228, 255, 0.85),
+    rgba(133, 224, 255, 0.2) 22%,
+    rgba(133, 224, 255, 0.14) 50%,
+    rgba(133, 224, 255, 0.2) 78%,
+    rgba(191, 228, 255, 0.85)
+  );
+}
+.hud-edge--t { left: 84px; right: 84px; top: 0; height: 1px; }
+.hud-edge--b { left: 84px; right: 84px; bottom: 0; height: 1px; }
+.hud-edge--l { top: 84px; bottom: 84px; left: 0; width: 1px; --dir: 180deg; }
+.hud-edge--r { top: 84px; bottom: 84px; right: 0; width: 1px; --dir: 180deg; }
+
+/* Ichki ikkinchi ramka */
+.hud-inner-line {
+  position: absolute;
+  inset: 9px;
+  border-radius: 26px;
+  border: 1px solid rgba(133, 224, 255, 0.09);
+}
+
+/* ── Burchak qavslari (SVG) ── */
+.hud-corner {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  filter: drop-shadow(0 0 6px rgba(133, 224, 255, 0.5));
+}
+.hud-corner--tl { left: -12px; top: -12px; }
+.hud-corner--tr { right: -12px; top: -12px; transform: scaleX(-1); }
+.hud-corner--bl { left: -12px; bottom: -12px; transform: scaleY(-1); }
+.hud-corner--br { right: -12px; bottom: -12px; transform: scale(-1); }
+
+/* ── Yuqori markazdagi sarlavha kapsulasi ── */
+.hud-cap {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  /* Ichki ramka chizig'i (`.hud-inner-line`, `inset: 9px`) va yuqori chekka
+     chizig'i sarlavha USTIDAN o'tib, matnni "chizib" tashlardi. Ikki chora:
+     kapsula bezak qatlamining hammasidan yuqorida turadi va MATLAM shu
+     chiziqlardan pastda boshlanadi (padding-top 6px → 14px). */
+  z-index: 7;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 44px 8px;
+  background: linear-gradient(180deg, rgb(23, 56, 112), rgb(7, 15, 32));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 26px 100%);
+  border-bottom: 1px solid rgba(133, 224, 255, 0.5);
+}
+.hud-cap b {
+  @apply text-[12px] font-bold uppercase tracking-[0.18em] text-white;
+  text-shadow: 0 0 14px rgba(133, 224, 255, 0.6);
+}
+.hud-cap i {
+  @apply not-italic text-[9px] uppercase tracking-[0.2em] text-ice-cyan/70;
+}
+
+/* ── O'ng yuqori yorliq — reference'dagi to'ldirilgan ko'k tab ── */
+.hud-badge {
+  position: absolute;
+  right: 40px;
+  top: -2px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 16px 6px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(180deg, #2f72e3 0%, #1b3f91 100%);
+  box-shadow: 0 10px 26px -12px rgba(47, 114, 227, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.hud-badge i {
+  @apply flex items-center gap-1.5 not-italic text-[8.5px] font-bold uppercase leading-none tracking-[0.16em] text-white/75;
+}
+.hud-badge b {
+  @apply font-mono text-[12px] font-bold leading-none text-white;
+}
+.hud-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #86efac;
+  box-shadow: 0 0 8px #86efac;
+  animation: hud-blink 2s ease-in-out infinite;
+}
+@keyframes hud-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ---------- Yoysimon footer (detektorlar menyusi) ----------
+   Geometriya `HudFooter.tsx` da: SVG viewBox balandligi element balandligiga
+   TENG, shuning uchun tugmalar `top` piksellari yoy bilan aniq mos tushadi.
+   Bu yerdagi o'lchamlarni o'zgartirsangiz — u yerdagi SVG_TOP/BASE_Y ni ham. */
+.hud-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 176px;
+  z-index: 20;
+  pointer-events: none; /* faqat tugmalar bosiladi */
+}
+.hud-footer-arc {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 150px;
+}
+/* Gumbaz ostidagi porlash — sekin nafas oladi */
+.hud-arc-glow {
+  transform-origin: 500px 150px;
+  animation: hud-arc-breathe 6.5s ease-in-out infinite;
+}
+@keyframes hud-arc-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-arc-sweep { display: none; } /* SMIL animatsiyani CSS to'xtata olmaydi */
+}
+
+/* Chetdagi qiya belgilar ("////") */
+.hud-footer-marks {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  gap: 5px;
+}
+.hud-footer-marks--l { left: 8.5%; }
+.hud-footer-marks--r { right: 8.5%; flex-direction: row-reverse; }
+.hud-footer-marks i {
+  display: block;
+  width: 3px;
+  height: 15px;
+  border-radius: 1px;
+  transform: skewX(-24deg);
+  background: linear-gradient(180deg, #8ecbff, rgba(142, 203, 255, 0));
+  box-shadow: 0 0 9px rgba(133, 200, 255, 0.65);
+  animation: hud-mark-fade 3.2s ease-in-out infinite;
+}
+.hud-footer-marks--r i { transform: skewX(24deg); }
+@keyframes hud-mark-fade {
+  0%, 100% { opacity: 0.28; }
+  50% { opacity: 0.9; }
+}
+
+/* Qanotlar bo'ylab uchuvchi ma'lumot nuqtasi */
+.hud-footer-flow {
+  position: absolute;
+  bottom: 45px;
+  height: 2px;
+  width: 84px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #9fd4ff, transparent);
+  opacity: 0.7;
+  filter: blur(0.3px);
+}
+.hud-footer-flow--l { left: 0; animation: hud-flow-l 5.5s linear infinite; }
+.hud-footer-flow--r { right: 0; animation: hud-flow-r 5.5s linear infinite; }
+@keyframes hud-flow-l {
+  0% { transform: translateX(-100%); opacity: 0; }
+  15% { opacity: 0.8; }
+  70%, 100% { transform: translateX(18vw); opacity: 0; }
+}
+@keyframes hud-flow-r {
+  0% { transform: translateX(100%); opacity: 0; }
+  15% { opacity: 0.8; }
+  70%, 100% { transform: translateX(-18vw); opacity: 0; }
+}
+
+/* ── Detektor tugmalari ── */
+/* DIQQAT: markazlash (`translate(-50%,-50%)`) shu yerda EMAS — framer-motion
+   `style={{x,y}}` orqali beradi, aks holda `scale` animatsiyasi uni bosadi. */
+.hud-foot-btn {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  /* Markazga kelganda kattalashadi — o'lchov CSS'da, joyi framer'da */
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Markaziy uyadagi tugma — fokus holati */
+.hud-foot-btn.is-center { width: 60px; height: 60px; }
+.hud-foot-btn.is-center::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 30%, transparent), transparent 70%);
+  animation: hud-center-glow 3.4s ease-in-out infinite;
+}
+@keyframes hud-center-glow {
+  0%, 100% { opacity: 0.55; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+/* Aktivda ikonkadan yuqoriga ko'tarilgan yorug' nur */
+.hud-foot-btn::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  width: 2px;
+  height: 0;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, var(--c));
+  opacity: 0;
+  transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+.hud-foot-btn.is-active::before { height: 24px; opacity: 0.9; }
+
+.hud-foot-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 200, 255, 0.32);
+  /* Shisha "quduq": tepadan yorug', pastga qarab chuqurlashadi */
+  background:
+    radial-gradient(88% 80% at 50% 10%, rgba(130, 185, 255, 0.42), rgba(20, 48, 96, 0.72) 52%, rgba(5, 12, 26, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -8px 14px -8px rgba(0, 0, 0, 0.95),
+    0 12px 24px -14px rgba(0, 0, 0, 0.95);
+  color: #d6e8ff;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    color 0.3s ease;
+}
+/* Halqa — hover/aktivda kengayadi */
+.hud-foot-icon::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid var(--c);
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hud-foot-btn:hover .hud-foot-icon {
+  transform: translateY(-4px) scale(1.07);
+  color: #fff;
+  border-color: var(--c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 26px -6px var(--c), 0 16px 26px -14px rgba(0, 0, 0, 0.95);
+}
+.hud-foot-btn:hover .hud-foot-icon::before { opacity: 0.55; transform: scale(1); }
+.hud-foot-btn.is-active .hud-foot-icon {
+  color: #fff;
+  border-color: var(--c);
+  background:
+    radial-gradient(88% 80% at 50% 10%, rgba(255, 255, 255, 0.32), rgba(26, 60, 118, 0.85) 52%, rgba(6, 14, 30, 0.95) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 32px -4px var(--c), 0 16px 26px -14px rgba(0, 0, 0, 0.95);
+}
+.hud-foot-btn.is-active .hud-foot-icon::before { opacity: 0.9; transform: scale(1); }
+/* Markazdagi tugma — doimiy yumshoq nafas */
+.hud-foot-btn.is-center .hud-foot-icon {
+  border-color: var(--c);
+  animation: hud-primary-breathe 3.4s ease-in-out infinite;
+}
+.hud-foot-btn.is-center .hud-foot-label {
+  @apply text-[9.5px] text-slate-100;
+}
+/* Trevoga bo'lsa — qizil halqa tarqaladi */
+.hud-foot-btn.has-alert .hud-foot-icon::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c);
+  animation: hud-alert-ring 1.5s ease-out infinite;
+}
+@keyframes hud-primary-breathe {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 18px -8px var(--c), 0 12px 24px -14px rgba(0, 0, 0, 0.95); }
+  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 30px -4px var(--c), 0 12px 24px -14px rgba(0, 0, 0, 0.95); }
+}
+@keyframes hud-alert-ring {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+
+.hud-foot-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  @apply text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+.hud-foot-btn:hover .hud-foot-label { @apply text-slate-100; }
+.hud-foot-btn.is-active .hud-foot-label {
+  color: var(--c);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent), 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.hud-foot-count {
+  position: absolute;
+  top: -3px;
+  right: -7px;
+  min-width: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(4, 10, 22, 0.9);
+  background: var(--c);
+  padding: 0 4px;
+  @apply font-mono text-[9.5px] font-bold not-italic leading-[16px] text-[#08101F];
+  box-shadow: 0 0 12px -2px var(--c);
+}
+
+/* Markaziy kapsula — reference'dagi yorqin ko'k yorliq */
+.hud-footer-chip {
+  position: absolute;
+  left: 50%;
+  top: 116px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(180, 215, 255, 0.5);
+  background: linear-gradient(180deg, #2f72e3 0%, #1b3f91 100%);
+  padding: 4px 22px;
+  white-space: nowrap;
+  box-shadow: 0 0 26px -6px rgba(64, 140, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  @apply text-[10px] font-bold uppercase tracking-[0.16em] text-white;
+}
+/* Kapsula ustidan o'tuvchi yorug' */
+.hud-footer-chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.42) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: hud-chip-shine 5s ease-in-out infinite;
+}
+@keyframes hud-chip-shine {
+  0%, 62% { transform: translateX(-120%); }
+  85%, 100% { transform: translateX(120%); }
+}
+
+/* ---------- Begona shaxs ogohlantirishlari ---------- */
+.hud-alerts {
+  position: absolute;
+  right: 18px;
+  top: 60px;
+  z-index: 25;
+  display: flex;
+  width: 312px;
+  max-height: calc(100% - 230px);
+  flex-direction: column;
+}
+.hud-alerts-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(133, 224, 255, 0.22);
+  border-radius: 12px 12px 0 0;
+  background: rgba(6, 13, 28, 0.88);
+  padding: 7px 11px;
+  backdrop-filter: blur(14px);
+}
+.hud-alerts-head b { @apply text-[11px] font-bold tracking-[0.14em] text-slate-100; }
+.hud-alerts-count {
+  @apply rounded-full bg-rose-500/20 px-2 font-mono text-[10.5px] font-bold leading-[17px] text-rose-300;
+}
+.hud-alerts-demo {
+  @apply rounded bg-amber-400/15 px-1.5 font-mono text-[9px] font-bold tracking-wide text-amber-300;
+}
+.hud-alerts-clear {
+  @apply ml-auto text-[10px] uppercase tracking-wide text-slate-400 transition-colors hover:text-ice-bright;
+}
+.hud-alerts-list {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 7px;
+  overflow-y: auto;
+  border-inline: 1px solid rgba(133, 224, 255, 0.14);
+  background: rgba(4, 9, 20, 0.55);
+  padding: 7px;
+  backdrop-filter: blur(10px);
+}
+.hud-alerts-idle { @apply px-1 py-2 text-center text-[10.5px] leading-snug text-slate-500; }
+.hud-alerts-foot {
+  border: 1px solid rgba(133, 224, 255, 0.14);
+  border-radius: 0 0 12px 12px;
+  background: rgba(6, 13, 28, 0.88);
+  @apply px-3 py-1.5 text-[10px] text-slate-500 backdrop-blur-md;
+}
+.hud-alerts-foot b { @apply font-mono text-slate-300; }
+
+.hud-alert {
+  position: relative;
+  display: flex;
+  gap: 9px;
+  cursor: pointer;
+  border-radius: 11px;
+  border: 1px solid rgba(133, 224, 255, 0.25);
+  background: linear-gradient(180deg, rgba(11, 25, 50, 0.94), rgba(6, 12, 26, 0.94));
+  padding: 8px 10px;
+  box-shadow: 0 16px 34px -22px rgba(0, 0, 0, 0.95);
+  transition: border-color 0.25s ease;
+}
+.hud-alert:hover { border-color: rgba(133, 224, 255, 0.55); }
+.hud-alert--repeat {
+  border-color: rgba(255, 77, 77, 0.65);
+  background: linear-gradient(180deg, rgba(56, 12, 22, 0.94), rgba(20, 6, 12, 0.94));
+  animation: hud-alert-pulse 1.9s ease-in-out infinite;
+}
+@keyframes hud-alert-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.35), 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 77, 77, 0), 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
+}
+.hud-alert-face {
+  display: grid;
+  height: 38px;
+  width: 38px;
+  flex: none;
+  place-items: center;
+  border-radius: 9px;
+  border: 1px solid rgba(133, 224, 255, 0.3);
+  background: rgba(133, 224, 255, 0.08);
+  @apply text-ice-cyan;
+}
+.hud-alert--repeat .hud-alert-face {
+  border-color: rgba(255, 77, 77, 0.5);
+  background: rgba(255, 77, 77, 0.12);
+  @apply text-rose-300;
+}
+.hud-alert-title { @apply truncate pr-4 text-[12px] font-bold text-slate-100; }
+.hud-alert-sub { @apply truncate text-[10px] text-slate-400; }
+.hud-alert-meta { @apply mt-0.5 flex justify-between gap-2 font-mono text-[9.5px] text-slate-500; }
+.hud-alert-flag { @apply mt-1 text-[9px] font-bold tracking-[0.1em] text-rose-400; }
+.hud-alert-x {
+  @apply absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded text-slate-500 transition-colors hover:bg-white/10 hover:text-white;
+}
+/* Ro'yxat rejimi — jiddiylik ustuni va "ochish" strelkasi */
+.hud-alert-sev {
+  width: 3px;
+  flex: none;
+  align-self: stretch;
+  border-radius: 2px;
+  box-shadow: 0 0 10px -1px currentColor;
+}
+.hud-alert-go {
+  @apply flex-none self-center text-slate-600 transition-colors;
+}
+.hud-alert:hover .hud-alert-go { @apply text-ice-bright; }
+
+/* ---------- Detal — ESKI Hodisalar bo'limi HUD ustida ---------- */
+.hud-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(4, 9, 20, 0.97), rgba(3, 6, 14, 0.99));
+  backdrop-filter: blur(8px);
+}
+.hud-detail-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgba(133, 224, 255, 0.18);
+  background: rgba(8, 17, 36, 0.92);
+  padding: 9px 16px;
+}
+.hud-detail-back {
+  @apply flex flex-none items-center gap-1.5 rounded-xl border border-ice-cyan/30 bg-ice-cyan/[0.07] px-3 py-1.5 text-[11.5px] font-semibold text-ice-bright transition-colors;
+}
+.hud-detail-back:hover { @apply border-ice-cyan/60 bg-ice-cyan/15 text-white; }
+.hud-detail-title {
+  @apply flex min-w-0 flex-1 flex-col leading-tight;
+}
+.hud-detail-title b { @apply truncate text-[13px] font-bold text-slate-100; }
+.hud-detail-title i { @apply truncate not-italic font-mono text-[10px] text-slate-500; }
+.hud-detail-tag {
+  flex: none;
+  border: 1px solid var(--c, #85e0ff);
+  color: var(--c, #85e0ff);
+  @apply rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em];
+  box-shadow: 0 0 18px -8px var(--c, #85e0ff);
+}
+.hud-detail-body {
+  min-height: 0;
+  flex: 1;
+  padding: 12px;
+}
+
+/* Asosiy tugma — muzli ko'k gradient, hover'da ko'tarilib porlaydi */
+.hik-btn-ice {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#C4D7FF] to-[#7FA6F2] font-bold text-[#0A0F1E] transition-[transform,box-shadow,filter] duration-300;
+  box-shadow: 0 10px 30px -8px rgba(143, 184, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.hik-btn-ice:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 42px -8px rgba(143, 184, 255, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.hik-btn-ice:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.hik-btn-ice:disabled { @apply cursor-not-allowed opacity-60; }
+
+/* Glass chip / input — header va filtr panellari uchun */
+.hik-chip {
+  @apply flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.hik-input {
+  @apply rounded-xl border border-white/[0.08] bg-white/[0.04] text-slate-200 outline-none backdrop-blur-sm transition-[border-color,background-color,box-shadow] duration-300;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.hik-input:focus, .hik-input:focus-within {
+  border-color: rgba(143, 184, 255, 0.5);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 0 4px rgba(143, 184, 255, 0.09), 0 0 24px -6px rgba(143, 184, 255, 0.35);
+}
+
+/* Tipografik brend — logo o'rniga */
+.hik-brand {
+  @apply select-none font-sans text-[15px] font-bold uppercase tracking-[0.22em] text-white;
+}
+.hik-brand b {
+  @apply bg-gradient-to-r from-ice-bright via-ice to-ice-cyan bg-clip-text font-extrabold text-transparent;
+}
+
+/* ---------- Xarita popup mazmuni ---------- */
+/* Yandex hint/balloon ichiga HTML sifatida qo'yiladi (YandexMap, GeoMap) —
+   tashqi qobiq Yandex'niki, quyidagilar faqat ichki tarkibni bezaydi. */
+.hik-popup { @apply min-w-[220px] px-3.5 py-3 font-sans; }
+.hik-popup-title { @apply text-[13px] font-bold; }
+.hik-popup-sub { @apply mb-2 text-[10.5px] text-slate-400; }
+.hik-popup-stats { @apply mb-2 flex gap-4; }
+.hik-popup-stats b { @apply block font-mono text-base font-semibold; }
+.hik-popup-stats span { @apply text-[10px] text-slate-400; }
+.hik-popup-event { @apply border-t border-slate-600/20 pt-2 text-[10.5px] text-slate-300; }
+
+/* Hodisa popup'i (EventMarkers / NavigationController) */
+.hik-popup--event { @apply w-[240px] p-0; }
+.hik-popup--event .hik-popup-image {
+  @apply mb-2 h-[110px] w-full rounded-t-xl object-cover;
+}
+.hik-popup-badge {
+  @apply mx-3 mb-1.5 inline-block rounded bg-cyan-400/15 px-1.5 py-px text-[10.5px] font-bold tracking-wide text-cyan-300;
+}
+.hik-popup-badge--alarm { @apply bg-[#F43F5E] text-white; }
+.hik-popup-meta { @apply space-y-1 px-3 pb-1 text-[11px]; }
+.hik-popup-meta div { @apply flex items-baseline justify-between gap-3; }
+.hik-popup-meta span { @apply text-slate-400; }
+.hik-popup-meta b { @apply text-right font-mono text-[10.5px] font-semibold text-slate-200; }
+.hik-popup-btn {
+  @apply mx-3 mb-3 mt-2 block w-[calc(100%-24px)] rounded-lg bg-gradient-to-b from-[#C4D7FF] to-[#7FA6F2] py-1.5 text-center text-[11px] font-bold text-[#0A0F1E] transition-all;
+  box-shadow: 0 8px 22px -8px rgba(143, 184, 255, 0.5);
+}
+.hik-popup-btn:hover { filter: brightness(1.06); }
+
+/* ---------- Kamera AI overlay ---------- */
+.hik-ai-box {
+  position: absolute;
+  border: 1.5px solid rgba(0, 229, 255, 0.9);
+  border-radius: 4px;
+  animation: hik-blink 2s infinite;
+  transition: left 1s ease, top 1s ease;
+}
+.hik-ai-box span {
+  position: absolute;
+  top: -18px;
+  left: -1px;
+  @apply whitespace-nowrap rounded-sm bg-cyan-400 px-1.5 font-mono text-[9.5px] font-bold text-slate-950;
+}
+@keyframes hik-blink {
+  0%, 100% { border-color: rgba(0, 229, 255, 0.9); }
+  50% { border-color: rgba(0, 229, 255, 0.35); }
+}
+.hik-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.5), transparent);
+  animation: hik-scan 4s linear infinite;
+}
+@keyframes hik-scan {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+
+/* ---------- Kameralar sahifasi — ko'k neon glass ---------- */
+.hik-glass-blue {
+  @apply border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 20px 50px -20px rgba(0, 0, 0, 0.5),
+    0 0 30px -12px rgba(143, 184, 255, 0.3);
+}
+.hik-ai-box-blue {
+  position: absolute;
+  border: 1.5px solid rgba(37, 99, 235, 0.95);
+  border-radius: 6px;
+  animation: hik-blink-blue 2s infinite;
+  transition: left 1s ease, top 1s ease;
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.5);
+}
+.hik-ai-box-blue span {
+  position: absolute;
+  top: -18px;
+  left: -1px;
+  @apply whitespace-nowrap rounded-sm bg-blue-600 px-1.5 font-mono text-[9.5px] font-bold text-white;
+}
+@keyframes hik-blink-blue {
+  0%, 100% { border-color: rgba(37, 99, 235, 0.95); }
+  50% { border-color: rgba(37, 99, 235, 0.4); }
+}
+.hik-scanline-blue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.65), transparent);
+  animation: hik-scan 4s linear infinite;
+}
+.hik-glow-ring {
+  animation: hik-glow-pulse 2.4s ease-in-out infinite;
+}
+@keyframes hik-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
+}
+
+/* ---------- Hodisalar sahifasi — qizil trevoga variantlari ---------- */
+.hik-ai-box-red {
+  position: absolute;
+  border: 1.5px solid rgba(239, 68, 68, 0.95);
+  border-radius: 6px;
+  animation: hik-blink-red 1.4s infinite;
+  transition: left 1s ease, top 1s ease;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.55);
+}
+.hik-ai-box-red span {
+  position: absolute;
+  top: -18px;
+  left: -1px;
+  @apply whitespace-nowrap rounded-sm bg-red-600 px-1.5 font-mono text-[9.5px] font-bold text-white;
+}
+@keyframes hik-blink-red {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.95); }
+  50% { border-color: rgba(239, 68, 68, 0.35); }
+}
+.hik-glow-ring-red {
+  animation: hik-glow-pulse-red 1.6s ease-in-out infinite;
+}
+@keyframes hik-glow-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+/* ---------- Geo Analitika xarita markerlari (holat bo'yicha pulse) ---------- */
+.hik-geo-marker {
+  cursor: pointer;
+}
+.hik-geo-marker--normal { width: 12px; height: 12px; }
+.hik-geo-marker--warning { width: 15px; height: 15px; }
+.hik-geo-marker--critical { width: 18px; height: 18px; }
+.hik-geo-marker::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--hik-dot-color);
+  opacity: 0.6;
+}
+.hik-geo-marker::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--hik-dot-color);
+  border: 2px solid #0f172a;
+  box-shadow: 0 0 8px var(--hik-dot-color);
+}
+.hik-geo-marker--normal::before { animation: hik-geo-pulse-sm 2.4s ease-out infinite; }
+.hik-geo-marker--warning::before { animation: hik-geo-pulse-md 1.8s ease-out infinite; }
+.hik-geo-marker--critical::before { animation: hik-geo-pulse-lg 1.1s ease-out infinite; }
+@keyframes hik-geo-pulse-sm {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes hik-geo-pulse-md {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes hik-geo-pulse-lg {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(3.4); opacity: 0; }
+}
+
+/* ── Yandex Maps: DARK MODE ──────────────────────────────────────────────
+   Yandex 2.1'ning o'z dark uslubi yo'q — ground (plitka) qatlamни invert +
+   hue-rotate qilib to'q rejimga o'tkazamiz (ochiq xarita → qora, matn → oq).
+   Marker/maska/poligon qatlamlari ground'dan ALOHIDA panelда — ular teskari
+   BO'LMAYDI, rangi saqlanadi.
+   Versiya raqami (2-1-XX) o'zgargani uchun klass qismini substring bilan olamiz.
+
+   ESLATMA: ilgari xarita "qotgan"ida sababi CSS filtr EMAS, 34MB viloyat
+   geojson'i edi (692K nuqta → 10K'ga soddalashtirildi). Yengil geometriya
+   bilan bu filtr silliq ishlaydi. */
+[class*="-ground-pane"] {
+  filter: invert(1) hue-rotate(185deg) brightness(0.92) contrast(0.9) saturate(0.85);
+}
+
+/* Yandex custom marker (templateLayoutFactory) — nuqta + pulsatsiya.
+   --ymk CSS o'zgaruvchisi placemark rangini beradi. */
+.ymk { position: absolute; }
+.ymk-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var( #616363);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(10, 17, 32, 0.6), 0 0 10px var( #7a7a7a);
+  cursor: pointer;
+}
+.ymk-dot.pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ymk, #f43f5e);
+  animation: ymk-pulse 1.6s ease-out infinite;
+}
+@keyframes ymk-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+/* ---------- Kampus markeri: yer ustida "turgan" 3D yorliq ----------
+   DIQQAT: `.ymk` ning `position` iga TEGMANG va marker ildiziga transform
+   animatsiya bermang — Yandex overlay'ga inline transform yozadi, ikkisi
+   urishib markerni noto'g'ri joyga siljitadi. Barcha siljish/animatsiya
+   faqat ichki elementlarda. */
+.ymk-campus { cursor: pointer; }
+/* Yerdagi asos — elliptik halqa (perspektiva hissi) */
+.ymk-campus-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid var(--ymk, #88898a);
+  background: radial-gradient(60% 90% at 50% 50%, rgba(133, 224, 255, 0.5), transparent 72%);
+  box-shadow: 0 0 14px -2px var(--ymk, #88898a);
+}
+.ymk-campus-base::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--ymk, #7e7f80);
+  opacity: 0.5;
+  animation: ymk-campus-ring 2.6s ease-out infinite;
+}
+@keyframes ymk-campus-ring {
+  0% { transform: scale(0.9); opacity: 0.55; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+/* Ustun — asosdan yorliqqa ko'tariladi */
+.ymk-campus-stem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 26px;
+  transform: translate(-50%, -100%);
+  background: linear-gradient(180deg, transparent, var(--ymk, #85e0ff));
+  box-shadow: 0 0 8px var(--ymk, #85e0ff);
+}
+/* Nom plitasi.
+   DIQQAT: bu yerda `perspective`/`rotateX` ISHLATILMAYDI — 3D burilgan matn
+   subpiksel tekislikdan chiqib XIRA bo'lib qoladi. Hajm hissi soya va pastki
+   qirra bilan beriladi, matn esa aniq (pixel-snapped) qoladi. */
+.ymk-campus-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, calc(-100% - 26px));
+  min-width: 84px;
+  max-width: 190px;
+  padding: 5px 11px 6px;
+  text-align: center;
+  white-space: nowrap;
+  border-radius: 7px;
+  border: 1px solid var(--ymk, #85e0ff);
+  background: linear-gradient(180deg, rgba(10, 26, 54, 0.97), rgba(3, 9, 22, 0.97));
+  box-shadow:
+    0 4px 0 -2px rgba(2, 6, 16, 0.95),
+    0 10px 20px -8px rgba(0, 0, 0, 0.95),
+    0 0 16px -6px var(--ymk, #85e0ff);
+}
+.ymk-campus-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  /* Toza oq — ilgari ko'p qatlamli soya matnni loyqalantirardi */
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+}
+.ymk-campus-sub {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ymk, #85e0ff);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+/* Joy yetmasa — nom yashiriladi, faqat belgi qoladi (to'qnashuv hisobi
+   `MapLibreMap` da: har harakatda ekran koordinatalari bo'yicha tekshiriladi) */
+.ymk-campus--nolabel .ymk-campus-card,
+.ymk-campus--nolabel .ymk-campus-stem {
+  display: none;
+}
+/* Yorliqsiz holatda belgi biroz kattaroq — bosish oson bo'lsin */
+.ymk-campus--nolabel .ymk-campus-base {
+  width: 22px;
+  height: 22px;
+  border-width: 2px;
+  background: radial-gradient(circle, var(--ymk, #85e0ff) 0%, rgba(133, 224, 255, 0.15) 55%, transparent 72%);
+}
+/* Trevoga — qizil va tezroq pulsatsiya */
+.ymk-campus--alert .ymk-campus-card {
+  border-color: #ff4d4d;
+  background: linear-gradient(180deg, rgba(70, 12, 24, 0.97), rgba(22, 4, 10, 0.97));
+  box-shadow: 0 4px 0 -2px rgba(18, 3, 7, 0.95), 0 10px 20px -8px rgba(0, 0, 0, 0.95), 0 0 22px -4px #ff4d4d;
+}
+.ymk-campus--alert .ymk-campus-base::after { animation-duration: 1.2s; }
+
+/* HUD rejimi — xarita ustidan qoraytirish qatlami (markerlar ajralib tursin).
+   MapLibre'da plitalar allaqachon to'q ("dark" uslub), shuning uchun CSS
+   filtr EMAS — oddiy yarim shaffof qoplama (ancha arzon). */
+.mlmap-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 50%, rgba(3, 6, 14, 0.28), rgba(3, 6, 14, 0.6));
+}
+
+/* ═════════ Aniqlanganlar (NVR hodisalari) ═════════ */
+.nvr-tab {
+  @apply flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11.5px] font-semibold text-slate-400 transition-colors;
+}
+.nvr-tab:hover { @apply border-white/20 text-slate-100; }
+.nvr-tab.is-active {
+  border-color: var(--c);
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+}
+.nvr-live {
+  @apply flex items-center gap-1.5 text-[11px] font-semibold text-slate-500;
+}
+.nvr-live i {
+  @apply h-1.5 w-1.5 rounded-full bg-slate-600;
+}
+.nvr-live.is-on { @apply text-emerald-300; }
+.nvr-live.is-on i {
+  @apply animate-pulse bg-emerald-400;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
+}
+
+.nvr-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+/* ── KARTOCHKA ────────────────────────────────────────────────────────
+   ⚠️ QAYTA ISHLANDI. Ilgari butun kartochka (ramka + pastki qism foni)
+   xavflilik rangiga bo'yalardi. Panjarada 20+ kartochka bo'lganda bu
+   "rang bo'tqasi" berardi: bir xil turdagi hodisalar ham ko'rilgan/
+   ko'rilmaganiga qarab boshqa-boshqa rangda chiqib, ro'yxat tartibsiz
+   ko'rinardi (o'lchandi — hamma "Begona shaxs", lekin yarmi jigarrang).
+
+   Endi rang ATIGI IKKI joyda: chap chetdagi ingichka tasma va sarlavha
+   oldidagi nuqta. Sirt esa BARCHA kartochkada bir xil va MAVZU
+   tokenlaridan olinadi — oltala mavzuda ham to'g'ri ko'rinadi. */
+.nvr-card {
+  @apply relative flex w-full flex-col overflow-hidden rounded-xl border text-left transition-all;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(10px);
+}
+/* Chap chetdagi xavflilik tasmasi — yagona rangli belgi */
+.nvr-card::before {
+  content: "";
+  @apply pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-[3px];
+  background: var(--c);
+}
+.nvr-card:hover {
+  border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.7);
+}
+/* Serverning `alert` bayrog'i — tasma qalinroq va porlaydi */
+.nvr-card--alert::before {
+  @apply w-[4px];
+  box-shadow: 0 0 12px -1px var(--c);
+}
+
+/* KO'RILGAN — tasma so'nadi, sarlavha ingichkalashadi, burchakda ✓ turadi.
+   ⚠️ RASMGA TEGILMAYDI (`opacity`/`grayscale` yo'q): kadr har doim to'liq
+   tiniq bo'lishi kerak, operator yuzni aniq ko'rsin. */
+.nvr-card.is-seen::before { background: color-mix(in srgb, var(--c) 28%, transparent); }
+.nvr-card.is-seen .nvr-card-title { @apply font-medium opacity-75; }
+.nvr-card.is-seen .nvr-card-dot { display: none; }
+.nvr-card.is-seen .nvr-card-media::after {
+  content: "✓";
+  @apply pointer-events-none absolute right-1.5 top-1.5 grid h-[15px] w-[15px] place-items-center rounded-full
+         text-[9px] font-bold leading-none text-white/70;
+  background: rgba(4, 7, 15, 0.72);
+}
+/* KO'RILMAGAN — sarlavha oldida rangli nuqta */
+.nvr-card-dot {
+  @apply h-1.5 w-1.5 flex-none rounded-full;
+  background: var(--c);
+  box-shadow: 0 0 6px var(--c);
+}
+
+.nvr-card-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #04070f;
+}
+.nvr-card-media img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  /* Kadr TINIQ chiqsin: brauzer kichraytirishda silliqlab yuboradi, yuz
+     detallari yo'qoladi. `crisp-edges` piksellarni saqlaydi. */
+  image-rendering: -webkit-optimize-contrast;
+}
+.nvr-card-count {
+  @apply flex h-full flex-col items-center justify-center gap-1.5 text-emerald-300;
+}
+.nvr-card-count p { @apply text-[11.5px] text-slate-300; }
+.nvr-card-count b { @apply font-mono text-[13px] text-white; }
+.nvr-card-time,
+.nvr-card-conf {
+  position: absolute;
+  bottom: 6px;
+  @apply rounded bg-black/70 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold text-slate-200;
+}
+.nvr-card-time { left: 6px; }
+.nvr-card-conf { right: 6px; color: var(--c); }
+/* Pastki qism (nom + kamera) ham XAVFLILIK rangida — `--c` kartochkadan
+   keladi (`detectionLevel()`). Ilgari u neytral qorong'i edi va rang faqat
+   chegarada ko'rinardi; endi yangi hodisa bir qarashda ajraladi. */
+/* Pastki qism NEYTRAL — rang faqat chap tasmada va nuqtada. Ilgari
+   bu yer ham `--c` bilan bo'yalardi va panjara ola-chipor ko'rinardi. */
+.nvr-card-body {
+  @apply px-2.5 py-2;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.nvr-card-title {
+  @apply flex items-center gap-1.5 truncate text-[12px] font-bold text-slate-100;
+}
+.nvr-card-sub { @apply mt-0.5 truncate text-[10px] text-slate-400; }
+/* Yig'ilgan o'tish nishoni — "N kadr" (`group=true`, FRONTEND.md 4-A) */
+.nvr-card-frames {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  @apply rounded bg-black/70 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold text-slate-200;
+}
+
+/* O'tishdagi qolgan kadrlar (`GET /events/{id}/visit`) — modal ichidagi lenta */
+.nvr-visit { @apply flex flex-none flex-col gap-1.5 border-t border-white/[0.08] px-4 py-3; }
+.nvr-visit-head { @apply text-[9.5px] uppercase tracking-wide text-slate-500; }
+.nvr-visit-strip { @apply flex gap-1.5 overflow-x-auto pb-1; }
+.nvr-visit-item {
+  @apply relative h-14 w-20 flex-none overflow-hidden rounded-md border border-white/10;
+  background: #04070f;
+}
+.nvr-visit-item img { @apply h-full w-full object-cover; }
+.nvr-visit-item:hover { border-color: var(--c, #85e0ff); }
+.nvr-visit-item em {
+  @apply absolute inset-x-0 bottom-0 bg-black/70 text-center font-mono text-[8.5px] not-italic text-slate-200;
+}
+
+/* Nishon ramkasi — koordinatalar 0..1 dan foizga aylantirilgan */
+.nvr-box {
+  position: absolute;
+  border: 2px solid var(--c, #ff4d4d);
+  border-radius: 3px;
+  box-shadow: 0 0 12px -2px var(--c, #ff4d4d);
+  pointer-events: none;
+}
+.nvr-box em {
+  position: absolute;
+  top: -16px;
+  left: -2px;
+  @apply whitespace-nowrap rounded-sm px-1 font-mono text-[9px] font-bold not-italic text-[#08101F];
+  background: var(--c, #ff4d4d);
+}
+.nvr-more {
+  @apply rounded-xl border border-ice/25 bg-ice/10 px-4 py-2 text-[12px] font-semibold text-ice-soft transition-colors hover:border-ice/50 hover:text-white;
+}
+
+/* To'liq ko'rinish */
+/* ═══════════════ Hodisa DOSSIYESI (aniqlash tafsiloti) ═══════════════
+   Katta ekran uchun: markazda ikkita KATTA kadr va ma'lumot jadvali, o'ngda
+   video + o'tish kadrlari. Ilgari bu 900 px lik tor oyna edi, rasm esa
+   220 px bo'lib "tiqilib" qolardi.
+
+   DIQQAT — `--c` (kategoriya rangi) ramka, sarlavha va nishonlarga beriladi;
+   rasm sahnasi esa DOIM qorong'i qoladi (kadr o'z rangida ko'rinsin). */
+/* 🔵 NEON QAYTA DIZAYN (2026-09-10) — chegara endi GRADIENT (`--c` →
+   binafsha), `padding-box`/`border-box` naqshi bilan (`.neon-modal`dagi
+   AYNI trik). `--c` allaqachon JSX'dan berilgan (`DetectionModal`),
+   shuning uchun yangi o'zgaruvchi kerak emas — faqat gradient RAQAMLAR
+   uchun `--n1`/`--n2` HAM `--c`ga tenglashtirilib beriladi (pastga
+   qarang, `.neon-num` shulardan o'qiydi, fallback ham bor). */
+.nvr-dsr {
+  @apply relative flex w-[min(1500px,96vw)] flex-col overflow-hidden rounded-2xl;
+  height: min(940px, 92vh);
+  border: 1px solid transparent;
+  /* `.neon-num` shu ikkalasidan o'qiydi (`index.css` NEON tizimi) — bu
+     yerda `--c`dan HOSILA qilinadi, JSX'da qo'shimcha narsa berilmaydi. */
+  --n1: var(--c);
+  --n2: color-mix(in srgb, var(--c) 35%, #a78bfa);
+  background:
+    linear-gradient(#070d1c, #070d1c) padding-box,
+    linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--c) 80%, transparent),
+        color-mix(in srgb, var(--c) 30%, #a78bfa) 55%,
+        rgba(255, 255, 255, 0.06) 100%
+      )
+      border-box;
+  box-shadow:
+    0 40px 90px -40px rgba(0, 0, 0, 0.95),
+    0 0 60px -22px color-mix(in srgb, var(--c) 50%, transparent);
+}
+/* HUD burchak qavslari — dossiye ko'rinishi uchun.
+   🔴 TOPILDI VA TUZATILDI (2026-09-10, foydalanuvchi so'rovi: "chap
+   yuqori va o'ng pastgi qismini xatolik ketgan"). Ilgari 22×22 px,
+   7 px chekkadan — bu esa AYNI burchakdagi HAQIQIY kontentga (chap
+   yuqorida `.nvr-dsr-mark` ikonka qutisi, o'ng pastda `.nvr-dsr-foot`
+   texnik lentasi) yetib borardi: qavslar `z-index:2` bo'lgani uchun
+   ular USTIDAN chizilib, ikonka/matnni kesib o'tgandek ko'rinardi.
+   Endi 12×12 px va 2 px chekkadan — bu HAMMA bo'limning eng kichik
+   padding'idan (`px-4`/`px-5` = 16/20 px) ANIQ kichikroq, ya'ni
+   qavslar hech qachon ichki kontent bilan KESISHMAYDI. */
+.nvr-dsr::before,
+.nvr-dsr::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  height: 12px;
+  width: 12px;
+  pointer-events: none;
+  border: 2px solid var(--c);
+  box-shadow: 0 0 10px -1px var(--c);
+  opacity: 0.75;
+  animation: nvrDsrCornerPulse 2.6s ease-in-out infinite;
+}
+.nvr-dsr::before {
+  top: 2px;
+  left: 2px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 10px;
+}
+.nvr-dsr::after {
+  bottom: 2px;
+  right: 2px;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 10px;
+  animation-delay: 1.3s;
+}
+@keyframes nvrDsrCornerPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nvr-dsr::before,
+  .nvr-dsr::after { animation: none; }
+}
+
+.nvr-dsr-top { @apply relative flex flex-none items-center gap-3 border-b border-white/[0.08] px-5 py-2.5; }
+/* Sarlavha ostidagi ingichka neon chiziq — `StatDetailDrawer`/kalendar
+   panellaridagi bilan AYNI naqsh, shu rangda (`--c`). */
+.nvr-dsr-top::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c) 75%, transparent), transparent);
+}
+.nvr-dsr-mark {
+  @apply grid h-9 w-9 flex-none place-items-center rounded-lg border;
+  color: var(--c);
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+  box-shadow: 0 0 14px -4px var(--c);
+}
+.nvr-dsr-brand b { @apply block text-[13px] font-bold uppercase tracking-[0.2em] text-white; }
+.nvr-dsr-brand em { @apply block text-[9px] not-italic uppercase tracking-[0.26em] text-slate-500; }
+.nvr-dsr-chips { @apply ml-auto flex flex-wrap items-center justify-end gap-1.5; }
+.nvr-dsr-chip {
+  @apply rounded border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-wide text-slate-400;
+}
+/* ⚠️ GRADIENT MATN EMAS — solid `--c` rang, ATAYLAB.
+   `[data-scheme="light"] .nvr-dsr-chip b { color: ... !important; }`
+   (pastda) `color`ni qayta yozadi, lekin `-webkit-text-fill-color`ga
+   tegmaydi — WebKit'da esa shu ikkalasi bo'lganda ikkinchisi USTUN
+   chiqadi va matn KO'RINMAS bo'lib qolardi (`.nvr-dsr-row dd`dagi bilan
+   AYNI tuzoq, yuqoridagi `DetectionsPage.tsx` izohiga qarang). */
+.nvr-dsr-chip b {
+  @apply font-mono font-semibold;
+  color: var(--c);
+}
+.nvr-dsr-flag {
+  @apply rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em];
+  background: color-mix(in srgb, var(--c) 20%, transparent);
+  color: var(--c);
+}
+.nvr-dsr-flag.is-alarm { @apply bg-rose-500/15 text-rose-300; }
+.nvr-dsr-x {
+  @apply grid h-8 w-8 flex-none place-items-center rounded-lg text-slate-400 transition-all duration-200;
+}
+.nvr-dsr-x:hover {
+  color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 26%, transparent), transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent) inset, 0 8px 20px -10px var(--c);
+}
+
+/* Ism qatori — dossiyening sarlavhasi. Yengil gradient "yostiq" —
+   `--c` rangidan, deyarli sezilmas, faqat chuqurlik hissi beradi. */
+.nvr-dsr-name {
+  @apply flex flex-none flex-wrap items-center gap-3 border-b border-white/[0.08] px-5 py-2.5;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 8%, transparent), transparent 60%);
+}
+.nvr-dsr-name > b { @apply text-[16px] font-bold uppercase tracking-[0.1em] text-white; }
+.nvr-dsr-name > i {
+  @apply text-[10px] uppercase not-italic tracking-[0.2em] text-slate-500;
+}
+.nvr-dsr-name > span {
+  @apply ml-auto rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-900;
+  background: var(--c);
+}
+
+/* Tana: markaz + o'ng ustun */
+/* UCH USTUN: [nishon + ma'lumot] │ [kadr + xulosa] │ [video + kadrlar].
+   ⚠️ Ilgari ikki ustun edi va nishon ma'lumot jadvali YONIDA, kadr USTIDA
+   turardi — asosiy nishon boshqa hamma narsa bilan bir qatorga tiqilib,
+   ko'z qayerdan boshlashni bilmasdi. Endi nishon O'Z ustunida yolg'iz
+   turadi, qolgan hamma narsa uning OSTIDAN chiqadi. */
+.nvr-dsr-body {
+  @apply grid min-h-0 flex-1;
+  grid-template-columns: 320px minmax(0, 1fr) 320px;
+}
+.nvr-dsr-rail {
+  @apply flex min-h-0 flex-col gap-0 overflow-y-auto border-r border-white/[0.08];
+}
+.nvr-dsr-main { @apply flex min-h-0 flex-col overflow-y-auto; }
+.nvr-dsr-side { @apply flex min-h-0 flex-col overflow-y-auto border-l border-white/[0.08]; }
+@media (max-width: 1320px) {
+  .nvr-dsr-body { grid-template-columns: 300px minmax(0, 1fr); }
+  .nvr-dsr-side { @apply col-span-2 border-l-0 border-t border-white/[0.08]; }
+}
+@media (max-width: 900px) {
+  .nvr-dsr-body { grid-template-columns: minmax(0, 1fr); }
+  .nvr-dsr-rail { @apply border-r-0 border-b border-white/[0.08]; }
+  .nvr-dsr-side { @apply col-span-1; }
+}
+
+/* ── ASOSIY NISHON — chap ustunning tepasida, YOLG'IZ ──
+   Kesilgan yuz, shuning uchun `object-cover` va 4:5 nisbat: kvadrat
+   maydonda atrofi qop-qora bo'sh joy bo'lib qolardi. Ustun eni bilan
+   birga o'sadi, lekin balandligi cheklangan — pastdagi ma'lumot ham
+   ekranga sig'sin. */
+.nvr-dsr-face {
+  @apply relative block w-full flex-none overflow-hidden border-b border-white/[0.08] transition-colors;
+  aspect-ratio: 4 / 5;
+  max-height: 30vh;
+  background: #04070f;
+}
+
+.nvr-dsr-face:hover { border-color: var(--c); }
+.nvr-dsr-face img { @apply h-full w-full object-cover; }
+.nvr-dsr-face b {
+  @apply absolute inset-x-0 bottom-0 z-10 px-3 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300;
+}
+
+/* Butun kadr — katta maydon (nishon endi bu yerda emas) */
+.nvr-dsr-shots {
+  @apply grid flex-none gap-px bg-white/[0.06];
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+.nvr-dsr-shot {
+  @apply relative grid w-full place-items-center overflow-hidden p-2;
+  min-height: clamp(260px, 38vh, 440px);
+  background: #04070f;
+}
+/* Ichki o'ram rasm o'lchamiga MOSLASHADI — nishon ramkasi (`nvr-box`) foizda
+   beriladi va faqat shunda rasm ustiga aniq tushadi. `object-cover/contain`
+   bilan to'g'ridan-to'g'ri konteynerga qo'yilsa ramka siljib ketardi. */
+.nvr-dsr-shot-in { @apply relative inline-block; }
+.nvr-dsr-shot-in img {
+  @apply block w-auto max-w-full object-contain;
+  /* Konteyner balandligidan (`min-height`) ichki bo'shliq ayirilgan qiymat —
+     foizli `max-height` auto balandlikdagi o'ramda ishlamaydi. */
+  max-height: clamp(244px, 36vh, 424px);
+}
+.nvr-dsr-shot > b {
+  @apply absolute left-3 top-3 z-10 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-300;
+}
+.nvr-dsr-shot:hover .nvr-dsr-zoom { opacity: 1; }
+.nvr-dsr-zoom {
+  @apply absolute bottom-3 right-3 z-10 rounded bg-black/70 px-2 py-1 text-[10px] text-slate-300 opacity-0 transition-opacity;
+}
+
+/* Bo'lim sarlavhasi — chiziq bilan */
+.nvr-dsr-h {
+  @apply flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400;
+}
+.nvr-dsr-h::after { content: ""; @apply h-px flex-1 bg-white/10; }
+.nvr-dsr-block { @apply flex flex-none flex-col gap-2.5 border-b border-white/[0.08] px-4 py-3.5; }
+
+/* Ma'lumot jadvali */
+/* Ma'lumot ro'yxati — chap ustunda BITTA ustun (ilgari `auto-fit` bilan
+   ikki-uch ustunga yoyilardi va o'qish tartibi buzilardi). */
+.nvr-dsr-list { @apply grid grid-cols-1; }
+.nvr-dsr-row { @apply flex items-baseline gap-3 border-b border-white/[0.06] py-1.5; }
+.nvr-dsr-row dt { @apply w-[92px] flex-none text-[9.5px] uppercase tracking-wide text-slate-500; }
+.nvr-dsr-row dd { @apply min-w-0 flex-1 truncate text-[12.5px] font-semibold text-slate-100; }
+.nvr-dsr-row dd small { @apply ml-1.5 text-[11px] font-normal text-slate-500; }
+
+/* Xulosa matni + belgilar */
+.nvr-dsr-note p { @apply text-[12.5px] leading-relaxed text-slate-300; }
+.nvr-dsr-tags { @apply flex flex-wrap gap-1.5; }
+.nvr-dsr-tag {
+  @apply flex items-center gap-1.5 rounded border border-white/10 bg-white/[0.04] px-2 py-1 text-[11.5px] text-slate-200;
+}
+.nvr-dsr-tag b { @apply text-[9.5px] font-normal uppercase tracking-wide text-slate-500; }
+
+/* O'tish kadrlari — o'ng ustundagi "FEED" lentasi */
+/* Kadr lentalari endi MARKAZDA (xulosa ostida) — qat'iy 2 ustun o'rniga
+   enga moslashadi, aks holda keng maydonda ikkita ulkan kadr chiqardi. */
+.nvr-dsr-feeds {
+  @apply grid gap-1.5;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+.nvr-dsr-feed {
+  @apply relative block overflow-hidden rounded-md border border-white/10 transition-colors;
+  aspect-ratio: 4 / 3;
+  background: #04070f;
+}
+.nvr-dsr-feed:hover { border-color: var(--c); }
+.nvr-dsr-feed img { @apply h-full w-full object-cover; }
+.nvr-dsr-feed b {
+  @apply absolute left-1 top-1 rounded bg-black/70 px-1 py-px font-mono text-[8px] font-semibold uppercase text-slate-300;
+}
+.nvr-dsr-feed em {
+  @apply absolute inset-x-0 bottom-0 bg-black/70 text-center font-mono text-[8.5px] not-italic text-slate-200;
+}
+.nvr-dsr-empty { @apply py-2 text-[11.5px] text-slate-500; }
+
+/* Pastki texnik lenta */
+.nvr-dsr-foot {
+  @apply flex flex-none flex-wrap items-center gap-x-5 gap-y-1 border-t border-white/[0.08] px-5 py-2
+         font-mono text-[10px] uppercase tracking-wide text-slate-600;
+}
+.nvr-dsr-foot b { @apply font-semibold text-slate-400; }
+
+/* ---------- MapLibre boshqaruv va popup uslubi (to'q mavzu) ---------- */
+.maplibregl-ctrl-group {
+  background: rgba(12, 16, 32, 0.85) !important;
+  border: 1px solid rgba(133, 224, 255, 0.2) !important;
+  backdrop-filter: blur(12px);
+}
+.maplibregl-ctrl-group button + button { border-top-color: rgba(133, 224, 255, 0.15) !important; }
+.maplibregl-ctrl-group button span { filter: invert(1) brightness(1.6); }
+.maplibregl-popup.hik-map-popup .maplibregl-popup-content {
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(133, 224, 255, 0.25);
+  background: rgba(10, 21, 38, 0.96);
+  color: #e2e8f0;
+  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.95);
+}
+.maplibregl-popup.hik-map-popup .maplibregl-popup-tip { display: none; }
+
+/* ---------- 3D kampus (Campus3D / BuildingInterior) ---------- */
+/* Aniqlangan nuqta atrofidagi qizil radius — sekin "nafas oladi".
+   DIQQAT: SVG element uchun `transform-box: fill-box` SHART, aks holda
+   `transform-origin: center` viewBox markaziga tushib markerni uchirib
+   yuboradi. */
+@keyframes c3d-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.c3d-pulse {
+  animation: c3d-pulse 2.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes c3d-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.c3d-blink { animation: c3d-blink 1.4s ease-in-out infinite; }
+
+/* Trevoga kartochkasi — qirqilgan yuqori-o'ng burchak, qizil neon ramka */
+.c3d-card {
+  border: 1px solid rgba(255, 45, 85, 0.55);
+  background: linear-gradient(180deg, rgba(20, 6, 14, 0.94), rgba(9, 14, 26, 0.94));
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 32px -8px rgba(255, 45, 85, 0.55), inset 0 0 40px -22px rgba(255, 45, 85, 0.9);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+
+/* ---------- Kamera va hodisa markerlari (Smart Campus ko'rinishi) ----------
+   DIQQAT: `.ymk` ildiziga transform/animatsiya BERILMAYDI — MapLibre unga
+   inline `transform` yozadi. Hamma effekt ichki elementlarda. */
+/* ══════════════════════════════════════════════════════════════════
+   KUZATUV KAMERASI markeri (2026-09-05 da qayta chizildi)
+   ══════════════════════════════════════════════════════════════════
+   Ilgari bu shunchaki 17px lik doiracha ichidagi belgi edi. Endi:
+   korpus + linza + kronshteyn, ko'rish KONUSI, holat nuqtasi.
+
+   ⚠️ Hammasi CSS/SVG — MapLibre markerlari DOM elementi, ya'ni
+   "3D model" bu yerda mumkin emas va kerak ham emas: yuzlab kamera
+   bo'lishi mumkin, DOM esa yengil bo'lishi shart.
+
+   ⚠️ **MARKER ILDIZIGA `transform` BERILMAYDI** (CLAUDE.md, 1-tuzoq):
+   MapLibre ildizga o'z inline `transform` ini yozadi. Barcha siljish
+   va animatsiya faqat ICHKI elementlarda. */
+.ymk-cam { cursor: pointer; }
+
+/* ── Korpus ── */
+.ymk-cam-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  padding: 1px;
+  border-radius: 5px;
+  background-color: #1f53285e;
+  color: var(--ymk, #757575);
+  filter: drop-shadow(0 0 6px rgba(118, 119, 119, 0.5));
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+.ymk-cam.is-selected .ymk-cam-body {
+  transform: translate(-50%, -50%) scale(1.22);
+  filter: drop-shadow(0 0 10px rgba(5, 5, 190, 0.95));
+}
+
+/* ── Holat nuqtasi — KICHIK (xarita taktik ko'rinishda qolsin) ── */
+.ymk-cam-led {
+  position: absolute;
+  right: -1px;
+  top: -1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+ 
+  box-shadow: 0 0 5px -1px currentColor;
+  background-color: rgb(21, 252, 0);
+}
+.ymk-cam.is-online .ymk-cam-led { background: #34d399; }
+.ymk-cam.is-warning .ymk-cam-led { background: #f59e0b; }
+.ymk-cam.is-offline .ymk-cam-led { background: #ef4444; }
+
+/* ── KO'RISH KONUSI ──
+   `--cam-dir` — kameraning yo'nalishi (gradus, 0 = shimol). Konus
+   `conic-gradient` bilan chiziladi: burchak `--cam-fov`, uzunligi
+   `--cam-dist`. Rasm ham, kanvas ham kerak emas.
+
+   ⚠️ `rotate` ICHKI elementda — marker ildizida emas (yuqoridagi
+   izohga qarang). */
+.ymk-cam-fov {
+  --cam-fov: 60deg;
+  --cam-dist: 62px;
+  --cam-alpha: 0.15;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--cam-dist) * 2);
+  height: calc(var(--cam-dist) * 2);
+  margin-left: calc(var(--cam-dist) * -1);
+  margin-top: calc(var(--cam-dist) * -1);
+  border-radius: 50%;
+  pointer-events: none;
+  /* Shimol yuqorida: `conic-gradient` 0° dan boshlanadi, konus esa
+     yo'nalish atrofida simmetrik — shuning uchun yarim burchakka
+     surib qo'yiladi. */
+  transform: rotate(calc(var(--cam-dir, 0deg) - var(--cam-fov) / 2));
+  background: conic-gradient(
+    from 0deg,
+    rgba(133, 224, 255, var(--cam-alpha)) 0deg,
+    rgba(133, 224, 255, calc(var(--cam-alpha) * 0.35)) var(--cam-fov),
+    transparent var(--cam-fov)
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 32%, rgba(0, 0, 0, 0.35) 78%, transparent 100%);
+  mask-image: radial-gradient(circle, #000 32%, rgba(0, 0, 0, 0.35) 78%, transparent 100%);
+  transition: opacity 0.2s ease;
+}
+.ymk-cam.is-selected .ymk-cam-fov { --cam-alpha: 0.34; }
+.ymk-cam.is-offline .ymk-cam-fov { opacity: 0.25; }
+
+/* ── PTZ — SEKIN chapga-o'ngga skanerlash ──
+   ⚠️ Faqat KO'RINISH: saqlangan koordinata ham, `heading` ham
+   o'zgarmaydi. CSS animatsiya, ya'ni React har kadrda qayta
+   render qilmaydi va rAF ham band bo'lmaydi.
+   ⚠️ `prefers-reduced-motion` da o'chadi. */
+.ymk-cam-fov.is-ptz {
+  animation: ymk-cam-scan 9s ease-in-out infinite;
+}
+@keyframes ymk-cam-scan {
+  0%,
+  8% {
+    transform: rotate(calc(var(--cam-dir, 0deg) - var(--cam-fov) / 2 - 15deg));
+  }
+  46%,
+  54% {
+    transform: rotate(calc(var(--cam-dir, 0deg) - var(--cam-fov) / 2 + 15deg));
+  }
+  92%,
+  100% {
+    transform: rotate(calc(var(--cam-dir, 0deg) - var(--cam-fov) / 2 - 15deg));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ymk-cam-fov.is-ptz { animation: none; }
+}
+
+.ymk-alert { cursor: pointer; }
+/* Yerdagi nuqta — hodisa qayerda sodir bo'lgani */
+.ymk-alert-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--ymk, #f59e0b);
+  box-shadow: 0 0 10px var(--ymk, #f59e0b);
+}
+/* ⚠️ IKKI halqa, turli kechikish bilan — bitta halqa xarita ustida
+   sezilmasdi. Trevoga nuqtasi ko'zga birinchi tashlanishi kerak. */
+.ymk-alert-base::after,
+.ymk-alert-base::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ymk, #f43f5e);
+  animation: ymk-alert-ping 1.9s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+}
+.ymk-alert-base::before { animation-delay: 0.95s; }
+@keyframes ymk-alert-ping {
+  0% { transform: scale(1); opacity: 0.7; }
+  70% { opacity: 0.12; }
+  100% { transform: scale(4.2); opacity: 0; }
+}
+/* Nuqtadan yuqoriga ko'tarilgan ingichka ustun */
+.ymk-alert-stem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.5px;
+  height: 34px;
+  transform: translate(-50%, -100%);
+  background: linear-gradient(180deg, var(--ymk, #f59e0b), rgba(245, 158, 11, 0.15));
+}
+/* Ustun uchidagi ogohlantirish uchburchagi */
+.ymk-alert-badge {
+  position: absolute;
+  left: 0;
+  top: -34px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  transform: translate(-50%, -50%);
+  background: rgb(66, 66, 66);
+  color: var(--ymk, #f59e0b);
+  border: 1px solid var(--ymk, #f59e0b);
+  box-shadow: 0 0 18px -1px var(--ymk, #f43f5e);
+  /* Uchburchak ham "nafas oladi" — miltillash o'rniga o'lcham o'zgaradi:
+     miltillash uzoq qarashda charchatardi. */
+  animation: ymk-alert-beat 1.9s ease-in-out infinite;
+}
+@keyframes ymk-alert-beat {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.16); }
+}
+
+/* ── Raqamli nishon (Geo Analitika) — quticha + pastga qaragan strelka ──
+   Xarita rangi o'zgarmaydi; ko'rsatkich FAQAT shu markerda. Rang
+   `--ymk` orqali keladi (sariq — diqqat, qizil — trevoga). */
+.ymk-stat { cursor: pointer; }
+.ymk-stat-badge {
+  position: absolute;
+  left: 0;
+  top: -30px;
+  transform: translate(-50%, -50%);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  background: rgba(10, 12, 22, 0.92);
+  color: var(--ymk, #f59e0b);
+  border: 1px solid var(--ymk, #f59e0b);
+  box-shadow: 0 0 16px -4px var(--ymk, #f59e0b);
+}
+/* Strelka — quticha ostidan yerdagi nuqtaga qarab tushadi */
+.ymk-stat-arrow {
+  position: absolute;
+  left: 0;
+  top: -20px;
+  width: 2px;
+  height: 18px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom, var(--ymk, #f59e0b), transparent);
+}
+.ymk-stat-arrow::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 6px solid var(--ymk, #f59e0b);
+}
+.ymk-stat:hover .ymk-stat-badge {
+  background: rgba(10, 12, 22, 1);
+  filter: brightness(1.25);
+}
+
+/* ── Hodisa videosi (Aniqlanganlar tafsiloti) ── */
+.nvr-video {
+  @apply flex flex-col gap-2 border-t border-white/[0.08] px-4 py-3;
+}
+.nvr-video-head {
+  @apply flex flex-wrap items-center gap-2;
+}
+.nvr-video-head b {
+  @apply text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400;
+}
+.nvr-video-btn {
+  @apply inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5
+         text-[11.5px] font-semibold text-slate-200 transition-colors
+         hover:border-ice/45 hover:bg-white/[0.1] hover:text-white
+         disabled:cursor-not-allowed disabled:opacity-40;
+}
+.nvr-video-btn.is-on {
+  @apply border-rose-400/50 bg-rose-500/15 text-rose-200;
+}
+.nvr-video-stage {
+  @apply relative grid min-h-[220px] place-items-center overflow-hidden rounded-xl border border-white/10 bg-black;
+}
+.nvr-video-el {
+  @apply max-h-[46vh] w-full bg-black object-contain;
+}
+.nvr-video-note {
+  @apply flex max-w-[420px] items-center gap-2.5 px-4 py-8 text-center text-[12px] text-slate-400;
+}
+/* Video TAYYOR bo'lgach ham brauzer faylni hali olib kelmagan bo'lishi
+   mumkin — shu payt <video> ustida turadi (EventVideo.tsx `buffering`).
+   Fon qoraytirilgan, aks holda aylanuvchi belgi qora videokadr ustida
+   ko'rinmay ketardi. */
+.nvr-video-loading {
+  @apply absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl
+         bg-black/55 text-[11.5px] font-semibold text-slate-200;
+}
+/* Video "aylantirilmoqda" holati — skelet effekt FON sifatida qoladi
+   (video maydoni shakli, yorug'lik "yugurish" animatsiyasi), ustida esa
+   aniq matn+belgi turadi: foydalanuvchi bu "bo'sh joy" emas, "video BOR,
+   sekin ochilyapti" ekanini bilsin. */
+.nvr-video-skeleton {
+  @apply absolute inset-0 overflow-hidden rounded-xl;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+.nvr-video-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.07) 46%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.07) 54%,
+    transparent 70%
+  );
+  animation: nvr-video-shimmer 1.7s ease-in-out infinite;
+}
+@keyframes nvr-video-shimmer {
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(60%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nvr-video-skeleton::after { animation: none; }
+}
+.nvr-video-foot {
+  @apply flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] text-slate-500;
+}
+.nvr-video-foot b {
+  @apply font-mono text-slate-300;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   YORUG' REJIM (light mode)
+
+   Ilova ASOSAN qorong'i qilib yozilgan: ranglar `dark:` prefiksisiz, to'g'ridan
+   qotirilgan (`text-slate-400`, `bg-[#0B1220]`…) — 42 faylda 600 dan ortiq joy.
+   Ularning HAMMASINI qayta yozish o'rniga shu yerda `[data-theme="light"]`
+   ostida QAYTA ANIQLANADI: bitta joy, butun ilovaga ta'sir qiladi.
+
+   Tartib: eng ko'p ishlatiladigan sinflar (chastota bo'yicha o'lchangan)
+   → keyin loyihaning o'z komponent sinflari (`.hik-*`, `.dv-*`, `.nvr-*`…).
+
+   Yangi komponent yozganda odatdagi qorong'i sinflarni ishlating — agar ular
+   shu ro'yxatda bo'lsa, yorug' rejim O'ZI ishlaydi.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root[data-scheme="light"] {
+  /* ⚠️ Bu DEFAULT qiymatlar (Kunduzgi mavzu). Haqiqiy tokenlarni
+     `theme/store.ts` `<html style>` ga yozadi — oltita mavzuning har
+     birida o'z palitrasi bor. Bu yerdagilar SSR va JS o'chiq holat uchun
+     zaxira.
+
+     ⚠️ Fon SOF OQ EMAS (`#e9eef7`): sof oqda `text-slate-*` va shaffof
+     urg'ular yuvilib ketardi. Matn ham to'qroq qilindi. */
+  --lm-bg: #f3f5f8;
+  --lm-surface: #ffffff;
+  --lm-surface-2: #f3f5f8;
+  --lm-line: #e3e7ee;
+  --lm-text: #171819;
+  --lm-text-soft: #3f4448;
+  --lm-text-mute: #6b7280;
+  --lm-accent: #2584ff;
+  --lm-grid: rgba(37, 132, 255, 0.08);
+  color-scheme: light;
+}
+
+:root[data-scheme="light"] body {
+  background: var(--lm-bg);
+  color: var(--lm-text);
+}
+
+/* Kosmik fon qorong'i rejim uchun — yorug'da o'chadi */
+/* ── YORUG' REJIM: yangi komponentlar ──────────────────────────────────
+   Quyidagilar qorong'i fon uchun QOTIRILGAN hex bilan yozilgan, shuning
+   uchun umumiy `bg-white/`, `text-slate-*` qoidalari ularga tegmaydi —
+   har biri alohida qayta aniqlanadi. */
+
+/* Sidebar ikonkalari — oq fonda 60% shaffoflik xira ko'rinardi */
+:root[data-scheme="light"] .nav-icon { opacity: 1 !important; }
+
+/* Ekran ustidagi aniqlash xabari */
+:root[data-scheme="light"] .det-toast {
+  background: color-mix(in srgb, var(--c) 12%, #ffffff) !important;
+  border-color: color-mix(in srgb, var(--c) 55%, transparent) !important;
+  box-shadow: 0 18px 40px -22px rgba(15, 27, 46, 0.4) !important;
+}
+:root[data-scheme="light"] .det-toast .text-white,
+:root[data-scheme="light"] .det-toast .text-slate-300,
+:root[data-scheme="light"] .det-toast .text-slate-400 { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .det-toast-shot { background: var(--lm-surface-2) !important; }
+
+/* Bildirishnoma qatori */
+:root[data-scheme="light"] .nb-row {
+  background: color-mix(in srgb, var(--c) 10%, #ffffff) !important;
+}
+:root[data-scheme="light"] .nb-row.is-seen {
+  background: var(--lm-surface-2) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .nb-title { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nb-shot { background: var(--lm-surface-2) !important; }
+
+/* Kameralar KPI qatori va kartochka yorliqlari */
+:root[data-scheme="light"] .glass-tile,
+:root[data-scheme="light"] .dv-slot {
+  backdrop-filter: blur(8px) !important;
+  background: rgba(255, 255, 255, 0.66) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .cam-kpi {
+  backdrop-filter: blur(10px) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, rgba(255, 255, 255, 0.72)), rgba(255, 255, 255, 0.72)) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .cam-kpi-num { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .cam-kpi-label { color: var(--lm-text-soft) !important; }
+:root[data-scheme="light"] .cam-kpi-hint { color: var(--lm-text-mute) !important; }
+
+
+
+
+/* ⚠️ `SpaceBackground` yorug' rejimda O'CHIRILADI — uning tumanliklari,
+   yulduzlari va porlashlari qorong'i fon uchun chizilgan, oq sahnada ular
+   iflos dog' bo'lib qolardi.
+   AMMO BLUEPRINT SETKASI kerak: panellar shaffof va u ular ortidan
+   ko'rinib turishi kerak. Shuning uchun setka `body` foniga QAYTA
+   qo'yiladi — o'sha 72 px qadam, faqat rangi qorong'i siyoh. */
+:root[data-scheme="light"] .mlmap-dim { display: none !important; }
+
+/* ── KOSMIK FON YORUG' MAVZULARDA ──────────────────────────────────────
+   ⚠️ Ilgari `.space-bg` butunlay `display:none` edi: kunduzgi mavzularda
+   na yulduzlar, na kursor ortidan yuradigan setka qolardi. Endi qatlam
+   TURADI, faqat ranglari mavzu tokenlariga o'tadi.
+
+   Canvas ranglari (yulduz/chang/uchqun) JS'da — `SpaceBackground.tsx`
+   `inkFor()`, u ham `--lm-accent` dan oladi. */
+:root[data-scheme="light"] .space-bg {
+  --space-line: color-mix(in srgb, var(--lm-accent) 45%, transparent);
+  --space-spot: color-mix(in srgb, var(--lm-accent) 9%, transparent);
+}
+/* Asos gradienti — qorong'i tumanlik o'rniga mavzu foni */
+:root[data-scheme="light"] .space-base {
+  background: radial-gradient(
+    ellipse at 50% -10%,
+    var(--lm-surface) 0%,
+    var(--lm-bg) 55%,
+    color-mix(in srgb, var(--lm-bg) 88%, var(--lm-line)) 100%
+  ) !important;
+}
+/* Tumanlik dog'lari — mavzu urg'usida, oq fonda sezilishi uchun sal to'qroq */
+:root[data-scheme="light"] .space-neb {
+  background-color: var(--lm-accent) !important;
+  opacity: 0.09 !important;
+}
+/* Kursor setkasi oq fonda xiraroq ko'rinadi — kuchaytiriladi */
+:root[data-scheme="light"] .space-grid { opacity: 0.34 !important; }
+/* Pastki vinetka — qora parda o'rniga yengil tus */
+:root[data-scheme="light"] .space-fog {
+  background: radial-gradient(
+    ellipse at 50% 120%,
+    color-mix(in srgb, var(--lm-line) 55%, transparent),
+    transparent 60%
+  ) !important;
+}
+/* Noise `mix-blend-overlay` bilan oq fonda dog' bo'lib chiqardi */
+:root[data-scheme="light"] .space-noise { opacity: 0.02 !important; mix-blend-mode: multiply !important; }
+
+/* ── Matn ranglari (chastota: 400→165, 500→108, 300→89, white→78 …) ── */
+:root[data-scheme="light"] .text-white { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .text-slate-50,
+:root[data-scheme="light"] .text-slate-100,
+:root[data-scheme="light"] .text-slate-200 { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .text-slate-300 { color: var(--lm-text-soft) !important; }
+:root[data-scheme="light"] .text-slate-400 { color: var(--lm-text-mute) !important; }
+:root[data-scheme="light"] .text-slate-500 { color: var(--lm-text-mute) !important; }
+:root[data-scheme="light"] .text-slate-600 { color: var(--lm-text-soft) !important; }
+
+/* Sian/muz urg'ular qorong'i fon uchun tanlangan — yorug'da to'qroq ko'k.
+ *
+ * ⚠️ SHAFFOFLIK VARIANTLARI ham qamrab olinadi (`[class*="text-ice"]`).
+ * Ilgari faqat toza sinflar yozilgan edi va `text-ice-cyan/70` (Tailwind
+ * uni `#85e0ffb3` qiladi — 70% shaffof och sian) qoidaga TUSHMASDI:
+ * panel sarlavhalari oq fonda deyarli ko'rinmasdi. Loyihada bunday
+ * variantlar 24 joyda ishlatilgan, shuning uchun har birini alohida
+ * yozish o'rniga substring selektor qo'yildi.
+ *
+ * `!important` + `opacity` yo'q: rang TO'LIQ to'yingan holda qo'yiladi,
+ * ya'ni 70% variant ham oq fonda o'qiladi. */
+:root[data-scheme="light"] [class*="text-ice"] { color: var(--lm-accent) !important; }
+:root[data-scheme="light"] [class*="border-ice"] { border-color: color-mix(in srgb, var(--lm-accent) 45%, transparent) !important; }
+:root[data-scheme="light"] [class*="bg-ice"] { background-color: color-mix(in srgb, var(--lm-accent) 10%, transparent) !important; }
+
+/* ⚠️ Tailwind'ning O'Z `cyan-*` palitrasi — loyihaning `ice-*` maxsus
+ * tokenidan FARQLI (`LanguageSwitcher.tsx` va yana 5 joyda, 13 marta:
+ * `text-cyan-200`, `bg-cyan-400/20` va h.k.). Qorong'ida och sian panel
+ * fonida (`#0B1220`) o'qilardi, lekin sirt yorug'da OQGA aylangach
+ * (`.nexa-card` yuqorida) deyarli ko'rinmay qoldi — masalan til
+ * tanlagichning FAOL tili belgilanmagandek bo'lib qolardi. Bir xil
+ * `--lm-accent` token — bu loyihada sian ikkalasi ham aslida BITTA urg'u
+ * rangi, faqat ikki xil Tailwind nomi bilan yozilgan. */
+:root[data-scheme="light"] [class*="text-cyan"] { color: var(--lm-accent) !important; }
+:root[data-scheme="light"] [class*="border-cyan"] { border-color: color-mix(in srgb, var(--lm-accent) 45%, transparent) !important; }
+:root[data-scheme="light"] [class*="bg-cyan"] { background-color: color-mix(in srgb, var(--lm-accent) 10%, transparent) !important; }
+
+/* ── Fonlar ── */
+:root[data-scheme="light"] .bg-ink,
+:root[data-scheme="light"] .bg-ink-panel { background-color: var(--lm-surface) !important; }
+:root[data-scheme="light"] [class*="bg-slate-8"],
+:root[data-scheme="light"] [class*="bg-slate-9"] { background-color: var(--lm-surface-2) !important; }
+:root[data-scheme="light"] [class*="bg-slate-7"],
+:root[data-scheme="light"] [class*="bg-slate-6"],
+:root[data-scheme="light"] [class*="bg-slate-5"] {
+  background-color: color-mix(in srgb, var(--lm-surface-2) 80%, var(--lm-line)) !important;
+}
+/* Qorong'ida "oq ustma-ust" qatlamlar yorug'da TESKARI bo'lishi kerak */
+:root[data-scheme="light"] [class*="bg-white/"] { background-color: rgba(15, 27, 46, 0.045) !important; }
+:root[data-scheme="light"] [class*="bg-black/"] { background-color: rgba(15, 27, 46, 0.06) !important; }
+
+/* ── Chegaralar ── */
+:root[data-scheme="light"] [class*="border-white/"] { border-color: var(--lm-line) !important; }
+:root[data-scheme="light"] [class*="border-slate-8"],
+:root[data-scheme="light"] [class*="border-slate-7"] { border-color: var(--lm-line) !important; }
+
+/* ── Loyihaning o'z komponent sinflari ── */
+/* ⚠️ Sirt SHAFFOF (`0.74`) + `backdrop-filter` — ortidagi blueprint setkasi
+   ko'rinib tursin. Ilgari to'liq oq (`#ffffff`) edi va setka panellar
+   ostida butunlay yo'qolardi. */
+:root[data-scheme="light"] .hik-glass-blue,
+:root[data-scheme="light"] .nexa-card,
+:root[data-scheme="light"] .dv-panel,
+:root[data-scheme="light"] .hik-popup,
+:root[data-scheme="light"] .c3d-card {
+  backdrop-filter: blur(14px) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  border-color: var(--lm-line) !important;
+  box-shadow: 0 10px 28px -18px rgba(15, 27, 46, 0.35) !important;
+}
+:root[data-scheme="light"] .dv-slot,
+:root[data-scheme="light"] .hik-chip {
+  background: var(--lm-surface-2) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .hik-input {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-text) !important;
+  box-shadow: inset 0 1px 2px rgba(15, 27, 46, 0.06) !important;
+}
+:root[data-scheme="light"] .dv-title b { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .dv-title span { color: var(--lm-text-mute) !important; }
+
+/* Aniqlanganlar / HUD kartochkalari */
+:root[data-scheme="light"] .nvr-card,
+:root[data-scheme="light"] .nvr-dsr,
+:root[data-scheme="light"] .hud-detail,
+:root[data-scheme="light"] .hud-alert {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+}
+/* Rasm va video sahnasi QORONG'I qoladi — kadr o'z rangida ko'rinsin */
+:root[data-scheme="light"] .nvr-card-media,
+:root[data-scheme="light"] .nvr-dsr-shot,
+:root[data-scheme="light"] .nvr-dsr-feed,
+:root[data-scheme="light"] .nvr-visit-item,
+:root[data-scheme="light"] .cam-card,
+:root[data-scheme="light"] .cam-live,
+:root[data-scheme="light"] .cam-live-stage,
+:root[data-scheme="light"] .nvr-video-stage { background: #0b1220 !important; }
+
+/* MapLibre boshqaruvi va popup — yorug' xaritada oq sirt bo'lsin.
+   Marker yorliqlari (`.ymk-*`) esa ATAYLAB qorong'i qoladi: ular xarita
+   USTIDA turadi va oq fonda ham, yashil hududda ham o'qilishi kerak. */
+:root[data-scheme="light"] .maplibregl-ctrl-group {
+  background: color-mix(in srgb, var(--lm-surface) 95%, transparent) !important;
+  border-color: var(--lm-line) !important;
+  box-shadow: 0 6px 18px -10px rgba(15, 27, 46, 0.35);
+}
+:root[data-scheme="light"] .maplibregl-ctrl-group button + button {
+  border-top-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .maplibregl-ctrl-group button span {
+  filter: none; /* qorong'ida invert qilingan edi — oqda asl ikonka to'g'ri */
+}
+:root[data-scheme="light"] .maplibregl-popup.hik-map-popup .maplibregl-popup-content {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-text) !important;
+}
+
+/* Xarita marker yorliqlari qorong'i qoladi (xarita fonида o'qilishi uchun) */
+:root[data-scheme="light"] .ymk-stat-badge,
+:root[data-scheme="light"] .ymk-campus-card,
+:root[data-scheme="light"] .ymk-alert-badge { color: var(--ymk); }
+
+/* Jadval sarlavhasi — `sticky` fon shaffof bo'lsa qatorlar ostidan ko'rinadi */
+:root[data-scheme="light"] thead { background: var(--lm-surface-2) !important; }
+
+/* Geo lentasi kartochkasi — xarita USTIDA turadi, shuning uchun fon to'liq
+   noshaffof bo'lishi kerak (aks holda ostidagi xarita matnni yeb qo'yadi). */
+/* ⚠️ Sirt ATAYLAB TO'Q va deyarli shaffofmas: bu panel XARITA USTIDA
+   turadi — viloyat poligonlari, kampus maydonchalari va yo'l chiziqlari
+   ostidan ko'rinib, mayda matnni o'qib bo'lmasdi (o'lchandi: 0.95 da ham
+   yorqin hududlar ustida kontrast yetmasdi). */
+.geo-strip-card {
+  background: rgba(6, 11, 22, 0.985);
+  border: 1px solid rgba(133, 224, 255, 0.24);
+  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(16px) saturate(120%);
+}
+:root[data-scheme="light"] .geo-strip-card {
+  /* Yorug'da ham deyarli shaffofmas — xarita ostidan ko'rinmasin */
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  box-shadow: 0 18px 40px -20px rgba(15, 27, 46, 0.35);
+}
+/* Yorug' rejimda mini-xarita foni ham oqarishi kerak */
+:root[data-scheme="light"] .geo-strip-card .bg-slate-950\/60 {
+  background-color: var(--lm-surface-2) !important;
+}
+
+/* Boshqaruv paneli xaritasi ustidagi suzuvchi kartalar (2026-09-07,
+   foydalanuvchi so'rovi: "cardlarni ochroq... bluring bilan qil, orqa
+   qora fonni olib tashla"). `.geo-strip-card` dan FARQI: bu yerdagi
+   xarita foni Geo Analitikadagidek YORQIN VILOYAT rangларi emas, tungi
+   to'q ko'k — matn o'qish uchun 0.985 kabi deyarli-noshaffof fon SHART
+   emas. Past alfa + kuchli blur — chinakam "muzlangan shisha" ko'rinishi
+   (avvalgi `geo-strip-card` amalda qattiq qora to'rtburchak bo'lib
+   ko'rinardi, blur deyarli sezilmasdi). */
+.map-glass-card {
+  background: rgba(9, 15, 28, 0.58);
+  border: 1px solid rgba(133, 224, 255, 0.16);
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+:root[data-scheme="light"] .map-glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: var(--lm-line);
+  box-shadow: 0 18px 40px -20px rgba(15, 27, 46, 0.25);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+
+/* ── Bir martalik HEX sirtlar (yorug' rejim) ────────────────────────────────
+   Tailwind'ning `bg-[#080E1A]` kabi sinflari yuqoridagi `bg-slate-*` qoidalariga
+   TUSHMAYDI — ular alohida sinf. Shuning uchun rol bo'yicha uchga ajratamiz:
+
+     1) MODAL/PANEL sirti  → oqaradi
+     2) FON PARDASI        → yengil kulrang parda (qora emas)
+     3) MEDIA SAHNASI      → QORONG'I qoladi (kadr o'z rangida ko'rinsin)
+
+   `[class*="…"]` ishlatilgan: qavslarni CSS'da qochirish shart emas. */
+
+/* 1) Modal / panel sirtlari */
+:root[data-scheme="light"] [class*="bg-[#080E1A]"],
+:root[data-scheme="light"] [class*="bg-[#0B1220]"],
+:root[data-scheme="light"] [class*="bg-[#0F172A]"],
+:root[data-scheme="light"] [class*="bg-[#0C1020]"],
+:root[data-scheme="light"] [class*="bg-[#0E1424]"],
+:root[data-scheme="light"] [class*="bg-[#0D1428]"],
+:root[data-scheme="light"] [class*="bg-[#16213C]"],
+:root[data-scheme="light"] [class*="bg-[#16203A]"],
+:root[data-scheme="light"] [class*="bg-[#0a1120]"],
+:root[data-scheme="light"] [class*="bg-[#070d1c]"] {
+  background-color: var(--lm-surface) !important;
+  color: var(--lm-text);
+}
+
+/* 2) Modal ortidagi qorong'i parda — yorug'da yengilroq bo'lsin */
+:root[data-scheme="light"] [class*="bg-[#03060E]"],
+:root[data-scheme="light"] [class*="bg-[#050A13]"] {
+  background-color: rgba(15, 27, 46, 0.38) !important;
+}
+
+/* 3) Rasm/video sahnasi — ATAYLAB qorong'i qoladi (kadr o'z rangida ko'rinsin) */
+:root[data-scheme="light"] [class*="bg-[#04070f]"],
+:root[data-scheme="light"] [class*="bg-[#06192c]"] {
+  background-color: #04070f !important;
+}
+
+/* ── 3D KAMPUS (`.c3d-root`) — yorug' rejimda u ham oqaradi ────────────────
+   Sahna ranglari JS palitrasidan keladi (`Campus3D.tsx` → `C3D_PALETTE`),
+   bu yerda esa sahna USTIDAGI yorliq va tugmalar moslanadi: oq fonda oq
+   matn va sian nur o'qilmaydi.
+
+   DIQQAT: qoidalar `.c3d-root` bilan CHEKLANGAN — xuddi shu sinflar kamera
+   kadri yoki rasm ustida ham ishlatiladi, u yerda ular QORONG'I qolishi
+   kerak (yuqoridagi 3-guruh). Qo'shimcha sinf tufayli bu yerdagi qoida
+   ustunroq. */
+:root[data-scheme="light"] .c3d-root [class*="bg-[#06192c]"] {
+  background-color: color-mix(in srgb, var(--lm-surface) 92%, transparent) !important;
+  color: var(--lm-text) !important;
+}
+:root[data-scheme="light"] .c3d-root [class*="text-white/"],
+:root[data-scheme="light"] .c3d-root [class*="text-ice-cyan"] {
+  color: var(--lm-text-soft) !important;
+}
+:root[data-scheme="light"] .c3d-root [class*="ring-ice-cyan"] {
+  --tw-ring-color: color-mix(in srgb, var(--lm-accent) 50%, transparent) !important;
+}
+:root[data-scheme="light"] .c3d-root [class*="border-ice-cyan/"] {
+  border-color: color-mix(in srgb, var(--lm-accent) 28%, transparent) !important;
+}
+/* Sahna tugmalari (qatlam/zoom) — oq sirtda ko'rinadigan bo'lsin */
+:root[data-scheme="light"] .c3d-root .c3d-btn {
+  background: color-mix(in srgb, var(--lm-surface) 92%, transparent) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-text-soft) !important;
+}
+:root[data-scheme="light"] .c3d-root .c3d-btn.is-on {
+  border-color: var(--lm-accent) !important;
+  color: var(--lm-accent) !important;
+}
+
+/* Modal sarlavhasi: fon oqargach chegara ham ko'rinishi kerak */
+:root[data-scheme="light"] header[class*="border-white/10"],
+:root[data-scheme="light"] [class*="border-b"][class*="border-white/"] {
+  border-color: var(--lm-line) !important;
+}
+
+/* Diagramma tooltipi — ochiq fonda ham o'qilsin */
+:root[data-scheme="light"] [class*="bg-[#16203A]"] {
+  border-color: var(--lm-line) !important;
+  box-shadow: 0 10px 30px -8px rgba(15, 27, 46, 0.35) !important;
+}
+:root[data-scheme="light"] [class*="bg-[#16203A]"] .text-white { color: var(--lm-text) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   YORUG' REJIM: HODISALAR HUD'i
+   ══════════════════════════════════════════════════════════════════════
+   ⚠️ HUD ilgari ATAYLAB qorong'i qolardi ("katta ekran" ko'rinishi) va
+   xaritaga `themeOverride="dark"` berilardi. Endi u ham yorug' mavzuga
+   ergashadi — ramka, panel va footer oq sirtga o'tadi.
+
+   MEDIA — kamera kadri va video — HAR DOIM qorong'i qoladi (pastdagi
+   "ataylab qorong'i" bloki), chunki tasvir o'z rangida ko'rinishi kerak. */
+
+:root[data-scheme="light"] .hud-frame {
+  background: linear-gradient(180deg, var(--lm-surface) 0%, var(--lm-bg) 100%) !important;
+  box-shadow:
+    inset 0 0 90px -50px color-mix(in srgb, var(--lm-accent) 25%, transparent),
+    0 20px 50px -34px rgba(15, 27, 46, 0.3) !important;
+}
+:root[data-scheme="light"] .hud-frame::before {
+  border-color: color-mix(in srgb, var(--lm-accent) 22%, transparent) !important;
+}
+:root[data-scheme="light"] .hud-frame::after {
+  box-shadow: 0 0 30px -12px color-mix(in srgb, var(--lm-accent) 25%, transparent) !important;
+}
+:root[data-scheme="light"] .hud-screen {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+}
+/* Vinetka — oq sahnada qora parda o'rniga YENGIL kulrang */
+:root[data-scheme="light"] .hud-vignette {
+  background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(15, 27, 46, 0.07)) !important;
+}
+
+/* Ogohlantirishlar paneli */
+:root[data-scheme="light"] .hud-alerts-head,
+:root[data-scheme="light"] .hud-alerts-list,
+:root[data-scheme="light"] .hud-alerts-foot {
+  background: color-mix(in srgb, var(--lm-surface) 94%, transparent) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .hud-alert {
+  background: color-mix(in srgb, var(--lm-surface) 96%, transparent) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .hud-alert-title { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .hud-alert-sub,
+:root[data-scheme="light"] .hud-alert-meta { color: var(--lm-text-mute) !important; }
+
+/* Pastki detektor menyusi — tugmaning O'ZI shaffof qoladi (`.hud-foot-btn`
+   ga fon berilsa dumaloq ikonka ortida oq KVADRAT paydo bo'lardi); sirt
+   faqat ikonka diskiga va kapsulaga beriladi, pastroqdagi bloklarda. */
+/* ── Sarlavha kapsulasi ──
+   ⚠️ Ilgari faqat `color` almashardi: kapsula O'ZI to'q ko'k qolib,
+   ichidagi `b` esa umumiy `.text-white` qoidasi bilan QORAYIB ketardi —
+   qora matn to'q ko'k fonda O'QILMASDI (o'lchandi). Endi sirt ham
+   mavzu tokenidan olinadi. */
+:root[data-scheme="light"] .hud-cap {
+  background: linear-gradient(180deg, var(--lm-surface) 0%, var(--lm-surface-2) 100%) !important;
+  border-bottom-color: var(--lm-accent) !important;
+  box-shadow: 0 8px 20px -14px rgba(15, 27, 46, 0.5);
+}
+:root[data-scheme="light"] .hud-cap b {
+  color: var(--lm-text) !important;
+  text-shadow: none !important;
+}
+:root[data-scheme="light"] .hud-cap i { color: var(--lm-text-mute) !important; }
+
+/* O'ng yuqoridagi soat yorlig'i — mavzu urg'u rangida (ko'k qotirilgan
+   emas, aks holda "Qum"/"Yalpiz" mavzularida begona ko'k dog' bo'lardi) */
+:root[data-scheme="light"] .hud-badge {
+  background: linear-gradient(
+    180deg,
+    var(--lm-accent) 0%,
+    color-mix(in srgb, var(--lm-accent) 72%, #0b1524) 100%
+  ) !important;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--lm-accent) 85%, transparent) !important;
+}
+:root[data-scheme="light"] .hud-badge b,
+:root[data-scheme="light"] .hud-badge i { color: #ffffff !important; }
+
+/* ── Ramka bezagi: burchak qavslari, chekka chiziqlari, ichki ramka ──
+   Ular sian rangda va porlash bilan chizilgan — oq sirtda umuman
+   ko'rinmasdi. Rang mavzu urg'usidan olinadi. SVG `stroke` atribut
+   bo'lsa ham CSS uni bosib o'tadi. */
+:root[data-scheme="light"] .hud-corner { filter: none !important; }
+:root[data-scheme="light"] .hud-corner path { stroke: var(--lm-accent) !important; }
+:root[data-scheme="light"] .hud-corner rect { fill: var(--lm-accent) !important; }
+:root[data-scheme="light"] .hud-edge {
+  background: linear-gradient(
+    var(--dir, 90deg),
+    color-mix(in srgb, var(--lm-accent) 75%, transparent),
+    color-mix(in srgb, var(--lm-accent) 16%, transparent) 22%,
+    color-mix(in srgb, var(--lm-accent) 12%, transparent) 50%,
+    color-mix(in srgb, var(--lm-accent) 16%, transparent) 78%,
+    color-mix(in srgb, var(--lm-accent) 75%, transparent)
+  ) !important;
+}
+:root[data-scheme="light"] .hud-inner-line { border-color: var(--lm-line) !important; }
+
+/* ── Pastki YOY (footer) ──
+   Gradient stoplari SVG ichida, lekin `stop-color` — CSS xossasi,
+   shuning uchun uslubdan almashtiriladi. Shusiz oq ramkaning tagida
+   to'q ko'k gumbaz qolib, detektor yozuvlari o'qilmasdi. */
+:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(1) {
+  stop-color: var(--lm-surface-2);
+  stop-opacity: 0.97;
+}
+:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(2) {
+  stop-color: var(--lm-surface);
+  stop-opacity: 0.98;
+}
+:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(3) {
+  stop-color: var(--lm-surface);
+  stop-opacity: 1;
+}
+:root[data-scheme="light"] .hud-footer-arc #hfEdge stop,
+:root[data-scheme="light"] .hud-footer-arc #hfInner stop,
+:root[data-scheme="light"] .hud-footer-arc #hfSweep stop,
+:root[data-scheme="light"] .hud-footer-arc #hfGlow stop {
+  stop-color: var(--lm-accent);
+}
+/* Yoy chetidagi eng yorqin nuqta oq edi — oq sirtda yo'qolardi */
+:root[data-scheme="light"] .hud-footer-arc #hfEdge stop:nth-child(4) {
+  stop-color: color-mix(in srgb, var(--lm-accent) 80%, #0b1524);
+}
+:root[data-scheme="light"] .hud-arc-glow { opacity: 0.35 !important; }
+
+/* Qanotlardagi qiya belgilar va uchuvchi nuqta */
+:root[data-scheme="light"] .hud-footer-marks i {
+  background: linear-gradient(180deg, var(--lm-accent), transparent) !important;
+  box-shadow: none !important;
+}
+:root[data-scheme="light"] .hud-footer-flow {
+  background: linear-gradient(90deg, transparent, var(--lm-accent), transparent) !important;
+}
+
+/* Detektor tugmalari — "shisha quduq" o'rniga yengil oq disk */
+:root[data-scheme="light"] .hud-foot-icon {
+  background: radial-gradient(
+    88% 80% at 50% 10%,
+    #ffffff,
+    var(--lm-surface) 55%,
+    var(--lm-surface-2) 100%
+  ) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-text-soft) !important;
+  box-shadow: 0 10px 20px -14px rgba(15, 27, 46, 0.55) !important;
+}
+:root[data-scheme="light"] .hud-foot-btn:hover .hud-foot-icon,
+:root[data-scheme="light"] .hud-foot-btn.is-active .hud-foot-icon {
+  color: var(--lm-text) !important;
+  border-color: var(--c) !important;
+}
+:root[data-scheme="light"] .hud-foot-label {
+  color: var(--lm-text-soft) !important;
+  text-shadow: none !important;
+}
+:root[data-scheme="light"] .hud-foot-btn:hover .hud-foot-label { color: var(--lm-text) !important; }
+/* Sanoq rozetkasi — rangli fonda matn OQ qolsin */
+:root[data-scheme="light"] .hud-foot-count {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px -3px rgba(15, 27, 46, 0.6) !important;
+}
+
+/* Markaziy "Barcha detektorlar" kapsulasi — mavzu urg'u rangida */
+:root[data-scheme="light"] .hud-footer-chip {
+  background: linear-gradient(
+    180deg,
+    var(--lm-accent) 0%,
+    color-mix(in srgb, var(--lm-accent) 72%, #0b1524) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--lm-accent) 60%, transparent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--lm-accent) 85%, transparent) !important;
+}
+
+/* Ogohlantirishlar paneli sarlavhasi va nishonlari */
+:root[data-scheme="light"] .hud-alerts-head b { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .hud-alerts-idle,
+:root[data-scheme="light"] .hud-alerts-foot,
+:root[data-scheme="light"] .hud-alerts-foot b { color: var(--lm-text-mute) !important; }
+:root[data-scheme="light"] .hud-detail-title b { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .hud-detail-title i { color: var(--lm-text-mute) !important; }
+
+/* Tafsilot oynasi (`.hud-detail`) — `EventsPage` shu yerda ochiladi */
+:root[data-scheme="light"] .hud-detail,
+:root[data-scheme="light"] .hud-detail-bar {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   YORUG' REJIM: HODISA DOSSIYESI (`.nvr-dsr*`)
+   ══════════════════════════════════════════════════════════════════════ */
+:root[data-scheme="light"] .nvr-dsr {
+  background: var(--lm-surface) !important;
+  box-shadow: 0 30px 70px -40px rgba(15, 27, 46, 0.45) !important;
+}
+/* ⚠️ Rasm SAHNALARI (`-shot`, `-face`, `-feed`) qorong'i QOLADI — kadr
+   atrofidagi bo'sh joy oq bo'lsa surat "suzib" ketardi va chegarasi
+   bilinmasdi. */
+
+/* Uch ustunning ajratuvchi chiziqlari va sarlavha lentalari — mavzu
+   tokenidan. Oq/qum/yalpiz/siyoh — hammasi shu qoidadan foydalanadi. */
+:root[data-scheme="light"] .nvr-dsr-rail,
+:root[data-scheme="light"] .nvr-dsr-side,
+:root[data-scheme="light"] .nvr-dsr-top,
+:root[data-scheme="light"] .nvr-dsr-name,
+:root[data-scheme="light"] .nvr-dsr-block,
+:root[data-scheme="light"] .nvr-dsr-foot {
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .nvr-dsr-row { border-bottom-color: var(--lm-line) !important; }
+:root[data-scheme="light"] .nvr-dsr-h::after { background: var(--lm-line) !important; }
+:root[data-scheme="light"] .nvr-dsr-brand b,
+:root[data-scheme="light"] .nvr-dsr-name > b,
+:root[data-scheme="light"] .nvr-dsr-row dd { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nvr-dsr-row dt,
+:root[data-scheme="light"] .nvr-dsr-row dd small,
+:root[data-scheme="light"] .nvr-dsr-brand em { color: var(--lm-text-mute) !important; }
+:root[data-scheme="light"] .nvr-dsr-mark,
+:root[data-scheme="light"] .nvr-dsr-chip,
+:root[data-scheme="light"] .nvr-dsr-x,
+:root[data-scheme="light"] .nvr-dsr-tag {
+  background: var(--lm-surface-2) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-text-soft) !important;
+}
+:root[data-scheme="light"] .nvr-dsr-chip b { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nvr-dsr-note p { color: var(--lm-text-soft) !important; }
+
+/* ── YORUG' REJIM: LANDING sahifasi ────────────────────────────────────
+   ⚠️ Gradient sarlavhalar (`from-ice-bright to-ice` + `bg-clip-text`)
+   qorong'i fon uchun tanlangan OCH sian ranglar — oq fonda ular yuvilib
+   ketardi ("aqlli video-monitoring" deyarli o'qilmasdi).
+
+   `[class*="text-ice"]` qoidasi ularga TEGMAYDI: matn rangi `transparent`,
+   rang esa GRADIENTDAN keladi. Shuning uchun gradientning o'zi to'q
+   variantga almashtiriladi. */
+:root[data-scheme="light"] [class*="bg-clip-text"] {
+  background-image: linear-gradient(
+    90deg,
+    var(--lm-accent),
+    color-mix(in srgb, var(--lm-accent) 62%, #0b1524)
+  ) !important;
+}
+
+/* Landing tugmalari va lentalari — och gradient oq fonda ko'rinmasdi */
+:root[data-scheme="light"] .hik-btn-ice {
+  background: var(--lm-accent) !important;
+  color: #ffffff !important;
+  border-color: color-mix(in srgb, var(--lm-accent) 70%, transparent) !important;
+}
+
+/* ── YORUG' MAVZULAR: aniqlash kartochkasi ─────────────────────────────
+   Sirt mavzu tokenidan olinadi — oltala mavzuda ham to'g'ri ko'rinadi.
+   Xavflilik rangi chap tasmada qoladi (u har mavzuda bir xil ma'no). */
+:root[data-scheme="light"] .nvr-card {
+  background: color-mix(in srgb, var(--lm-surface) 82%, transparent) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .nvr-card:hover {
+  box-shadow: 0 14px 30px -20px rgba(15, 27, 46, 0.35) !important;
+}
+:root[data-scheme="light"] .nvr-card-body { border-top-color: var(--lm-line) !important; }
+:root[data-scheme="light"] .nvr-card-title { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nvr-card-sub { color: var(--lm-text-mute) !important; }
+/* Grid ham mavzuga ergashadi */
+:root[data-scheme="light"] .nvr-tab { border-color: var(--lm-line) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ATAYLAB QORONG'I QOLADIGAN SIRTLAR
+   ══════════════════════════════════════════════════════════════════════
+   ⚠️ BU BLOK yorug' mavzu bo'limining ENG OXIRIDA turishi SHART: u
+   yuqoridagi umumiy qoidalarni (`[class*="text-ice"]`, `.text-slate-*`,
+   `bg-white/`) bosib o'tishi kerak. Aniqlik bir xil bo'lgani uchun
+   faylda KEYINGI qoida g'olib chiqadi.
+   Kamera kadri, jonli oqim oynasi va kadr ustidagi yorliqlar yorug' rejimda
+   ham QORONG'I qoladi — video o'z rangida ko'rinishi kerak va oq yorliq
+   kunduzgi kadrda umuman ko'rinmasdi.
+
+   ⚠️ AMMO ularning ICHIDAGI MATN ham yorug' mavzu qoidalari bilan QORAGA
+   aylanardi (`.text-slate-100` → `--lm-text`), natijada qora matn qora
+   fonda qolib O'QILMASDI (o'lchandi — kamera kartochkasidagi nom yorlig'i
+   va oqim oynasining sarlavhasi). Shuning uchun bu sirtlar ichida matn
+   MAJBURAN yorug' qilinadi. */
+
+/* ── Kartochkadagi yorliqlar (nom, IP) ── */
+:root[data-scheme="light"] .cam-tag {
+  background: rgba(4, 7, 15, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+:root[data-scheme="light"] .cam-tag .cam-name { color: #f1f5f9 !important; }
+:root[data-scheme="light"] .cam-tag .cam-meta,
+:root[data-scheme="light"] .cam-tag svg { color: #cbd5e1 !important; }
+
+/* ── Kadr ustidagi boshqaruv va sanoq rozetkalari ── */
+:root[data-scheme="light"] .cam-act {
+  background: rgba(4, 7, 15, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+:root[data-scheme="light"] .cam-count {
+  background: rgba(4, 7, 15, 0.78) !important;
+  color: #a5e9ff !important;
+}
+:root[data-scheme="light"] .cam-count.is-event {
+  background: rgba(244, 63, 94, 0.92) !important;
+  color: #ffffff !important;
+}
+:root[data-scheme="light"] .cam-play {
+  background: rgba(11, 18, 32, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+/* ── Jonli oqim OYNASI — sirt ham, matn ham qorong'i sxemada ── */
+:root[data-scheme="light"] .cam-live {
+  background: #04070f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+:root[data-scheme="light"] .cam-live-top b { color: #ffffff !important; }
+:root[data-scheme="light"] .cam-live-top span,
+:root[data-scheme="light"] .cam-live-foot,
+:root[data-scheme="light"] .cam-live-foot span { color: #94a3b8 !important; }
+:root[data-scheme="light"] .cam-live-top,
+:root[data-scheme="light"] .cam-live-foot { border-color: rgba(255, 255, 255, 0.1) !important; }
+:root[data-scheme="light"] .cam-live-icon {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+:root[data-scheme="light"] .cam-live-icon.is-on {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(252, 211, 77, 0.55) !important;
+  color: #fcd34d !important;
+}
+:root[data-scheme="light"] .cam-live-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+:root[data-scheme="light"] .cam-live-note { color: #cbd5e1 !important; }
+:root[data-scheme="light"] .cam-live-time {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: #e2e8f0 !important;
+}
+/* REC nishoni — qorong'i sirtda o'z rangida qolsin */
+:root[data-scheme="light"] .cam-live-top .cam-rec { color: #94a3b8 !important; }
+:root[data-scheme="light"] .cam-live-top .cam-rec.is-on { color: #fda4af !important; }
+
+/* ── Hodisa dossiyesidagi RASM SAHNALARI ──
+   Kadr atrofidagi bo'sh joy oq bo'lsa surat "suzib" ketardi va chegarasi
+   bilinmasdi; video pleyeri ham oq ramkada g'alati ko'rinardi. */
+:root[data-scheme="light"] .nvr-dsr-shot,
+:root[data-scheme="light"] .nvr-dsr-face,
+:root[data-scheme="light"] .nvr-dsr-feed,
+:root[data-scheme="light"] .nvr-card-media,
+:root[data-scheme="light"] .cam-card {
+  background: #04070f !important;
+}
+/* ── Aniqlash kartochkasidagi KADR USTIDAGI yorliqlar ──
+   ⚠️ Ular `bg-black/70` + `text-slate-200` bilan yozilgan, ya'ni yorug'
+   rejimda IKKI TA umumiy qoidaga tushib qolardi:
+     · `[class*="bg-black/"]` → deyarli SHAFFOF (rgba(15,27,46,0.06));
+     · `.text-slate-200`      → QORA (`--lm-text`).
+   Natijada yorug' kadr ustida qora matn shaffof fonda qolib butunlay
+   ko'rinmasdi (o'lchandi — "2 kadr" va soat yorliqlari). Kadr esa har
+   mavzuda o'z rangida qoladi, shuning uchun yorliq ham qorong'i chip
+   bo'lib qolishi SHART. */
+:root[data-scheme="light"] .nvr-card-time,
+:root[data-scheme="light"] .nvr-card-conf,
+:root[data-scheme="light"] .nvr-card-frames {
+  background-color: rgba(4, 7, 15, 0.78) !important;
+  color: #e2e8f0 !important;
+}
+/* Ishonch foizi — rangi XAVFLILIKdan keladi, uni saqlaymiz */
+:root[data-scheme="light"] .nvr-card-conf { color: var(--c) !important; }
+/* Kadr o'rnidagi sanoq paneli ham qorong'i sahnada turadi */
+:root[data-scheme="light"] .nvr-card-count p { color: #cbd5e1 !important; }
+:root[data-scheme="light"] .nvr-card-count b { color: #ffffff !important; }
+
+/* Sahna USTIDAGI yorliqlar — qorong'i rasm ustida oq qolishi SHART,
+   aks holda umumiy `--lm-text` qoidasi ularni qora qilib yuborardi.
+   FON ham qaytariladi: `bg-black/70` yorug'da deyarli shaffof bo'lib
+   qolardi va yorliq yorug' kadr ustida yo'qolardi. */
+:root[data-scheme="light"] .nvr-dsr-face b,
+:root[data-scheme="light"] .nvr-dsr-feed b,
+:root[data-scheme="light"] .nvr-dsr-feed em,
+:root[data-scheme="light"] .nvr-dsr-shot > b,
+:root[data-scheme="light"] .nvr-dsr-zoom,
+:root[data-scheme="light"] .nvr-visit-item em { color: #e2e8f0 !important; }
+:root[data-scheme="light"] .nvr-dsr-feed b,
+:root[data-scheme="light"] .nvr-dsr-feed em,
+:root[data-scheme="light"] .nvr-dsr-shot > b,
+:root[data-scheme="light"] .nvr-dsr-zoom,
+:root[data-scheme="light"] .nvr-visit-item em {
+  background-color: rgba(4, 7, 15, 0.78) !important;
+}
+/* Video pleyer o'rami — `EventVideo` */
+:root[data-scheme="light"] .nvr-vid-stage { background: #04070f !important; }
+
+
+/* ── Kameralar ro'yxati (panjara) ──────────────────────────────────────────
+   Ilgari gorizontal lenta edi va har kartochkada BITTA soxta rasm turardi.
+   32 ta haqiqiy kamera paydo bo'lgach panjaraga o'tildi: rasm yo'q, o'rniga
+   HAQIQIY ma'lumot (kanal, IP, hodisa soni). */
+/* ── Kameralar — "vizir" (viewfinder) panjarasi ──────────────────────────
+   Har kartochka fotoapparat kadri kabi: burchak qavslari, REC nishoni,
+   markazdagi fokus belgisi.
+
+   DIQQAT: kartochkada OQIM YO'Q. 32 ta MJPEG oqimini bir vaqtda ochish
+   brauzerni ham, NVR'ni ham yiqitadi (har biri ochiq HTTP ulanish).
+   Oqim FAQAT kartochka bosilganda, modalda ulanadi va modal yopilishi
+   bilan uziladi. */
+/* Qatordagi kamera SONI `--cam-cols` bilan beriladi (`CamerasPage` slideri).
+   `auto-fill` ISHLATILMAYDI: u ekran eniga qarab o'zi qaror qilardi va
+   foydalanuvchi qatorda nechta bo'lishini boshqara olmasdi. */
+.cam-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(var(--cam-cols, 6), minmax(0, 1fr));
+}
+
+/* Ustun soni slideri — brauzer standart ko'rinishi loyiha palitrasiga mos emas */
+.cam-cols-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 76px;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+.cam-cols-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #8fb8ff;
+  border: 2px solid #0b1220;
+  box-shadow: 0 0 8px -1px rgba(143, 184, 255, 0.9);
+}
+.cam-cols-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #0b1220;
+  border-radius: 9999px;
+  background: #8fb8ff;
+}
+.cam-card {
+  @apply relative flex flex-col justify-between overflow-hidden rounded-lg border border-white/[0.1]
+         p-2.5 text-left transition-colors;
+  aspect-ratio: 16 / 10;
+  background: #04070f;
+}
+.cam-card:hover { @apply border-ice/50; }
+.cam-card.is-active {
+  border-color: rgba(133, 224, 255, 0.75);
+  box-shadow: 0 0 0 1px rgba(133, 224, 255, 0.4) inset;
+}
+/* Oflayn kamera — o'chgan vizir */
+.cam-card.is-off { opacity: 0.68; }
+
+/* Kartochkadagi STOP-KADR (`/channels/{ch}/snapshot`) — oqim EMAS, bitta JPEG.
+   Ustidan qora gradient tushadi, aks holda nom va holat matni rasm ustida
+   o'qilmaydi. */
+.cam-card-img { @apply absolute inset-0 h-full w-full object-cover; }
+.cam-card::after {
+  content: "";
+  @apply pointer-events-none absolute inset-0;
+  background: linear-gradient(
+    to bottom,
+    rgba(4, 7, 15, 0.72) 0%,
+    rgba(4, 7, 15, 0.18) 38%,
+    rgba(4, 7, 15, 0.88) 100%
+  );
+}
+
+/* Burchak qavslari — to'rttasi alohida element (CSS'da 2 tadan ortiq
+   psevdo-element yo'q, qavslar esa aynan to'rtta) */
+.cam-vf-c { @apply pointer-events-none absolute z-10 h-4 w-4 border-white/30; }
+.cam-vf-c1 { top: 7px; left: 7px; border-left-width: 2px; border-top-width: 2px; }
+.cam-vf-c2 { top: 7px; right: 7px; border-right-width: 2px; border-top-width: 2px; }
+.cam-vf-c3 { bottom: 7px; left: 7px; border-left-width: 2px; border-bottom-width: 2px; }
+.cam-vf-c4 { bottom: 7px; right: 7px; border-right-width: 2px; border-bottom-width: 2px; }
+.cam-card:hover .cam-vf-c { @apply border-ice/60; }
+
+/* REC / STANDBY nishoni */
+.cam-rec { @apply flex items-center gap-1.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-slate-400; }
+.cam-rec i { @apply h-2 w-2 rounded-full bg-slate-600; }
+.cam-rec.is-on { @apply text-rose-300; }
+.cam-rec.is-on i { @apply bg-rose-500; box-shadow: 0 0 8px rgba(244, 63, 94, 0.9); }
+
+/* Yuqori/pastki qatorlar — rasm ustidagi yorliqlar. Kartochka
+   `justify-between` bo'lgani uchun biri tepaga, biri pastga yopishadi. */
+.cam-card-top { @apply relative z-10 flex items-center gap-1.5; }
+
+/* Kadr ustidagi YORLIQ — nom va IP shu qutichada turadi.
+   Ilgari matn to'g'ridan-to'g'ri rasm ustida edi va yorug' kadrda
+   (kunduzgi hovli) o'qilmay qolardi. */
+.cam-tag {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2 py-1 backdrop-blur-sm;
+  background: rgba(4, 7, 15, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cam-dot { @apply h-1.5 w-1.5 flex-none rounded-full bg-slate-600; }
+.cam-dot.is-on {
+  @apply bg-emerald-400;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.85);
+}
+.cam-ch { @apply font-mono text-[9.5px] font-bold uppercase tracking-wide text-ice-soft; }
+/* Kartochkadagi SANOQ rozetkalari — IP yorlig'i yonida, DOIM ko'rinadi.
+   Chapdagisi: shu kamera aniqlagan ODAMLAR (takrorsiz `face_id`).
+   `.is-event`: shu kanaldan kelgan HODISALAR soni. */
+.cam-count {
+  @apply inline-flex flex-none items-center gap-1 rounded-full px-1.5 py-1 font-mono text-[9.5px] font-bold
+         text-ice-bright backdrop-blur-sm;
+  background: rgba(4, 7, 15, 0.72);
+  border: 1px solid rgba(133, 224, 255, 0.35);
+}
+/* Bosiladigan rozetka — aniqlangan tasvirlar oynasini ochadi */
+.cam-count.is-link { @apply cursor-pointer transition-colors; }
+.cam-count.is-link:hover { border-color: rgba(133, 224, 255, 0.9); }
+.cam-count.is-event {
+  @apply text-white;
+  background: rgba(244, 63, 94, 0.9);
+  border-color: rgba(244, 63, 94, 0.5);
+}
+.cam-name { @apply truncate text-[12px] font-semibold text-slate-100; }
+.cam-meta { @apply truncate font-mono text-[9.5px] text-slate-500; }
+/* Boshqaruv — kadrning PASTKI-O'NG burchagida, IP yorlig'i ro'parasida.
+   Ilgari yuqori-o'ngda edi va kanal raqami bilan bir joyga tushardi. */
+.cam-actions {
+  @apply ml-auto flex flex-none items-center gap-1.5 opacity-0 transition-opacity;
+}
+.cam-card:hover .cam-actions,
+.cam-card:focus-within .cam-actions { @apply opacity-100; }
+.cam-act {
+  @apply grid h-7 w-7 cursor-pointer place-items-center rounded-full text-slate-200 transition-colors;
+  background: rgba(4, 7, 15, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(4px);
+}
+.cam-act:hover { @apply border-ice/60 text-ice-bright; }
+.cam-act--danger:hover { @apply border-red-400/60 text-red-400; }
+.cam-card-bottom { @apply relative z-10 flex items-center gap-2; }
+
+/* Markazdagi "ochish" belgisi — vizir nishoni (`.cam-vf-mid`) o'rnida.
+   Hover'da yorqinlashadi, ya'ni kartochka bosiladigani bilinadi. */
+.cam-play {
+  @apply pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2
+         place-items-center rounded-full text-white/85 transition-colors;
+  background: rgba(11, 18, 32, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(3px);
+}
+.cam-card:hover .cam-play {
+  background: rgba(133, 224, 255, 0.28);
+  border-color: rgba(133, 224, 255, 0.75);
+  @apply text-white;
+}
+
+/* Kamera markeridagi HODISA SONI — nuqtaning o'ng-yuqorisida kichik rozetka.
+   `pointer-events: none` — bosish kamera nuqtasining o'ziga o'tsin. */
+.ymk-cam-count {
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 9999px;
+  background: #f43f5e;
+  border: 1.5px solid rgba(4, 7, 15, 0.9);
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+  box-shadow: 0 0 8px -1px rgba(244, 63, 94, 0.9);
+}
+
+/* Muassasa nuqtasi — Geo Analitikada joylashuvni bildiradigan kichik belgi.
+   `--c` marker rangidan keladi (`MapLibreMap` inline style). */
+.ymk-pin { pointer-events: auto; cursor: pointer; }
+.ymk-pin-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--ymk, #34d399);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 10px -1px var(--ymk, #34d399);
+  transition: transform 0.2s ease;
+}
+.ymk-pin:hover .ymk-pin-dot { transform: scale(1.5); }
+
+/* ── Ekran ustidagi aniqlash xabari (`DetectionToast`) ────────────────────
+   Rang XAVFLILIK darajasidan (`--c`). Sirt OPAQ: xabar 3D kampus va xarita
+   ustida turadi, shaffof bo'lsa matn o'qilmaydi. */
+.det-toast {
+  @apply flex items-center gap-2 rounded-xl border px-2.5 py-2 backdrop-blur-sm;
+  border-color: color-mix(in srgb, var(--c) 55%, transparent);
+  background: color-mix(in srgb, var(--c) 16%, rgba(9, 15, 28, 0.96));
+  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.9), 0 0 24px -14px var(--c);
+}
+.det-toast-shot {
+  @apply relative grid h-11 w-[58px] flex-none place-items-center overflow-hidden rounded-lg border border-white/10;
+  background: #04070f;
+}
+.det-toast-shot img { @apply absolute inset-0 h-full w-full object-cover; }
+
+/* ── "Test rejimi" yuguruvchi lentasi (`DemoDataBanner`) ─────────────────
+   Ekranning ENG YUQORISIDA. Fon YO'Q — faqat qizil matn yurib o'tadi:
+   to'ldirilgan lenta ekran tepasidan joy olib, panelni pastga siqardi va
+   bir necha daqiqadan keyin "fon"ga aylanib ko'zga tashlanmay qolardi. */
+.test-marquee {
+  @apply relative flex-none overflow-hidden py-1;
+}
+.test-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 4rem;
+  padding-inline: 2rem;
+  animation: test-marquee 30s linear infinite;
+}
+/* Sichqoncha tegsa to'xtaydi — matnni o'qib bo'lsin */
+.test-marquee:hover .test-marquee-track { animation-play-state: paused; }
+@keyframes test-marquee {
+  from { transform: translateX(0); }
+  /* Ro'yxat IKKI marta chiziladi — yarmi o'tganda boshiga qaytadi va
+     uzilish sezilmaydi */
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .test-marquee-track { animation: none; justify-content: center; width: 100%; }
+}
+
+/* ── Bildirishnoma qatori (header qo'ng'irog'i) ──────────────────────────
+   Rang `--c` orqali JIDDIYLIK darajasidan keladi (`notifyLevel`), kategoriya
+   rangidan emas. O'qilgan xabar RANGSIZ bo'ladi — operator qaysi biriga hali
+   qaramaganini bir qarashda ko'radi. */
+.nb-row {
+  @apply flex w-full items-start gap-2.5 rounded-lg border px-2 py-2 text-left transition-colors;
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+}
+.nb-row:hover { border-color: color-mix(in srgb, var(--c) 75%, transparent); }
+
+/* O'QILGAN: RAMKA va fon rangi ketadi. `opacity` QO'YILMAYDI — u suratni
+   ham xiralashtirardi; kadr doim tiniq qoladi. */
+.nb-row.is-seen {
+  @apply border-white/[0.07] bg-white/[0.02];
+}
+.nb-row.is-seen:hover { @apply border-white/20; }
+.nb-row.is-seen .nb-title { @apply font-normal text-slate-400; }
+
+/* Kichik surat — hodisadan olingan kadr */
+.nb-shot {
+  @apply relative grid h-10 w-[52px] flex-none place-items-center overflow-hidden rounded-md border border-white/10;
+  background: #04070f;
+}
+.nb-shot img { @apply absolute inset-0 h-full w-full object-cover; }
+
+/* O'qilmagan belgisi */
+.nb-dot {
+  @apply h-1.5 w-1.5 flex-none rounded-full;
+  background: var(--c);
+  box-shadow: 0 0 7px var(--c);
+}
+.nb-title { @apply truncate text-[12px] font-semibold text-slate-100; }
+
+/* ── Kameralar KPI qatori ────────────────────────────────────────────────
+   Rang `--c` orqali beriladi (`CameraKpiRow`), shuning uchun bitta qoida
+   to'rttasiga ham yetadi. */
+.cam-kpi {
+  @apply relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-white/[0.08] px-3.5 py-3 text-left;
+  /* `backdrop-filter` — ortidagi blueprint setkasi ko'rinib tursin, lekin
+     matn o'qilishi buzilmasin (shu sabab yengil blur). */
+  backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 10%, transparent) 0%, rgba(255, 255, 255, 0.03) 60%);
+}
+/* Bosiladigan kartochka — chegara va strelka hover'da jonlanadi */
+.cam-kpi.is-link { @apply cursor-pointer transition-colors; }
+.cam-kpi.is-link:hover { border-color: color-mix(in srgb, var(--c) 55%, transparent); }
+.cam-kpi.is-link:focus-visible {
+  @apply outline-none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.cam-kpi-go {
+  @apply relative flex-none text-slate-600 transition-colors;
+}
+.cam-kpi.is-link:hover .cam-kpi-go { color: var(--c); }
+/* Suv belgisi — o'ng chetda, matndan PASTDA va bosilmaydi */
+.cam-kpi-ghost {
+  @apply pointer-events-none absolute -right-2 bottom-[-10px] opacity-[0.13];
+  color: var(--c);
+}
+.cam-kpi-chip {
+  @apply grid h-10 w-10 flex-none place-items-center rounded-xl text-white;
+  background: var(--c);
+  box-shadow: 0 8px 20px -10px var(--c);
+}
+.cam-kpi-num { @apply stat-num block text-[20px] font-bold leading-none text-white; }
+.cam-kpi-label { @apply mt-1 block truncate text-[11px] font-semibold text-slate-300; }
+.cam-kpi-hint { @apply block truncate text-[9.5px] leading-tight text-slate-500; }
+
+/* ── Jonli oqim MODALI — vizir ko'rinishida ──────────────────────────────
+   Oqim shu yerda va FAQAT shu yerda ochiladi: modal yopilishi (yoki pauza)
+   bilan `<img>` manzili bo'shatiladi va MJPEG ulanishi UZILADI. */
+.cam-live {
+  @apply relative flex w-[min(1320px,96vw)] flex-col overflow-hidden rounded-2xl border border-white/[0.14];
+  height: min(840px, 92vh);
+  background: #04070f;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.95);
+}
+.cam-live-top {
+  @apply flex flex-none items-center gap-3 border-b border-white/[0.08] px-4 py-2.5;
+}
+.cam-live-top b { @apply truncate text-[13.5px] font-bold text-white; }
+.cam-live-top span { @apply font-mono text-[11px] text-slate-500; }
+.cam-live-stage { @apply relative min-h-0 flex-1 overflow-hidden bg-black; }
+.cam-live-img { @apply absolute inset-0 h-full w-full object-contain; }
+
+/* Uchdan bir chiziqlari + burchak qavslari — kadr ustidagi vizir */
+/* `.cam-live-guides` (uchdan-bir chiziqlari), `.cam-live-mid` (markaz halqasi)
+   va `.cam-live-hud` (takroriy REC nishoni) OLIB TASHLANDI — kadr ustidagi
+   ortiqcha bezak edi, REC esa sarlavhada allaqachon turibdi. */
+.cam-live-time {
+  @apply pointer-events-none absolute right-4 top-3.5 rounded bg-black/55 px-2 py-1 font-mono text-[11px] text-slate-200;
+}
+.cam-live-note {
+  @apply absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-[12px] text-slate-300;
+}
+.cam-live-foot {
+  @apply flex flex-none flex-wrap items-center gap-2 border-t border-white/[0.08] px-4 py-2.5
+         font-mono text-[10.5px] uppercase tracking-wide text-slate-500;
+}
+.cam-live-foot b { @apply font-semibold text-slate-300; }
+/* Matnli tugma — endi FAQAT sahna ustidagi holat izohlarida ("Qayta
+   urinish", "Davom ettirish"). Pastki qatordagi boshqaruv `.cam-live-icon`. */
+.cam-live-btn {
+  @apply inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5
+         text-[11.5px] font-semibold normal-case tracking-normal text-slate-200 transition-colors
+         hover:border-ice/45 hover:bg-white/[0.1] hover:text-white
+         disabled:cursor-not-allowed disabled:opacity-40;
+}
+.cam-live-btn.is-on { @apply border-amber-300/50 bg-amber-400/15 text-amber-200; }
+
+/* Faqat IKONKA tugma — kartochkadagi `.cam-act` bilan bir xil shakl. */
+.cam-live-icon {
+  @apply grid h-8 w-8 flex-none place-items-center rounded-full border border-white/[0.14] bg-white/[0.05]
+         text-slate-200 transition-colors hover:border-ice/60 hover:text-ice-bright
+         disabled:cursor-not-allowed disabled:opacity-40;
+}
+.cam-live-icon.is-on { @apply border-amber-300/50 bg-amber-400/15 text-amber-200; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NEON MODAL DIZAYN TIZIMI — Boshqaruv panelidan ochiladigan modallar
+   ═══════════════════════════════════════════════════════════════════════
+   2026-09-10, foydalanuvchi so'rovi: modallar skrinshotdagi kabi
+   "futuristic neon" ko'rinishga ega bo'lsin — gradientli chegara/porlash,
+   gradient sonlar, bosilganda ANIQ sezilgan hover.
+
+   Rang IKKITA o'zgaruvchidan quriladi (`--n1`→`--n2`) — `.cam-kpi`dagi
+   `--c` naqshi bilan AYNI mantiq: bitta qoida to'plami istalgan tusga
+   moslashadi. Standart tus (klass o'zgartirilmasa) — amber→pushti,
+   skrinshot namunasiga eng yaqini; `.neon-modal--*` modifikatorlari
+   boshqa tusni beradi (mazmuniga mos: davomat/shaxs — sian/binafsha,
+   signal/xavf — pushti/amber, kamera — sian/ko'k).
+
+   ⚠️ ATAYLAB QORONG'I — Hodisalar HUD'i (`themeOverride="dark"`) bilan
+   BIR XIL qoida: neon porlash/gradient matn yorug' fonda o'qilmay qoladi.
+   Shuning uchun `.neon-modal` ICHIDAGI umumiy sinflar (`.text-white`,
+   `.text-slate-*`, `border-white/`, `bg-white/`, `bg-slate-8/9`) pastda
+   ALOHIDA qayta qorong'i qiymatga qaytariladi (yuqoridagi umumiy
+   `[data-scheme="light"]` qoidalaridan KENGROQ selektor bilan — shu
+   sabab ular ustidan g'olib chiqadi). Yangi ichki sinf ishlatsangiz shu
+   ro'yxatga ham qo'shing, aks holda yorug' rejimda qorong'i fonda
+   qorong'i matn (o'qilmaydigan) chiqadi. */
+.neon-modal {
+  --n1: #f59e0b;
+  --n2: #ec4899;
+  position: relative;
+  isolation: isolate;
+  border-radius: 22px;
+  background:
+    linear-gradient(#080b14, #080b14) padding-box,
+    linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--n1) 75%, transparent),
+        color-mix(in srgb, var(--n2) 55%, transparent) 45%,
+        rgba(255, 255, 255, 0.05) 100%
+      )
+      border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    0 30px 80px -30px rgba(0, 0, 0, 0.9),
+    0 0 70px -24px color-mix(in srgb, var(--n1) 55%, transparent);
+  backdrop-filter: blur(22px);
+}
+.neon-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--n1) 16%, transparent), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, color-mix(in srgb, var(--n2) 12%, transparent), transparent 55%);
+  pointer-events: none;
+}
+.neon-modal--cyan { --n1: #22d3ee; --n2: #818cf8; }
+.neon-modal--violet { --n1: #a78bfa; --n2: #38bdf8; }
+.neon-modal--rose { --n1: #fb7185; --n2: #f59e0b; }
+.neon-modal--emerald { --n1: #34d399; --n2: #22d3ee; }
+
+/* Gradient ajratgich chiziq — bo'lim orasida, `hik-brand` scan-line kabi */
+.neon-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--n1) 55%, transparent),
+    color-mix(in srgb, var(--n2) 45%, transparent),
+    transparent
+  );
+}
+
+/* Gradient RAQAM — asosiy son/foiz ko'rsatkichlari */
+/* ⚠️ FALLBACK QIYMATLAR SHART — `.neon-modal` ATASI bo'lmagan joyda
+   ishlatilsa (`--n1`/`--n2` aniqlanmagan bo'lsa) `var()` bo'sh qaytadi,
+   butun `background-image` bekor bo'ladi va matn `color:transparent`
+   bilan KO'RINMAY QOLARDI. Fallback amber→pushti — standart neon tus. */
+.neon-num {
+  background-image: linear-gradient(90deg, var(--n1, #f59e0b), var(--n2, #ec4899));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gradient progress chizig'i (skrinshotdagi "60% complete" kabi) */
+.neon-bar {
+  position: relative;
+  height: 7px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.neon-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--n1), var(--n2));
+  box-shadow: 0 0 18px -2px var(--n1), 0 0 10px -1px var(--n2);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Bosiladigan QATOR — chapda gradient nishon, hover'da fon yorishadi */
+.neon-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 0.55rem 0.7rem 0.55rem 0.9rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.neon-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--n1), var(--n2));
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.neon-row.is-link { cursor: pointer; }
+.neon-row.is-link:hover,
+.neon-row.is-link:focus-visible {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--n1) 12%, transparent), transparent 75%);
+  border-color: color-mix(in srgb, var(--n1) 30%, transparent);
+  transform: translateX(2px);
+}
+.neon-row.is-link:hover::before,
+.neon-row.is-link:focus-visible::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+.neon-row.is-link:focus-visible { outline: none; }
+
+/* Bosiladigan TUGMA — gradient hover porlash, ANIQ sezilishi uchun */
+.neon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.4rem 0.8rem;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cbd5e1;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.neon-btn:hover,
+.neon-btn:focus-visible {
+  color: #fff;
+  outline: none;
+  border-color: color-mix(in srgb, var(--n1) 60%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--n1) 22%, transparent), color-mix(in srgb, var(--n2) 16%, transparent));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--n1) 35%, transparent) inset, 0 10px 26px -12px var(--n1);
+  transform: translateY(-1.5px);
+}
+.neon-btn:active { transform: translateY(0); }
+.neon-btn:disabled { cursor: not-allowed; opacity: 0.4; box-shadow: none; transform: none; }
+.neon-btn.is-active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--n1) 65%, transparent);
+  background: linear-gradient(90deg, var(--n1), var(--n2));
+  box-shadow: 0 10px 26px -12px var(--n1);
+}
+/* 🔴 TOPILDI VA TUZATILDI (2026-09-10, foydalanuvchi skrinshot bilan
+   ko'rsatdi) — `.neon-num` ICHIDAGI raqam o'zining gradient matnini
+   `--n1`/`--n2`dan oladi; `.is-active` bo'lganda esa TUGMANING FONI
+   ham AYNI shu gradient bilan to'ldiriladi. Natijada matn fon bilan
+   BIR XIL rangda "erib ketib" ko'RINMAS bo'lib qolardi (raqam butunlay
+   yo'qolgandek ko'rinardi). Endi aktiv holatda ichkarida gradient matn
+   EMAS — oddiy oq, qora soya bilan (fondan ANIQ ajralib turadi). */
+.neon-btn.is-active .neon-num,
+.neon-icon-btn.is-active .neon-num {
+  background-image: none;
+  -webkit-text-fill-color: #fff;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Faqat IKONKA tugma (yopish, kattalashtirish...) — `.neon-btn` bilan
+   BIR XIL hover mantiq, lekin kvadrat, matnsiz o'lcham. */
+.neon-icon-btn {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: 1.75rem;
+  width: 1.75rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.neon-icon-btn:hover,
+.neon-icon-btn:focus-visible {
+  color: #fff;
+  outline: none;
+  border-color: color-mix(in srgb, var(--n1) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--n1) 24%, transparent), color-mix(in srgb, var(--n2) 18%, transparent));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--n1) 30%, transparent) inset, 0 8px 20px -10px var(--n1);
+}
+.neon-icon-btn.is-active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--n1) 60%, transparent);
+  background: linear-gradient(135deg, var(--n1), var(--n2));
+  box-shadow: 0 8px 20px -10px var(--n1);
+}
+.neon-icon-btn:disabled { cursor: not-allowed; opacity: 0.4; box-shadow: none; }
+
+/* Sarlavha ikonka chipi — gradient fon (`.cam-kpi-chip` bilan AYNI shakl) */
+.neon-chip {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--n1), var(--n2));
+  box-shadow: 0 12px 28px -12px var(--n1);
+}
+
+/* ── Yorug' rejimda ham QORONG'I qoladi (HUD'dagi `themeOverride` bilan
+   AYNI istisno, faqat CSS orqali) ── */
+:root[data-scheme="light"] .neon-modal .text-white,
+:root[data-scheme="light"] .neon-modal .text-slate-50 { color: #f8fafc !important; }
+:root[data-scheme="light"] .neon-modal .text-slate-300 { color: #cbd5e1 !important; }
+:root[data-scheme="light"] .neon-modal .text-slate-400 { color: #94a3b8 !important; }
+:root[data-scheme="light"] .neon-modal .text-slate-500 { color: #64748b !important; }
+:root[data-scheme="light"] .neon-modal .text-slate-600 { color: #475569 !important; }
+:root[data-scheme="light"] .neon-modal [class*="border-white/"] { border-color: rgba(255, 255, 255, 0.1) !important; }
+:root[data-scheme="light"] .neon-modal [class*="bg-white/"] { background-color: rgba(255, 255, 255, 0.045) !important; }
+:root[data-scheme="light"] .neon-modal [class*="bg-slate-8"],
+:root[data-scheme="light"] .neon-modal [class*="bg-slate-9"] { background-color: rgba(255, 255, 255, 0.06) !important; }
+:root[data-scheme="light"] .neon-modal [class*="border-slate-7"],
+:root[data-scheme="light"] .neon-modal [class*="border-slate-8"] { border-color: rgba(255, 255, 255, 0.1) !important; }
+
+
+/* ═══ "KUNDUZGI" MAVZU — volt.ai uslubidagi yorug' dashboard (2026-09-11) ═══
+   Foydalanuvchi so'rovi (skrinshot bilan): tekis och kulrang fon, SOF OQ
+   kartalar yumshoq soya bilan, kichik ikonkalar, och-ko'k aktiv band.
+   ⚠️ FAQAT `data-theme="light"` — boshqa yorug' mavzular (Grafit, Qum,
+   Yalpiz, Siyoh) o'z blueprint setkasi va shaffof sirtida qoladi.
+   ⚠️ Fayl OXIRIDA turishi shart: `[data-scheme="light"] .text-white` bilan
+   bir xil spetsifiklik, keyingisi yutadi. */
+:root[data-theme="light"] .app-grid { background-image: none !important; }
+:root[data-theme="light"] .hik-glass-blue,
+:root[data-theme="light"] .nexa-card,
+:root[data-theme="light"] .dv-panel,
+:root[data-theme="light"] .c3d-card {
+  backdrop-filter: none !important;
+  background: #ffffff !important;
+  border-color: rgba(23, 24, 25, 0.06) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -18px rgba(15, 23, 42, 0.18) !important;
+}
+:root[data-theme="light"] .hik-chip {
+  background: #f3f5f8 !important;
+  border-color: transparent !important;
+}
+/* Sidebar: aktiv band — ko'k→siyanit gradient o'rniga och-ko'k plitka + ko'k ikonka */
+:root[data-theme="light"] .nav-active-pill {
+  background: #eaf2ff !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"] .nav-item-active,
+:root[data-theme="light"] .nav-item-active .nav-icon {
+  color: var(--lm-accent) !important;
+  filter: none !important;
+}
+:root[data-theme="light"] .nav-active-dot {
+  background: var(--lm-accent) !important;
+  box-shadow: none !important;
+}
+
+
+/* ═══ OMMAVIY SAYT (landing + ichki sahifalar) — MAVZU TOKENLARI (2026-09-11) ═══
+   Sayt komponentlari (`components/site/`, `landing/LandingPage.tsx`) rangni
+   SHU o'zgaruvchilardan oladi: `bg-[var(--s-card)]`, `text-[var(--s-text)]`…
+   Qiymat `<html data-scheme>` ga qarab almashadi — panel bilan AYNI mavzu
+   tanlovi (cookie `campus-theme-v2`), navbardagi quyosh/oy tugmasi shuni
+   o'zgartiradi.
+
+   ⚠️ Rasm, qorong'i hero va ko'k lenta USTIDAGI elementlar (oq pilyula,
+   "aniqlandi" chipi, video tugmasi, footer matni) ATAYLAB hex bo'lib
+   qoladi — ular fonga emas, rasmga nisbatan chizilgan va ikkala rejimda
+   bir xil bo'lishi kerak.
+
+   ⚠️ `--s-bg2` SHAFFOF — bo'lim ortidagi yulduz/setka foni
+   (`SpaceBackground`) ko'rinib tursin. Oq bo'limlar esa umuman
+   `bg-transparent`. */
+.site {
+  --s-bg: #ffffff;
+  --s-bg2: rgba(246, 247, 249, 0.82);
+  --s-card: #ffffff;
+  --s-muted: #f1f3f5;
+  --s-hover: rgba(23, 24, 25, 0.05);
+  --s-text: #171819;
+  --s-text-soft: #3f4448;
+  --s-text2: #636769;
+  --s-text3: #9aa0a6;
+  --s-line: rgba(23, 24, 25, 0.08);
+  --s-line-strong: rgba(23, 24, 25, 0.12);
+  --s-ink: #171819;
+  --s-on-ink: #ffffff;
+  --s-nav: rgba(255, 255, 255, 0.88);
+  --s-mega: #fafafa;
+  --s-accent-soft: #eaf2ff;
+  --s-footer: #171819;
+}
+:root[data-scheme="dark"] .site {
+  --s-bg: #070b14;
+  --s-bg2: rgba(255, 255, 255, 0.025);
+  --s-card: #0f1624;
+  --s-muted: #172033;
+  --s-hover: rgba(255, 255, 255, 0.06);
+  --s-text: #eef2f8;
+  --s-text-soft: #c3cbd8;
+  --s-text2: #97a3b6;
+  --s-text3: #6b7789;
+  --s-line: rgba(255, 255, 255, 0.08);
+  --s-line-strong: rgba(255, 255, 255, 0.16);
+  --s-ink: #ffffff;
+  --s-on-ink: #0b1220;
+  --s-nav: rgba(7, 11, 20, 0.82);
+  --s-mega: #0c1320;
+  --s-accent-soft: rgba(37, 132, 255, 0.16);
+  --s-footer: #04070e;
+}
+
+
+/* ═══ BOSHQARUV PANELI RADARI (`dashboard/RadarScreen.tsx`, 2026-09-11) ═══
+   Aylanishlar SVG guruhida `transform-box: view-box` + markaz
+   `transform-origin` bilan (inline) — `fill-box` bo'lsa nur o'z chegarasi
+   atrofida aylanib, markazdan chiqib ketardi.
+   `prefers-reduced-motion` — fayl boshidagi umumiy qoida o'chiradi. */
+@keyframes radar-spin { to { transform: rotate(360deg); } }
+@keyframes radar-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes radar-dash { to { stroke-dashoffset: -34; } }
+@keyframes radar-bar { 0%, 100% { opacity: 0.28; } 50% { opacity: 1; } }
+@keyframes radar-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes radar-sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }

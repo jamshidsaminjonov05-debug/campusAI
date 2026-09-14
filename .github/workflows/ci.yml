@@ -1,0 +1,56 @@
+name: CI
+
+# ⚠️ BIRINCHI CI (2026-09-06 da qo'shildi) — ilgari `.github/workflows`
+# umuman yo'q edi, har o'zgarish qo'lda tekshirilardi.
+#
+# Bu yerdagi ENV qiymatlar HAQIQIY EMAS — faqat `config/services.mjs`
+# ning `validateServices()` tekshiruvidan (o'zgaruvchi BOR-YO'QLIGI)
+# o'tish uchun. Build paytida bu manzillarga so'rov YUBORILMAYDI — Next
+# ularni faqat rewrite qoidalarini QURISH uchun o'qiydi. Loyihaning
+# offline qoidasi (CLAUDE.md) buzilmaydi: haqiqiy ichki IP'lar bu faylga
+# yozilmaydi.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_ORIGIN: http://127.0.0.1:1
+      TILES_ORIGIN: http://127.0.0.1:2
+      NVR_ORIGIN: http://127.0.0.1:3
+      NVR_API_KEY: ci-placeholder-key
+      # `weapon2` xizmati ham `validateServices()` ro'yxatida — bularsiz
+      # build "sozlama yo'q" deb yiqilardi (qiymatlar SOXTA, so'rov ketmaydi).
+      WEAPON2_ORIGIN: http://127.0.0.1:4
+      WEAPON2_USERNAME: ci-placeholder-user
+      WEAPON2_PASSWORD: ci-placeholder-pass
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Typecheck (ilova)
+        run: npm run typecheck
+
+      - name: Typecheck (testlar)
+        run: npm run typecheck:test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testlar
+        run: npm test
+
+      # `NEXT_DIST_DIR` — CI'da dev server yo'q, lekin standart
+      # `.next`dan foydalanish ham xavfsiz (CLAUDE.md 6-qoidasi faqat
+      # LOKAL dev bilan bir vaqtda ishlashga tegishli).
+      - name: Build
+        run: npm run build

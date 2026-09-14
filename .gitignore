@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Campus AI — repoga TUSHMAYDIGAN fayllar
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Bog'liqliklar va build natijalari ──
+node_modules/
+.next/
+.next-verify/
+out/
+dist/
+build/
+next-env.d.ts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# ── 🔴 MAXFIY: ICHKI TARMOQ MANZILLARI, KALIT VA PAROLLAR ──
+# Barcha xizmat manzillari FAQAT `.env` da turadi (`config/services.mjs`
+# kodda default BERMAYDI) — ya'ni repoda birorta ham server IP'si yo'q.
+.env
+.env.*
+!.env.example
+certificates/
+*.pem
+*.key
+*.crt
+*.pfx
+
+# ── Loglar va ish jarayonidagi artefaktlar (repoga kerak emas) ──
+*.log
+logs/
+curl_results.txt
+install_output.txt
+endpoint_audit.json
+scratch_audit_results.json
+openapi.json
+
+# ── Ichki hujjatlar — ommaviy repoga chiqarilmaydi ──
+*.md
+
+# ── Muhit / IDE ──
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Og'ir, QAYTA YARATILADIGAN ma'lumot ──
+# OSRM marshrut artefaktlari (900 MB+) — `osrm/prepare.js` qayta quradi.
+osrm/data/
+# Viloyat poligonlarining ASL fayli (~35 MB). Ilova uni ISHLATMAYDI —
+# xaritaga faqat soddalashtirilgan nusxa beriladi (`viloyat_simplified.geojson`).
+# Qayta yaratish: node tools/simplify-regions.mjs <asl-fayl.geojson>
+public/geojson/viloyat_4326*.geojson
+
+# ── Test/ishlab chiqish vaqtidagi vaqtinchalik chiqishlar ──
+coverage/
+playwright-report/
+test-results/
+*.local

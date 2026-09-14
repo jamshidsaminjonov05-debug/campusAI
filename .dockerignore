@@ -1,0 +1,12 @@
+node_modules
+.next
+.next-verify
+.git
+.env.local
+.env*.local
+npm-debug.log*
+README.md
+CLAUDE.md
+FRONTEND.md
+API.md
+DEPLOY.md
