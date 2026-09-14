@@ -196,6 +196,8 @@ jobs:
           # Vaqt bo'yicha (`ls -t`) EMAS, nom bo'yicha saralanadi: `rsync -a`
           # papka mtime'ini workspace'dan ko'chiradi, shuning uchun mtime reliz
           # yaratilgan vaqtni bildirmaydi. Nom esa UTC vaqt bilan boshlanadi.
-          ls -1d "$APP_ROOT"/releases/*/ | sed 's#/$##' | sort -r | grep -vxF "$CURRENT" \
+          # `|| true`: faqat `current` bo'lsa (masalan birinchi deploy) grep hech
+          # narsa qaytarmaydi va 1 bilan chiqadi — pipefail qadamni yiqitardi.
+          ls -1d "$APP_ROOT"/releases/*/ | sed 's#/$##' | sort -r | { grep -vxF "$CURRENT" || true; } \
             | tail -n +3 | xargs -r rm -rf
           ls -1 "$APP_ROOT/releases"
