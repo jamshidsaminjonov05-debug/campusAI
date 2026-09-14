@@ -189,7 +189,7 @@ export function AlertsPage() {
                     >
                       <DetectionCard ev={ev} onOpen={() => setOpenId(ev.id)} />
                       {/* Tasdiqlash — kartochkani ro'yxatdan chiqaradi.
-                          ⚠️ Dossiyeni ochish tasdiqlamaydi: operator ko'rib
+                          ⚠️ ma'lumotlarni ochish tasdiqlamaydi: operator ko'rib
                           chiqib, ATAYLAB tasdiqlashi kerak. */}
                       <button
                         type="button"
@@ -219,7 +219,7 @@ export function AlertsPage() {
         </div>
       </StatPanel>
 
-      {/* Hodisa dossiyesi — "Aniqlanganlar" dagi bilan AYNI oyna */}
+      {/* Hodisa ma'lumotlari — "Aniqlanganlar" dagi bilan AYNI oyna */}
       <EventDossier eventId={openId} onClose={() => setOpenId(null)} />
     </div>
   );

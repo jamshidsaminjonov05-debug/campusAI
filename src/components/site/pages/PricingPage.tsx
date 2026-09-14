@@ -67,7 +67,7 @@ export function PricingPage() {
                   ) : (
                     <p className="mt-8 text-[clamp(30px,2.6vw,40px)] font-light tracking-[-0.03em] text-[#2584FF]">{p.onRequest}</p>
                   )}
-                  <p className="mt-2 text-[13.5px] text-[var(--s-text2)]">{p.perCamera}</p>
+                  
                 </motion.div>
               );
             })}

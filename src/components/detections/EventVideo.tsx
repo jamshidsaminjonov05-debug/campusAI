@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowsClockwise as RefreshCw, Broadcast as Radio, CircleNotch as Loader2, DownloadSimple as Download, Play, VideoCameraSlash as VideoOff } from "@phosphor-icons/react";
 import { getVideoInfo, nvrEventVideoUrl, nvrPanelUrl, probeVideo, type NvrVideoState } from "@/lib/nvrApi";
+import { useT } from "@/i18n";
 
 /**
  * Hodisa VIDEOSI — "Aniqlanganlar" tafsilot oynasining pastki bo'limi.
@@ -42,6 +43,7 @@ function filenameFromDisposition(v: string | null): string | null {
 }
 
 export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolean }) {
+  const v = useT().nvr.dossier.video;
   const [live, setLive] = useState(false);
   /* Asl lavha (`.dav`) bir necha MB — kuzatuv posti uni RTSP manbadan REAL VAQTDA
      o'qib beradi (tayyor fayl emas), ya'ni bir necha soniya jim turishi
@@ -133,7 +135,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
           {liveUrl && (
             <button type="button" onClick={toggleLive} className={`nvr-video-btn${live ? " is-on" : ""}`}>
               {live ? <Radio size={12} /> : <Play size={12} />}
-              {live ? "Yozuvga qaytish" : "Jonli ko'rish"}
+              {live ? v.backToRecord : v.live}
             </button>
           )}
           <button
@@ -148,7 +150,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
             className="nvr-video-btn"
           >
             <RefreshCw size={12} className={q.isFetching ? "animate-spin" : undefined} />
-            Yangilash
+            {v.refresh}
           </button>
           {/* ⚠️ FAQAT `state === "ready"` — video hali "tayyorlanmoqda" yoki
               UMUMAN yo'q bo'lsa yuklab olinadigan MP4 fayl ham yo'q (server
@@ -162,10 +164,10 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
               onClick={downloadClip}
               disabled={downloading}
               className="nvr-video-btn"
-              title={downloadError ? "Yuklab bo'lmadi — qayta urinib ko'ring" : "Videoni MP4 formatida yuklab olish"}
+              title={downloadError ? v.downloadFailed : v.downloadHint}
             >
               {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {downloading ? "Yuklanmoqda…" : downloadError ? "Qayta urinish" : "Videoni yuklab olish"}
+              {downloading ? v.downloading : downloadError ? v.retry : v.download}
             </button>
           )}
         </div>
@@ -175,19 +177,19 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
         {state == null && q.isLoading && (
           <div className="nvr-video-note">
             <Loader2 size={18} className="animate-spin" />
-            Video ma'lumoti so'ralmoqda…
+            {v.infoLoading}
           </div>
         )}
 
         {q.error != null && (
           <div className="nvr-video-note">
             <VideoOff size={18} />
-            Video ma'lumotini olib bo'lmadi
+            {v.infoFailed}
           </div>
         )}
 
         {/* Jonli oqim — MJPEG, oddiy `<img>` bilan ko'rsatiladi */}
-        {live && liveUrl && <img src={liveUrl} alt="Jonli oqim" className="nvr-video-el" />}
+        {live && liveUrl && <img src={liveUrl} alt={v.liveAlt} className="nvr-video-el" />}
 
         {/* Yozuv — MP4 tayyor bo'lganda. Fayl kelguncha (`buffering`) ustidan
             aylanuvchi belgi turadi — foydalanuvchi ekran qop-qora ko'rinsa
@@ -216,7 +218,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
             {buffering && (
               <div className="nvr-video-loading">
                 <Loader2 size={26} className="animate-spin" />
-                <span>Video yuklanmoqda…</span>
+                <span>{v.loading}</span>
               </div>
             )}
           </>
@@ -231,9 +233,9 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
           <div className="nvr-video-skeleton">
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-center">
               <Loader2 size={26} className="animate-spin text-ice-bright" />
-              <span className="text-[12px] font-semibold text-slate-200">Video tayyorlanmoqda…</span>
+              <span className="text-[12px] font-semibold text-slate-200">{v.preparing}</span>
               <span className="max-w-[260px] text-[10.5px] leading-snug text-slate-500">
-                Yozuv formatga o'girilyapti, bir necha soniya ketishi mumkin
+                {v.preparingHint}
               </span>
             </div>
           </div>
@@ -244,7 +246,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
           <div className="nvr-video-note">
             <VideoOff size={18} />
             <span>
-              Bu hodisa uchun video yo'q
+              {v.none}
               {info?.reason && (
                 <em className="block text-[10.5px] not-italic leading-snug text-slate-500">{info.reason}</em>
               )}
@@ -256,16 +258,16 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
       {info && (
         <footer className="nvr-video-foot">
           <span>
-            Kanal: <b>{info.channel_name || info.channel}</b>
+            {v.channel}: <b>{info.channel_name || info.channel}</b>
           </span>
           {info.codec && (
             <span>
-              Kodek: <b>{info.codec}</b>
+              {v.codec}: <b>{info.codec}</b>
             </span>
           )}
           {info.replay_frames > 0 && (
             <span>
-              Kadrlar: <b>{info.replay_frames}</b>
+              {v.frames}: <b>{info.replay_frames}</b>
             </span>
           )}
         </footer>

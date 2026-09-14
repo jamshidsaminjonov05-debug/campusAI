@@ -33,7 +33,7 @@ const EMPTY_CONTROLS: string[] = [];
  * chegara poligoni 3D ko'tarilgan holda (`campusAreas="selected"`,
  * `src/lib/campusAreas.ts`). Tanlanmagunicha hech qanday hudud chizilmaydi.
  *
- * Yozuvga bosilsa — ustidan o'sha hodisaning DOSSIYESI ochiladi
+ * Yozuvga bosilsa — ustidan o'sha hodisaning MA'LUMOTLARI ochiladi
  * (`HudEventDetail` → "Aniqlanganlar" bo'limidagi bilan AYNI oyna).
  */
 /**
@@ -399,7 +399,7 @@ export function EventsHudScreen() {
       <HudFooter activeId={activeId} onSelect={handleSelectDetector} counts={counts} alertActive={alerts.length > 0} />
 
       {/* Detal — ESKI Hodisalar bo'limi, tanlangan hodisa ochilgan holda */}
-      {/* Tafsilot — AYNAN o'sha hodisaning dossiyesi (modal).
+      {/* Tafsilot — AYNAN o'sha hodisaning ma'lumotlari (modal).
           ⚠️ Ilgari bu yerda eski `EventsPage` to'liq ekran bo'lib ochilardi;
           `HudEventDetail` izohida nima uchun olib tashlangani yozilgan. */}
       <HudEventDetail ev={detail} onClose={() => setDetail(null)} />

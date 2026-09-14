@@ -7,6 +7,7 @@ import {
   BoxingGlove,
   ChartLineUp,
   CheckCircle,
+  IdentificationCard,
   ImageBroken,
   MagnifyingGlass,
   SecurityCamera,
@@ -16,6 +17,7 @@ import {
   type Icon as PhIcon,
   DoorOpen,
   SquaresFour,
+  Trash,
   UserFocus,
   X,
   XCircle,
@@ -26,6 +28,7 @@ import { useArrivals } from "@/hooks/useTodayArrivals";
 import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
 import { AlertKpiModal, CameraKpiModal, isDangerEvent } from "./DetectionKpiModals";
 import {
+  deleteNvrEvent,
   getEvent,
   getFace,
   isAlarm,
@@ -53,6 +56,7 @@ import { Pagination } from "@/components/common/Pagination";
 import { TabPill, fmt } from "@/components/common/panels";
 import { LibraryPhoto } from "@/components/people/FaceDatabasePage";
 import { ImageLightbox } from "@/components/common/ImageLightbox";
+import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { useT } from "@/i18n";
 import type { Messages } from "@/i18n";
 import { useModalHistory } from "@/hooks/useModalHistory";
@@ -289,16 +293,16 @@ export function DetectionsPage() {
    */
   const [weapon2Mode, setWeapon2Mode] = useState(false);
 
-  /** 🔵 Kategoriya tanlash — "Qurol" 2-versiyani DOIM yoqadi (kuzatuv
-   *  postining o'zida bu tabda ko'rsatadigan narsa yo'q). Boshqa
-   *  HECH QAYSI tab endi rejimni O'CHIRMAYDI (2026-09-11, foydalanuvchi
-   *  so'rovi — ilgari "Qurol"dan boshqasiga o'tilganda 2-versiya
-   *  bildirmasdan o'chib qolardi; endi FAQAT "2-versiya" tugmasining
-   *  o'zi boshqaradi — `useNvrEvents.ts`dagi yangi filtr izohiga
-   *  qarang, mos kelmagan tab ochiq-oydin BO'SH qaytadi). */
+  /** 🔴 Kategoriya tanlash 2-versiyaga UMUMAN TEGMAYDI (2026-09-14,
+   *  foydalanuvchi so'rovi: "janjalni bosganimda version 2ga o'tib
+   *  ketyabdi — qachonki version 2 bosilsa shunda o'tishi kerak").
+   *  Ilgari "Qurol" tabi rejimni MAJBURAN yoqardi (kuzatuv postining
+   *  o'z `gun` kategoriyasi bo'sh degan mulohaza bilan), rejim esa tab
+   *  almashganda o'chmagani uchun keyingi "Janjal" ham 2-versiya
+   *  manbasidan ochilib qolardi. Endi rejimni FAQAT "2-versiya"
+   *  tugmasining o'zi yoqadi/o'chiradi. */
   const selectTab = (id: PageTab) => {
     setPrimaryTab(id);
-    if (id === "gun") setWeapon2Mode(true);
   };
 
   /* Muassasa + sana oralig'i + qidiruv — kartochkalar RO'YXATIGA va statistika
@@ -678,7 +682,7 @@ export function DetectionsPage() {
           qatorini hosil qilardi.
 
           Kanal ma'lumoti YO'QOLMADI: har bir kartochkada va hodisa
-          dossiyesida kamera joyi yozilgan (`cameraPlaceLabel`), kanal
+          ma'lumotlarida kamera joyi yozilgan (`cameraPlaceLabel`), kanal
           bo'yicha filtr esa yuqoridagi filtr panelida qoladi. */}
 
       </>
@@ -902,6 +906,7 @@ function VerifyRecognition({
   /** `"frame"` — aynan shu kadr tekshirilgan; `"person"` — odam ILGARI (boshqa kadrda) tasdiqlangan. */
   verdictScope?: "frame" | "person" | "";
 }) {
+  const vt = useT().nvr.dossier.verify;
   const qc = useQueryClient();
   const [result, setResult] = useState<NvrVerifyResult & { correct: boolean } | null>(null);
   const mutation = useMutation({
@@ -924,7 +929,7 @@ function VerifyRecognition({
 
   return (
     <section className="nvr-dsr-block">
-      <p className="nvr-dsr-h">Tanish to&apos;g&apos;rimi?</p>
+      <p className="nvr-dsr-h">{vt.title}</p>
       {/* ⚠️ Ikkala rasm KATTA va YONMA-YON (`flex-1`, 1:1) — chap ustun
           shu blokka to'liq beriladi. Ilgari ular 56×64 px edi va o'rta
           ustunda turardi: shunday o'lchamda ikki yuzni ko'z bilan
@@ -936,18 +941,18 @@ function VerifyRecognition({
               type="button"
               onClick={onZoom}
               disabled={!onZoom}
-              title={onZoom ? "Kattalashtirish" : undefined}
+              title={onZoom ? vt.zoom : undefined}
               className="w-full overflow-hidden rounded-lg ring-1 ring-white/10 disabled:cursor-default"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={nishonSrc} alt="Kamerada" className="aspect-[3/4] w-full object-cover" />
+              <img src={nishonSrc} alt={vt.camera} className="aspect-[3/4] w-full object-cover" />
             </button>
           ) : (
             <span className="grid aspect-[3/4] w-full place-items-center rounded-lg bg-black/40 text-slate-600">
               <ImageBroken size={16} />
             </span>
           )}
-          <span className="text-[9.5px] text-slate-500">Kamerada</span>
+          <span className="text-[9.5px] text-slate-500">{vt.camera}</span>
         </div>
         <ArrowsLeftRight size={14} className="mt-[22%] flex-none text-slate-600" />
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
@@ -960,7 +965,7 @@ function VerifyRecognition({
           <button
             type="button"
             onClick={() => setZoomLibrary(true)}
-            title="Kattalashtirish"
+            title={vt.zoom}
             className="w-full overflow-hidden rounded-lg ring-1 ring-ice/25"
           >
             <LibraryPhoto
@@ -970,7 +975,7 @@ function VerifyRecognition({
               className="aspect-[3/4] w-full object-cover"
             />
           </button>
-          <span className="text-[9.5px] text-slate-500">Bazada</span>
+          <span className="text-[9.5px] text-slate-500">{vt.library}</span>
         </div>
       </div>
 
@@ -980,7 +985,7 @@ function VerifyRecognition({
         <p className="truncate text-[12.5px] font-semibold text-slate-100" title={person.full_name}>
           {person.full_name}
         </p>
-        <p className="text-[10px] text-slate-500">Ikkala rasm bir odammi?</p>
+        <p className="text-[10px] text-slate-500">{vt.question}</p>
       </div>
 
       {result ? (
@@ -991,12 +996,10 @@ function VerifyRecognition({
               : "border-rose-400/25 bg-rose-500/10 text-rose-300"
           }`}
         >
-          {result.correct
-            ? `Tasdiqlandi — ${result.events} ta kadrga bog'landi.`
-            : `Rad etildi — ${result.events} ta kadr "tanilmagan"ga qaytdi.`}
+          {result.correct ? vt.confirmed(result.events) : vt.rejected(result.events)}
           {result.scope === "event" && (
             <span className="mt-0.5 block text-slate-400">
-              Yuz guruhi hali hisoblanmagan — bir necha soniyadan keyin qayta oching.
+              {vt.pending}
             </span>
           )}
         </div>
@@ -1012,11 +1015,9 @@ function VerifyRecognition({
               : "border-rose-400/25 bg-rose-500/10 text-rose-300"
           }`}
         >
-          {preVerdict === "ok" ? "Tasdiqlangan." : "Rad etilgan."}
+          {preVerdict === "ok" ? vt.preOk : vt.preWrong}
           <span className="mt-0.5 block text-slate-400">
-            {verdictScope === "person"
-              ? "Bu odam ilgari (boshqa kadrda) tekshirilgan."
-              : "Bu kadr allaqachon tekshirilgan."}
+            {verdictScope === "person" ? vt.prePerson : vt.preFrame}
           </span>
         </div>
       ) : (
@@ -1030,7 +1031,7 @@ function VerifyRecognition({
             onClick={() => mutation.mutate(true)}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 py-2 text-[12px] font-semibold text-emerald-300 transition-colors hover:bg-emerald-400/20 disabled:opacity-50"
           >
-            <CheckCircle size={15} weight="fill" /> Ha, shu odam
+            <CheckCircle size={15} weight="fill" /> {vt.yes}
           </button>
           <button
             type="button"
@@ -1038,17 +1039,17 @@ function VerifyRecognition({
             onClick={() => mutation.mutate(false)}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 py-2 text-[12px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/20 disabled:opacity-50"
           >
-            <XCircle size={15} weight="fill" /> Yo&apos;q, boshqa odam
+            <XCircle size={15} weight="fill" /> {vt.no}
           </button>
         </div>
       )}
       {mutation.isError && (
-        <p className="mt-1 text-[10.5px] text-rose-400">{(mutation.error as Error)?.message ?? "Xatolik"}</p>
+        <p className="mt-1 text-[10.5px] text-rose-400">{(mutation.error as Error)?.message ?? vt.error}</p>
       )}
 
       {zoomLibrary && (
         <ImageLightbox
-          images={[{ src: nvrPersonPhotoUrl(person.id), label: "Bazada" }]}
+          images={[{ src: nvrPersonPhotoUrl(person.id), label: vt.library }]}
           initialIndex={0}
           onClose={() => setZoomLibrary(false)}
         />
@@ -1058,7 +1059,7 @@ function VerifyRecognition({
 }
 
 /**
- * Hodisa DOSSIYESI — HAQIQIY kuzatuv posti kadri, ramkalari, video va o'tish kadrlari.
+ * Hodisa MA'LUMOTLARI — HAQIQIY kuzatuv posti kadri, ramkalari, video va o'tish kadrlari.
  *
  * ⚠️ EKSPORT QILINGAN: "Hodisalar" HUD'i ham shu oynani ochadi
  * (`hud/HudEventDetail.tsx`). Ilgari u yerda ESKI `EventsPage` ochilardi va
@@ -1076,7 +1077,7 @@ export function DetectionModal({
   onSelect: (ev: NvrEvent) => void;
 }) {
   const t = useT();
-  /* ◀ "orqaga" avval dossiyeni yopadi. Hook SHU YERDA — dossiye
+  /* ◀ "orqaga" avval ma'lumotlarni yopadi. Hook SHU YERDA — dossiye
      "Aniqlanganlar"dan ham, `EventDossier` orqali kamera/odamlar
      ro'yxatidan ham ochiladi; bitta joyda tursa ikki marta ro'yxatga
      olinmaydi. */
@@ -1226,6 +1227,48 @@ export function DetectionModal({
 
   const alarm = isAlarm(ev);
   const d = t.nvr.dossier;
+  /* Toifa — server `role_label`ni O'ZBEKCHA yuboradi ("O'quvchi"), shuning
+     uchun `role` kodidan lug'atga olinadi; noma'lum kod bo'lsa server matni. */
+  const roleText =
+    ev.person?.role === "student"
+      ? d.roles.student
+      : ev.person?.role === "teacher"
+        ? d.roles.teacher
+        : ev.person?.role_label ?? "";
+
+  /* 🔴 HODISANI O'CHIRISH (2026-09-14, foydalanuvchi so'rovi: "hodisa
+     aniqlanganda hodisani ham o'chirish imkonini qo'shishing kerak").
+     Panel API `DELETE /api/events/{id}` (`deleteNvrEvent`) — QAYTARIB
+     BO'LMAYDI, shuning uchun avval tasdiq oynasi.
+     ⚠️ Yig'ilgan O'TISH (`frames > 1`) bitta kartochka bo'lib ko'rinadi —
+     faqat vakil kadrni o'chirsak, qolgan kadrlardan biri ro'yxatda
+     "o'chmagan" bo'lib qayta chiqardi. Shuning uchun o'tishning barcha
+     kadri (`listVisit`) o'chiriladi.
+     ⚠️ "2-versiya" (`/weapon2/...`) hodisasi BOSHQA serverniki — bu yo'l
+     unga tegishli emas, tugma chizilmaydi. */
+  const qc = useQueryClient();
+  const deletable = !(ev.image_url ?? "").startsWith("/weapon2");
+  const [confirmDel, setConfirmDel] = useState(false);
+  /** "Shaxs haqida ma'lumot" — shu shaxsning to'liq tarixi (`FaceHistoryModal`). */
+  const [personOpen, setPersonOpen] = useState(false);
+  const deleteIds = useMemo(() => {
+    const ids = new Set<number>([ev.id]);
+    for (const f of visit.data?.events ?? []) ids.add(f.id);
+    return [...ids];
+  }, [ev.id, visit.data]);
+  const del = useMutation({
+    mutationFn: async () => {
+      for (const id of deleteIds) await deleteNvrEvent(id);
+    },
+    onSuccess: () => {
+      /* Hodisa ko'rinadigan HAMMA ro'yxat/sanoq keshlari */
+      for (const k of ["nvr", "detections", "arrivals", "nvr-faces", "nvr-face", "nvr-visit", "nvr-daily-counts", "nvr-category-totals"]) {
+        qc.invalidateQueries({ queryKey: [k] });
+      }
+      setConfirmDel(false);
+      onClose();
+    },
+  });
   const statusText = alarm
     ? d.status.alarm
     : ev.category === "face"
@@ -1267,10 +1310,23 @@ export function DetectionModal({
        ism qatoridan DARHOL keyin — matn tig'izligi orasida yo'qolib
        ketmasin. Manba — `ev.person.role_label` (`GUIDE.md` 10-D,
        kadrda TAYYOR keladi, qo'shimcha so'rov kerak emas). */
-    if (ev.category === "face" && ev.person?.role_label) add("role", L.role, ev.person.role_label);
+    if (ev.category === "face" && roleText) add("role", L.role, roleText);
     if (ev.face_id != null) add("faceId", L.faceId, String(ev.face_id), undefined, true);
     if (ev.confidence != null) add("conf", L.confidence, `${ev.confidence}%`);
-    add("cat", L.category, ev.category_label);
+    /* Hodisa turi ham server matni o'rniga (o'zbekcha keladi) kategoriyadan */
+    add(
+      "cat",
+      L.category,
+      ev.category === "face"
+        ? t.nvr.tabFace
+        : ev.category === "gun"
+          ? t.nvr.tabGun
+          : ev.category === "janjal"
+            ? t.nvr.tabFight
+            : ev.category === "smoking"
+              ? t.nvr.tabSmoking
+              : ev.category_label
+    );
     add("cam", L.camera, ev.camera || t.nvr.channelOf(ev.channel), t.nvr.channelOf(ev.channel));
     add("place", L.place, place);
     if (campus) add("campus", L.campus, campus.name, campus.mahalla);
@@ -1288,7 +1344,7 @@ export function DetectionModal({
     add("id", L.eventId, String(ev.id), undefined, true);
     add("img", L.images, String(ev.image_count));
     return list;
-  }, [ev, d, subject, statusText, place, campus, frames, t]);
+  }, [ev, d, subject, statusText, place, campus, frames, t, roleText]);
 
   const attributes = useMemo(() => Object.entries(ev.attributes ?? {}), [ev.attributes]);
 
@@ -1300,11 +1356,18 @@ export function DetectionModal({
      bu yerda hech narsa qilinmaydi (aks holda ikkalasi birga yopilardi). */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && lightboxIndex == null) onClose();
+      /* Rasm ko'ruvchi yoki shaxs oynasi ochiq bo'lsa Esc dossiyeni yopmaydi */
+      if (e.key !== "Escape" || lightboxIndex != null || personOpen) return;
+      /* Tasdiq oynasi ochiq bo'lsa Esc FAQAT uni yopadi */
+      if (confirmDel) {
+        if (!del.isPending) setConfirmDel(false);
+        return;
+      }
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, lightboxIndex]);
+  }, [onClose, lightboxIndex, confirmDel, del.isPending, personOpen]);
 
   return (
     <motion.div
@@ -1351,6 +1414,20 @@ export function DetectionModal({
             <span className={`nvr-dsr-flag${alarm ? " is-alarm" : ""}`}>{statusText}</span>
           </span>
 
+          {deletable && (
+            <button
+              type="button"
+              onClick={() => {
+                del.reset();
+                setConfirmDel(true);
+              }}
+              className="nvr-dsr-del"
+              title={d.del.action}
+            >
+              <Trash size={15} />
+              <span>{d.del.action}</span>
+            </button>
+          )}
           <button type="button" onClick={onClose} className="nvr-dsr-x" aria-label={t.common.close}>
             <X size={17} />
           </button>
@@ -1375,11 +1452,21 @@ export function DetectionModal({
               (`ml-auto` + rangli fon) tegadi; `<span>` yozilsa bu belgi
               ham beixtiyor `d.tag` bilan bir xil ko'rinib, o'ngga
               suriladi. */}
-          {ev.person?.role_label && (
+          {roleText && (
             <div className="rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-              {ev.person.role_label}
-              {ev.person.note ? ` · ${ev.person.note}` : ""}
+              {roleText}
+              {ev.person?.note ? ` · ${ev.person.note}` : ""}
             </div>
+          )}
+          {/* 🔵 SHU SHAXS HAQIDA MA'LUMOT (2026-09-14, foydalanuvchi so'rovi) —
+              qachon, qaysi kamerada ko'ringani, kunlar va barcha kadrlar.
+              `face_id` bo'lsa u bo'yicha (notanish odam ham), bo'lmasa
+              bazadagi shaxs raqami bo'yicha. Ikkalasi ham yo'q — tugma yo'q. */}
+          {(faceId != null || verifyPerson) && (
+            <button type="button" onClick={() => setPersonOpen(true)} className="nvr-dsr-person">
+              <IdentificationCard size={14} weight="duotone" />
+              {d.openPerson}
+            </button>
           )}
           <span>{d.tag}</span>
         </div>
@@ -1487,7 +1574,7 @@ export function DetectionModal({
             {faceId != null && (
               <section className="nvr-dsr-block">
                 <p className="nvr-dsr-h">
-                  Shu shaxsning suratlari
+                  {d.photos.title}
                   {face.data && <span className="ml-auto font-mono text-[10px] text-slate-500">{face.data.total}</span>}
                 </p>
                 {faceShotsByDay.length > 0 ? (
@@ -1518,7 +1605,7 @@ export function DetectionModal({
                   </div>
                 ) : (
                   <p className="nvr-dsr-empty">
-                    {face.isLoading ? "…" : face.isError ? "Tarix olinmadi" : "Boshqa surat yo'q"}
+                    {face.isLoading ? "…" : face.isError ? d.photos.failed : d.photos.empty}
                   </p>
                 )}
               </section>
@@ -1625,6 +1712,59 @@ export function DetectionModal({
           )}
           <span className="ml-auto normal-case tracking-normal">{d.hint}</span>
         </footer>
+
+        {/* O'chirishni tasdiqlash — ma'lumotlarning O'ZI ustida (alohida portal
+            shart emas: u oynaning ichida, fon bosilishi ma'lumotlarni yopmaydi). */}
+        <AnimatePresence>
+          {confirmDel && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="nvr-dsr-confirm"
+              onClick={() => !del.isPending && setConfirmDel(false)}
+            >
+              <motion.div
+                role="alertdialog"
+                aria-modal="true"
+                aria-label={d.del.title}
+                initial={{ scale: 0.95, y: 8 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.97, y: 4 }}
+                onClick={(e) => e.stopPropagation()}
+                className="nvr-dsr-confirm-box"
+              >
+                <span className="nvr-dsr-confirm-ico">
+                  <Trash size={20} />
+                </span>
+                <b>{d.del.title}</b>
+                <p>{d.del.body(deleteIds.length)}</p>
+                {del.isError && <p className="is-err">{d.del.failed}</p>}
+                <div className="nvr-dsr-confirm-row">
+                  <button type="button" disabled={del.isPending} onClick={() => setConfirmDel(false)} className="is-ghost">
+                    {d.del.cancel}
+                  </button>
+                  <button type="button" disabled={del.isPending} onClick={() => del.mutate()} className="is-danger">
+                    {del.isPending ? d.del.busy : d.del.confirm}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ⚠️ Dialog ICHIDA: uning `stopPropagation`i shaxs oynasidagi
+            klikni (React hodisasi portal orqali ham daraxt bo'yicha
+            ko'tariladi) tashqi `onClick={onClose}` pardaga yetkazmaydi —
+            aks holda shaxs oynasi yopilganda dossiye ham yopilardi. */}
+        {personOpen && (
+          <FaceHistoryModal
+            faceId={faceId ?? undefined}
+            personId={faceId == null ? verifyPerson?.id : undefined}
+            zClass="z-[96]"
+            onClose={() => setPersonOpen(false)}
+          />
+        )}
       </motion.div>
 
       {lightboxIndex != null && (

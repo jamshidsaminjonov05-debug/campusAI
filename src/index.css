@@ -987,7 +987,11 @@ body { @apply bg-ink font-sans antialiased; }
    ESLATMA: ilgari xarita "qotgan"ida sababi CSS filtr EMAS, 34MB viloyat
    geojson'i edi (692K nuqta → 10K'ga soddalashtirildi). Yengil geometriya
    bilan bu filtr silliq ishlaydi. */
-[class*="-ground-pane"] {
+/* ⚠️ FAQAT qorong'i mavzuda (`.ymap-dark` — `map/yandex/YandexMap.tsx`).
+   Ilgari qoida GLOBAL edi — Yandex olib tashlangan davrda zararsiz, lekin
+   2026-09-14 da global sayt (`campusai.uz`) uchun Yandex qaytgach yorug'
+   mavzuda ham xarita teskari (qop-qora) bo'lib qolardi. */
+.ymap-dark [class*="-ground-pane"] {
   filter: invert(1) hue-rotate(185deg) brightness(0.92) contrast(0.9) saturate(0.85);
 }
 
@@ -1298,7 +1302,7 @@ body { @apply bg-ink font-sans antialiased; }
 }
 
 /* To'liq ko'rinish */
-/* ═══════════════ Hodisa DOSSIYESI (aniqlash tafsiloti) ═══════════════
+/* ═══════════════ Hodisa MA'LUMOTLARI (aniqlash tafsiloti) ═══════════════
    Katta ekran uchun: markazda ikkita KATTA kadr va ma'lumot jadvali, o'ngda
    video + o'tish kadrlari. Ilgari bu 900 px lik tor oyna edi, rasm esa
    220 px bo'lib "tiqilib" qolardi.
@@ -1427,7 +1431,52 @@ body { @apply bg-ink font-sans antialiased; }
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent) inset, 0 8px 20px -10px var(--c);
 }
 
-/* Ism qatori — dossiyening sarlavhasi. Yengil gradient "yostiq" —
+/* O'chirish tugmasi — X yonida, doim QIZIL (xavfli amal, `--c` rangidan
+   mustaqil: hodisa turi rangi bilan adashtirilmasin). */
+.nvr-dsr-del {
+  @apply flex h-8 flex-none items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors;
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+}
+.nvr-dsr-del:hover { color: #fff; background: rgba(244, 63, 94, 0.28); }
+/* "Shaxs haqida ma'lumot" — ism qatorida, hodisa rangida (`--c`) */
+.nvr-dsr-person {
+  @apply flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-semibold transition-colors;
+  color: var(--c);
+  border-color: color-mix(in srgb, var(--c) 45%, transparent);
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+}
+.nvr-dsr-person:hover { background: color-mix(in srgb, var(--c) 24%, transparent); }
+/* Tasdiq oynasi — ma'lumotlarning O'ZI ustida (`.nvr-dsr` — `relative`) */
+.nvr-dsr-confirm {
+  @apply absolute inset-0 z-[5] grid place-items-center p-4;
+  background: rgba(3, 6, 14, 0.72);
+  backdrop-filter: blur(4px);
+}
+.nvr-dsr-confirm-box {
+  @apply flex w-[min(420px,100%)] flex-col items-center gap-2 rounded-2xl border px-6 py-5 text-center;
+  border-color: rgba(244, 63, 94, 0.3);
+  background: #0b1220;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
+}
+.nvr-dsr-confirm-ico {
+  @apply mb-1 grid h-11 w-11 place-items-center rounded-full;
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.14);
+}
+.nvr-dsr-confirm-box b { @apply text-[15px] font-bold text-white; }
+.nvr-dsr-confirm-box p { @apply text-[12.5px] leading-relaxed text-slate-400; }
+.nvr-dsr-confirm-box p.is-err { color: #fb7185; }
+.nvr-dsr-confirm-row { @apply mt-3 flex w-full gap-2; }
+.nvr-dsr-confirm-row button {
+  @apply flex-1 rounded-lg px-3 py-2 text-[12.5px] font-semibold transition-colors disabled:cursor-wait disabled:opacity-60;
+}
+.nvr-dsr-confirm-row .is-ghost { @apply border border-white/10 text-slate-300 hover:bg-white/5; }
+.nvr-dsr-confirm-row .is-danger { background: #e11d48; color: #fff; }
+.nvr-dsr-confirm-row .is-danger:hover:not(:disabled) { background: #be123c; }
+
+/* Ism qatori — ma'lumotlarning sarlavhasi. Yengil gradient "yostiq" —
    `--c` rangidan, deyarli sezilmas, faqat chuqurlik hissi beradi. */
 .nvr-dsr-name {
   @apply flex flex-none flex-wrap items-center gap-3 border-b border-white/[0.08] px-5 py-2.5;
@@ -2500,7 +2549,7 @@ body { @apply bg-ink font-sans antialiased; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   YORUG' REJIM: HODISA DOSSIYESI (`.nvr-dsr*`)
+   YORUG' REJIM: HODISA MA'LUMOTLARI (`.nvr-dsr*`)
    ══════════════════════════════════════════════════════════════════════ */
 :root[data-scheme="light"] .nvr-dsr {
   background: var(--lm-surface) !important;
@@ -2537,6 +2586,23 @@ body { @apply bg-ink font-sans antialiased; }
   color: var(--lm-text-soft) !important;
 }
 :root[data-scheme="light"] .nvr-dsr-chip b { color: var(--lm-text) !important; }
+/* O'chirishni tasdiqlash — yorug'da oq kartochka. Matn ranglari shu yerda
+   (`text-white`/`text-slate-*` yorug' qoidalari bilan urishmasin). */
+:root[data-scheme="light"] .nvr-dsr-confirm { background: rgba(15, 23, 42, 0.35) !important; }
+:root[data-scheme="light"] .nvr-dsr-confirm-box { background: var(--lm-surface) !important; }
+:root[data-scheme="light"] .nvr-dsr-confirm-box b { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nvr-dsr-confirm-box p:not(.is-err) { color: var(--lm-text-soft) !important; }
+:root[data-scheme="light"] .nvr-dsr-confirm-row .is-ghost {
+  color: var(--lm-text-soft) !important;
+  border-color: var(--lm-line) !important;
+}
+:root[data-scheme="light"] .nvr-dsr-del { color: #e11d48 !important; }
+/* Och sian `--c` oq fonda o'qilmaydi — yorug'da urg'u rangi */
+:root[data-scheme="light"] .nvr-dsr-person {
+  color: var(--lm-accent) !important;
+  border-color: var(--lm-line) !important;
+  background: var(--lm-surface-2) !important;
+}
 :root[data-scheme="light"] .nvr-dsr-note p { color: var(--lm-text-soft) !important; }
 
 /* ── YORUG' REJIM: LANDING sahifasi ────────────────────────────────────
@@ -2659,7 +2725,7 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-scheme="light"] .cam-live-top .cam-rec { color: #94a3b8 !important; }
 :root[data-scheme="light"] .cam-live-top .cam-rec.is-on { color: #fda4af !important; }
 
-/* ── Hodisa dossiyesidagi RASM SAHNALARI ──
+/* ── Hodisa ma'lumotlaridagi RASM SAHNALARI ──
    Kadr atrofidagi bo'sh joy oq bo'lsa surat "suzib" ketardi va chegarasi
    bilinmasdi; video pleyeri ham oq ramkada g'alati ko'rinardi. */
 :root[data-scheme="light"] .nvr-dsr-shot,

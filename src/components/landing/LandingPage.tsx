@@ -122,8 +122,6 @@ function News() {
               <span className="flex items-center gap-2">
                 <Logo className="h-[18px] w-auto" /> Campus AI
               </span>
-              <span className="text-[rgba(255,255,255,0.6)]">×</span>
-              <span>{n.cardA}</span>
             </div>
             <p className="mt-4 text-[clamp(20px,2vw,30px)] font-light tracking-[-0.03em]">{n.cardTitle}</p>
             <p className="mt-2 max-w-[420px] text-[14px] leading-[1.55] text-[rgba(255,255,255,0.85)]">{n.cardText}</p>
@@ -135,12 +133,12 @@ function News() {
 }
 
 const WHY_MEDIA: { img: string; chip: ChipKind; pos: string }[] = [
-  { img: "/imges/ai-face.webp", chip: "ok", pos: "left-7 top-8" },
+  { img: "/imges/ai-face-landing.webp", chip: "ok", pos: "left-7 top-8" },
   { img: "/imges/incident-scene.webp", chip: "alert", pos: "left-7 top-8" },
   { img: "/imges/control-room.webp", chip: "solid", pos: "left-7 top-[34%]" },
 ];
 
-function Why() {
+function Why() {  
   const w = useT().landing.why;
   return (
     <section id="imkoniyatlar" className="scroll-mt-16 bg-[var(--s-bg2)] py-[clamp(64px,6vw,90px)]">
@@ -163,7 +161,7 @@ function Why() {
                 <img
                   src={m.img}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-110"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform scale-100 duration-[1200ms] ease-out group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.35)_48%,rgba(0,0,0,0.05)_100%)]" />
                 <FloatChip kind={m.chip} title={c.chip} meta={c.chipMeta} className={m.pos} />
@@ -205,7 +203,6 @@ function Protect() {
             <h3 className="mt-1 text-[clamp(30px,2.8vw,45px)] font-medium leading-[1.2] tracking-[-0.05em] text-[var(--s-text)]">
               {p.heading}
             </h3>
-            <p className="mt-6 text-[clamp(16px,1.2vw,20.3px)] font-medium leading-[1.5] text-[var(--s-text2)]">{p.sub}</p>
             <ul className="mt-10 flex flex-col gap-6">
               {p.items.map((it, i) => {
                 const Icon = PROTECT_ICONS[i % PROTECT_ICONS.length];

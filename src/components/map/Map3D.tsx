@@ -249,9 +249,9 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
               kind: "alert" as const,
               color: DETECTION_BY_ID.get(e.type)?.color ?? "#f59e0b",
               tooltip: `${e.title} · #${e.channel} · ${e.time}`,
-              /* ⚠️ **ENDI DOSSIYENI EMAS, TAHLIL PANELINI OCHADI**
+              /* ⚠️ **ENDI ma'lumotlarni EMAS, TAHLIL PANELINI OCHADI**
                  (2026-09-09, foydalanuvchi so'rovi): xaritadagi bitta
-                 nishonni bosish ilgari darhol o'sha HODISANING dossiyesini
+                 nishonni bosish ilgari darhol o'sha HODISANING ma'lumotlarini
                  ochardi. Endi o'ng tomondan "Ogohlantirishlar" tahlil
                  paneli (KPI + tur kesimi + vaqt bo'yicha ro'yxat) ochiladi
                  — dossiye esa o'sha panel ICHIDAGI qatorlardan biri
@@ -302,7 +302,7 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
            TO'G'RI yechim tayl serveri tomonda. Shu sabab BOSTIRISH
            (default, `forceCitySkyline3D` berilmagan holat) qaytarildi:
            atrofdagi shahar yana TEKIS, lekin 179-maktabning O'ZI —
-           dossiyeni ochish uchun ENG MUHIM obyekt — to'g'ri, buzilmagan
+           ma'lumotlarni ochish uchun ENG MUHIM obyekt — to'g'ri, buzilmagan
            ko'rinishda. */
         /* ⚠️ **2026-09-07, foydalanuvchi so'rovi**: "umumiy xaritani
            bosganida butun o'zbekiston xaritasni chiqarishi kerak".

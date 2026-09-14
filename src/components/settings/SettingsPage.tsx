@@ -217,32 +217,58 @@ export function SettingsPage() {
             </div>
           )}
 
-          <div className="mt-auto space-y-2 border-t border-slate-700/30 pt-3">
-            <button
-              className={btnCls}
-              disabled={resync.isPending}
-              onClick={() => resync.mutate("to_backup", report("Resync (asosiy → zaxira)"))}
-            >
-              <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-ice-soft" : "text-ice-soft"} />
-              Resync: asosiy → zaxira
-            </button>
-            <button
-              className={btnCls}
-              disabled={resync.isPending}
-              onClick={() => resync.mutate("to_primary", report("Resync (zaxira → asosiy)"))}
-            >
-              <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-amber-300" : "text-amber-300"} />
-              Resync: zaxira → asosiy
-            </button>
-            <button
-              className={btnCls}
-              disabled={reloadFaceIndex.isPending}
-              onClick={() => reloadFaceIndex.mutate(undefined, report("Yuz indeksini qayta yuklash"))}
-            >
-              <ScanFace size={14} className={reloadFaceIndex.isPending ? "animate-pulse text-emerald-300" : "text-emerald-300"} />
-              Yuz indeksini qayta yuklash
-            </button>
-          </div>
+          {/* ⚠️ **ISHLAMAYDIGAN AMAL TUGMASI CHIZILMAYDI** (2026-09-14,
+              foydalanuvchi so'rovi: "backendda mavjud bo'lmagan
+              ma'lumotlarni olib tashla, shunchaki chiqmasin").
+
+              O'lchandi (jonli backend, `GET /api/v1/admin/status`):
+                postgres_available: false
+                face_engine:  {available:false, "No module named 'onnxruntime'"}
+                emotion/stt/tts: false (ultralytics / torch yo'q)
+
+              Ya'ni "Resync" bosilsa ham ko'chiradigan BAZA yo'q, "Yuz
+              indeksini qayta yuklash" bosilsa ham qayta yuklaydigan
+              MODUL yo'q — tugma faqat xato qaytarardi. Endpoint'larning
+              O'ZI backendda bor (`/admin/resync`, `/admin/face-index/
+              reload`), shuning uchun modul/baza paydo bo'lgan zahoti
+              tugmalar O'ZI qaytadi — kodga tegilmaydi. */}
+          {(s?.postgres_available || s?.face_engine.available) && (
+            <div className="mt-auto space-y-2 border-t border-slate-700/30 pt-3">
+              {s?.postgres_available && (
+                <>
+                  <button
+                    className={btnCls}
+                    disabled={resync.isPending}
+                    onClick={() => resync.mutate("to_backup", report("Resync (asosiy → zaxira)"))}
+                  >
+                    <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-ice-soft" : "text-ice-soft"} />
+                    Resync: asosiy → zaxira
+                  </button>
+                  <button
+                    className={btnCls}
+                    disabled={resync.isPending}
+                    onClick={() => resync.mutate("to_primary", report("Resync (zaxira → asosiy)"))}
+                  >
+                    <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-amber-300" : "text-amber-300"} />
+                    Resync: zaxira → asosiy
+                  </button>
+                </>
+              )}
+              {s?.face_engine.available && (
+                <button
+                  className={btnCls}
+                  disabled={reloadFaceIndex.isPending}
+                  onClick={() => reloadFaceIndex.mutate(undefined, report("Yuz indeksini qayta yuklash"))}
+                >
+                  <ScanFace
+                    size={14}
+                    className={reloadFaceIndex.isPending ? "animate-pulse text-emerald-300" : "text-emerald-300"}
+                  />
+                  Yuz indeksini qayta yuklash
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Foydalanuvchilar */}

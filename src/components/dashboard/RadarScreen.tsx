@@ -13,7 +13,7 @@ import { cameraHeading, cameraPlaceLabel, placementFor } from "@/config/cameraPl
 import { DEFAULT_INSTITUTION_ID, INSTITUTIONS, institutionById } from "@/config/institutions";
 import { CAMPUS_CENTER, CAMPUS_ZOOM } from "@/config/campusPoints";
 import { MapLibreMap, type YMarker } from "@/map/maplibre/MapLibreMap";
-import { nvrImageUrl, type NvrEvent } from "@/lib/nvrApi";
+import { nvrImageUrl, subscribeNvr, type NvrEvent } from "@/lib/nvrApi";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
@@ -71,6 +71,25 @@ const R = 190;
 const MAX_BLIPS = 20;
 const BARS = 24;
 const TRAIL = 8; // nur izi bo'laklari
+/** SSE dan saqlanadigan oxirgi hodisalar soni (ro'yxat 20 tagacha chiziladi). */
+const LIVE_KEEP = 60;
+/** Bir o'tishning ikkinchi kadri — kamera + shaxs + 45 soniya. */
+const VISIT_MS = 45_000;
+
+/**
+ * Ikki yozuv BITTA o'tishmi (`useNvrEvents.merge()` bilan AYNI qoida).
+ *
+ * ⚠️ Yuz kamerasi odam kadrda turgan har soniyada yozuv yuboradi —
+ * shusiz jonli ro'yxat bitta odamning o'nlab nusxasi bilan to'lardi.
+ */
+function sameVisit(a: NvrEvent, b: NvrEvent): boolean {
+  if (a.channel !== b.channel || a.category !== b.category) return false;
+  const same =
+    a.face_id != null && b.face_id != null ? a.face_id === b.face_id : (a.name ?? "") === (b.name ?? "");
+  if (!same) return false;
+  return Math.abs(new Date(a.time).getTime() - new Date(b.time).getTime()) < VISIT_MS;
+}
+
 /** Chap ro'yxat kengligi (px) — kartochka shu tomonga uchadi. */
 const LIST_W = 228;
 /** Bitta kartochka balandligi va oraliq — sig'imni hisoblash uchun
@@ -188,11 +207,63 @@ export function RadarScreen({ onPick, onOpenMap }: { onPick: (id: number) => voi
   const q = useDetections({ category: "all", limit: 100 });
   const [modalEv, setModalEv] = useState<NvrEvent | null>(null);
 
+  /**
+   * ╔══════════════════════════════════════════════════════════════════╗
+   * ║  JONLI OQIM (SSE) — radar hodisani DARHOL ko'rsatadi              ║
+   * ╚══════════════════════════════════════════════════════════════════╝
+   *
+   * 🔴 **ILGARI RADAR KECHIKARDI** (2026-09-14, foydalanuvchi xabar
+   * qildi: "30 minut oldingi hodisa aniqlanyabdi"). Sabab ikkita edi:
+   *   1. manba faqat `useDetections` — 15 soniyalik POLLING, ustiga
+   *      ro'yxat `group=true` bilan olinadi, ya'ni yozuvning `time`i
+   *      O'TISH BOSHLANGAN payt (`visit_from`) — uzoq turgan odam
+   *      uchun bu ancha eski vaqt;
+   *   2. animatsiya navbati ro'yxatdan TASODIFIY yozuv tanlardi, ya'ni
+   *      yangi hodisa kelgan bo'lsa ham 20 talik ro'yxatdagi eski
+   *      yozuv "aniqlanyapti" bo'lib chiqardi.
+   *
+   * Endi `subscribeNvr("all", …)` — "Aniqlanganlar" sahifasi bilan AYNI
+   * SSE. Yangi hodisa server yuborishi bilan ro'yxat boshiga tushadi.
+   *
+   * ⚠️ **SSE YIG'ILMAGAN holda keladi** (`FRONTEND.md` 4-A): yuz kamerasi
+   * odam kadrda turgan HAR SONIYADA yozuv yuboradi. Shuning uchun bir
+   * o'tish bitta qator bo'lib qolishi uchun kamera + `face_id` (yoki
+   * ism) + 45 soniya mezoni bilan birlashtiriladi — `useNvrEvents.merge()`
+   * dagi AYNI qoida, aks holda ro'yxat bitta odamning nusxalari bilan
+   * to'lib ketardi.
+   */
+  const [live, setLive] = useState<NvrEvent[]>([]);
+  useEffect(() => {
+    const stop = subscribeNvr("all", (ev) => {
+      setLive((prev) => {
+        const i = prev.findIndex((e) => sameVisit(e, ev));
+        if (i >= 0) {
+          /* Shu o'tishning yangi kadri — eskisini ALMASHTIRAMIZ (vaqti
+             yangilanadi), ro'yxatga ikkinchi qator qo'shilmaydi. */
+          const next = [...prev];
+          next[i] = ev;
+          return next;
+        }
+        if (prev.some((e) => e.id === ev.id)) return prev;
+        return [ev, ...prev].slice(0, LIVE_KEEP);
+      });
+    });
+    return stop;
+  }, []);
+
+  /** SSE + davriy ro'yxat — `id` bo'yicha birlashtiriladi, yangidan eskiga. */
+  const merged = useMemo(() => {
+    const byId = new Map<number, NvrEvent>();
+    for (const e of live) byId.set(e.id, e);
+    for (const e of q.events as NvrEvent[]) if (!byId.has(e.id)) byId.set(e.id, e);
+    return [...byId.values()].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  }, [live, q.events]);
+
   const blips = useMemo(
-    () => unseenOf(q.events as NvrEvent[]).filter((e) => detectionLevel(e) !== "info").slice(0, MAX_BLIPS),
+    () => unseenOf(merged).filter((e) => detectionLevel(e) !== "info").slice(0, MAX_BLIPS),
     // `seenTick` — tasdiqlanganlar reyestri o'zgarganda qayta hisoblanadi
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [q.events, seenTick]
+    [merged, seenTick]
   );
 
   /* ── Kameralar: HAQIQIY joyida, XARITANING O'ZIDA ──
@@ -257,26 +328,42 @@ export function RadarScreen({ onPick, onOpenMap }: { onPick: (id: number) => voi
   const withImg = useMemo(() => blips.filter((b) => !b.picture_lost && nvrImageUrl(b)), [blips]);
   const [flight, setFlight] = useState<Flight | null>(null);
   const seq = useRef(0);
+  /** Allaqachon "uchirilgan" hodisalar — yangisi birinchi navbatda. */
+  const flownRef = useRef<Set<number>>(new Set());
   useEffect(() => {
     if (withImg.length === 0) {
       setFlight(null);
       return;
     }
-    let last: number | null = null;
-    const spawn = () => {
-      const pool = withImg.filter((b) => b.id !== last);
-      const ev = (pool.length ? pool : withImg)[Math.floor(Math.random() * (pool.length || withImg.length))];
+    /**
+     * `freshOnly` — FAQAT hali ko'rsatilmagan (yangi) hodisa bo'lsa
+     * uchiradi. Ro'yxat o'zgarganda shu rejimda chaqiriladi: yangi
+     * hodisa kelgan bo'lsa DARHOL ko'rinadi, aks holda joriy
+     * animatsiya buzilmaydi.
+     */
+    const spawn = (freshOnly: boolean) => {
+      /* `withImg` yangidan eskiga saralangan — birinchi topilgani ENG
+         YANGI ko'rsatilmagan hodisa. */
+      const fresh = withImg.find((b) => !flownRef.current.has(b.id));
+      if (freshOnly && !fresh) return;
+      /* Yangisi bo'lmasa — sahna jim qolmasin deb eskilaridan aylanadi. */
+      const ev = fresh ?? withImg[Math.floor(Math.random() * withImg.length)];
       if (!ev) return;
-      last = ev.id;
       const from = screenOf(ev.channel);
       /* Joyi noma'lum kamera (jadvalda yo'q) — animatsiya QILINMAYDI:
-         taxminiy nuqtadan chiziq tortish yolg'on bog'lanish bo'lardi. */
+         taxminiy nuqtadan chiziq tortish yolg'on bog'lanish bo'lardi.
+         ⚠️ Shunda ham "ko'rsatilgan" deb belgilanadi, aks holda har
+         chaqiruvda AYNI hodisa qayta tanlanib, navbat qotib qolardi. */
+      flownRef.current.add(ev.id);
+      if (flownRef.current.size > 300) {
+        flownRef.current = new Set([...flownRef.current].slice(-150));
+      }
       if (!from) return;
       seq.current += 1;
       setFlight({ key: seq.current, ev, from, channel: ev.channel });
     };
-    spawn();
-    const iv = window.setInterval(spawn, 3400);
+    spawn(true);
+    const iv = window.setInterval(() => spawn(false), 3400);
     return () => window.clearInterval(iv);
   }, [withImg, screenOf]);
 

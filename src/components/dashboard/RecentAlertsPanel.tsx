@@ -26,7 +26,7 @@ const SHOWN = 4;
  * (`AlertsPage.tsx`) bilan BIR XIL filtr mantig'i, faqat bu yerda
  * so'ralgan yozuvlar soni kichik (kompakt panel uchun).
  *
- * Qator bosilsa — hodisa dossiyesi (`EventDossier`, "Aniqlanganlar"
+ * Qator bosilsa — hodisa ma'lumotlari (`EventDossier`, "Aniqlanganlar"
  * dagi bilan AYNI oyna). Pastda "Barchasi" — "Ogohlantirishlar"
  * bo'limiga o'tadi (to'liq navbat, tasdiqlash tugmasi bilan).
  */
@@ -75,7 +75,7 @@ export function RecentAlertsPanel() {
         <ArrowRight size={12} weight="bold" />
       </button>
 
-      {/* Hodisa dossiyesi — Boshqaruv panelidan CHIQMASDAN */}
+      {/* Hodisa ma'lumotlari — Boshqaruv panelidan CHIQMASDAN */}
       {openId != null && <EventDossier eventId={openId} onClose={() => setOpenId(null)} />}
     </DashPanel>
   );

@@ -10,7 +10,6 @@ import {
   ScanFace,
   BarChart3,
   Building2,
-  FileText,
   Settings,
   Sparkles,
   ChevronsLeft,
@@ -31,15 +30,19 @@ import { LottieIcon } from "@/components/common/LottieIcon";
  */
 const NAV_ITEMS = [
   { id: "Boshqaruv paneli", Icon: Home },
-  /* Ogohlantirishlar — IKKINCHI: operator ishni "menga nima kutyapti"
-     degan savoldan boshlaydi. Bu yerda FAQAT tasdiqlanmagan yozuvlar
-     turadi; butun tarix "Aniqlanganlar" da qoladi. */
-  { id: "Ogohlantirishlar", Icon: BellRing },
+  /* 🔵 **STATISTIKA — IKKINCHI** (2026-09-14, foydalanuvchi so'rovi:
+     "statistika 2ga chiqishi, ogohlantirishlar 4ga tushishi kerak").
+     Boshqaruv panelidan keyin darhol umumiy ko'rsatkichlar keladi,
+     tafsilotga keyin tushiladi. Ilgari bu o'rinda "Ogohlantirishlar"
+     turardi (operator ishni "menga nima kutyapti" degan savoldan
+     boshlaydi degan mulohaza bilan) — u endi 4-o'ringa tushdi. */
+  { id: "Statistika", Icon: BarChart3 },
   /* AI tahlil — YUQORIDA: operator kunni "nima aniqlandi va bu nimani
      anglatadi" degan javobdan boshlaydi, keyin tafsilotga tushadi. */
   { id: "AI tahlil", Icon: Sparkles },
-  // Statistika kameralardan OLDIN: umumiy ko'rsatkichdan tafsilotga
-  { id: "Statistika", Icon: BarChart3 },
+  /* Ogohlantirishlar — bu yerda FAQAT tasdiqlanmagan yozuvlar turadi;
+     butun tarix "Aniqlanganlar" da qoladi. */
+  { id: "Ogohlantirishlar", Icon: BellRing },
   { id: "Aniqlanganlar", Icon: ScanFace },
   // O'quvchi + o'qituvchi + xodim BITTA bo'limda ("Shaxslar")
   { id: "Shaxslar", Icon: Users },
@@ -50,7 +53,11 @@ const NAV_ITEMS = [
   { id: "Hodisalar", Icon: AlertTriangle },
   { id: "Geo Analitika", Icon: Globe },
   { id: "Kameralar", Icon: Camera },
-  { id: "Hisobotlar", Icon: FileText },
+  /* ⚠️ **"Hisobotlar" SIDEBARDAN OLIB TASHLANDI** (2026-09-14,
+     foydalanuvchi so'rovi). Sahifaning O'ZI (`ReportsPage`) va uning
+     `activePage` id'si TEGILMAGAN — loyiha konvensiyasi bo'yicha
+     ishlatilmay qolgan fayl o'chirilmaydi, qaytarish uchun shu
+     ro'yxatga bitta qator qo'shish kifoya. */
   { id: "Sozlamalar", Icon: Settings },
 ] as const;
 

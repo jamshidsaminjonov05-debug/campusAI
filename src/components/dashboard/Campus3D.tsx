@@ -718,7 +718,7 @@ export function Campus3D({ autoInterior = false, onInteriorClose, className = "n
   const selectedTeknikum = useAppStore((s) => s.selectedTeknikum);
   /* Kamera oqimi SHU sahnada ochiladi (`CameraQuickView`). */
   const [camChannel, setCamChannel] = useState<string | null>(null);
-  /* Hodisa dossiyesi ham SHU sahnada — bo'lim almashmaydi. */
+  /* Hodisa ma'lumotlari ham SHU sahnada — bo'lim almashmaydi. */
   const [dossierId, setDossierId] = useState<number | null>(null);
   const selectedTk = useMemo(
     () => INSTITUTIONS.find((t) => t.id === selectedTeknikum) ?? null,
@@ -1273,7 +1273,7 @@ export function Campus3D({ autoInterior = false, onInteriorClose, className = "n
         </span>
       </div>
 
-      {/* Marker kartochkasi — bosilsa hodisa DOSSIYESI shu yerda ochiladi.
+      {/* Marker kartochkasi — bosilsa hodisa MA'LUMOTLARI shu yerda ochiladi.
           ⚠️ Ilgari `setActivePage("Aniqlanganlar")` chaqirilardi va
           foydalanuvchi 3D kampusdan chiqib ketardi (qavat, kamera va
           kamera burchagi tanlovi yo'qolardi). */}
@@ -1306,7 +1306,7 @@ export function Campus3D({ autoInterior = false, onInteriorClose, className = "n
       {/* Kamera oqimi — 3D kampus USTIDA, bo'lim almashmasdan. */}
       <CameraQuickView channel={camChannel} onClose={() => setCamChannel(null)} />
 
-      {/* Hodisa dossiyesi — "Aniqlanganlar" dagi bilan AYNI oyna. */}
+      {/* Hodisa ma'lumotlari — "Aniqlanganlar" dagi bilan AYNI oyna. */}
       <EventDossier eventId={dossierId} onClose={() => setDossierId(null)} />
     </div>
   );

@@ -7,16 +7,14 @@ import { UnsavedExitDialog } from "@/components/common/UnsavedExitDialog";
 import { createPortal } from "react-dom";
 import { CheckCircle, UserPlus, X } from "@phosphor-icons/react";
 import { enrollFaceFromEvent, type NvrEvent, type NvrPersonRole } from "@/lib/nvrApi";
+import { useT } from "@/i18n";
 
 /**
  * Kuzatuv posti yuz bazasi FAQAT ikkita toifani biladi — `NvrPersonRole`
  * da uchinchisi yo'q. "Xodim" bu yerda ATAYLAB yo'q (pastdagi izohga
  * qarang), boshqa hech narsa o'ylab topilmagan.
  */
-const ROLES: { id: NvrPersonRole; label: string }[] = [
-  { id: "student", label: "O'quvchi" },
-  { id: "teacher", label: "O'qituvchi" },
-];
+const ROLES: NvrPersonRole[] = ["student", "teacher"];
 
 /**
  * Hodisa oynasidan TO'G'RIDAN-TO'G'RI shaxs qo'shish.
@@ -52,6 +50,8 @@ const ROLES: { id: NvrPersonRole; label: string }[] = [
  * qo'shiladi (`FaceDatabasePage.tsx`, u ham xuddi shu chegara bilan).
  */
 export function EnrollPerson({ ev }: { ev: NvrEvent }) {
+  const dsr = useT().nvr.dossier;
+  const tx = dsr.enroll;
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [last, setLast] = useState("");
@@ -114,9 +114,9 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
    */
   function errorText(e: unknown): string {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/^409/.test(msg) || /allaqachon/.test(msg)) return "Shu ism-familiyali odam bazada allaqachon bor";
-    if (/^400/.test(msg)) return "Ism to'ldirilmagan yoki bu hodisada rasm yo'q";
-    if (/^502/.test(msg)) return "Kuzatuv posti rasmni qabul qilmadi — birozdan keyin qayta urinib ko'ring";
+    if (/^409/.test(msg) || /allaqachon/.test(msg)) return tx.errDuplicate;
+    if (/^400/.test(msg)) return tx.errInvalid;
+    if (/^502/.test(msg)) return tx.errDevice;
     return msg;
   }
 
@@ -130,7 +130,7 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
       <section className="nvr-dsr-block">
         <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-300">
           <CheckCircle size={14} weight="fill" />
-          {doneName} bazaga qo&apos;shildi — kamera bundan keyin ism bilan taniydi
+          {tx.done(doneName)}
         </p>
       </section>
     );
@@ -140,7 +140,7 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
      ⚠️ Ilgari forma tafsilot oynasining TOR chap ustunida ochilardi
      (~300 px): maydonlar siqilib, "Familiya/Ism" bir qatorga zo'rg'a
      sig'ardi va tugmalar pastga tushib ketardi. Endi u alohida modal —
-     `z-[95]`, ya'ni hodisa dossiyesidan (`z-[60]`) YUQORIDA. */
+     `z-[95]`, ya'ni hodisa ma'lumotlaridan (`z-[60]`) YUQORIDA. */
   const form = (
     <div
       className="fixed inset-0 z-[95] grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-md"
@@ -149,7 +149,7 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Yuz bazasiga qo'shish"
+        aria-label={tx.title}
         onClick={(e) => e.stopPropagation()}
         className="geo-strip-card w-[min(460px,94vw)] rounded-2xl p-4"
       >
@@ -158,12 +158,12 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
             <UserPlus size={16} weight="bold" />
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block text-[13px] font-bold text-slate-100">Yuz bazasiga qo&apos;shish</b>
+            <b className="block text-[13px] font-bold text-slate-100">{tx.title}</b>
             <i className="block text-[10px] not-italic text-slate-500">
-              Hodisaning shu kadri yuz surati bo&apos;lib saqlanadi
+              {tx.sub}
             </i>
           </span>
-          <button type="button" onClick={() => requestClose()} className="text-slate-400 hover:text-white" aria-label="Yopish">
+          <button type="button" onClick={() => requestClose()} className="text-slate-400 hover:text-white" aria-label={tx.close}>
             <X size={16} />
           </button>
         </header>
@@ -173,13 +173,13 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
             <input
               value={last}
               onChange={(e) => setLast(e.target.value)}
-              placeholder="Familiya"
+              placeholder={tx.lastName}
               className="hik-input h-9 px-2.5 text-[12px] text-slate-100 outline-none placeholder:text-slate-600"
             />
             <input
               value={first}
               onChange={(e) => setFirst(e.target.value)}
-              placeholder="Ism *"
+              placeholder={tx.firstName}
               className="hik-input h-9 px-2.5 text-[12px] text-slate-100 outline-none placeholder:text-slate-600"
             />
           </div>
@@ -188,16 +188,16 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
           <div className="flex gap-1.5">
             {ROLES.map((r) => (
               <button
-                key={r.id}
+                key={r}
                 type="button"
-                onClick={() => setRole(r.id)}
+                onClick={() => setRole(r)}
                 className={`flex-1 rounded-lg border py-2 text-[11.5px] font-semibold transition-colors ${
-                  role === r.id
+                  role === r
                     ? "border-ice/60 bg-ice/[0.14] text-white"
                     : "border-white/[0.1] bg-white/[0.03] text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {r.label}
+                {dsr.roles[r]}
               </button>
             ))}
           </div>
@@ -205,7 +205,7 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={role === "student" ? "Sinf / guruh" : "Bo'lim / lavozim"}
+            placeholder={role === "student" ? tx.noteStudent : tx.noteTeacher}
             className="hik-input h-9 w-full px-2.5 text-[12px] text-slate-100 outline-none placeholder:text-slate-600"
           />
 
@@ -225,14 +225,14 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
               {enroll.isPending && (
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-300/40 border-t-emerald-300" />
               )}
-              Saqlash
+              {tx.save}
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="flex-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[12px] text-slate-400 hover:text-white"
             >
-              Bekor
+              {tx.cancel}
             </button>
           </div>
         </div>
@@ -253,14 +253,14 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
 
   return (
     <section className="nvr-dsr-block">
-      <p className="nvr-dsr-h">Yuz bazasi</p>
+      <p className="nvr-dsr-h">{tx.section}</p>
       <button
         type="button"
         onClick={() => setOpen(true)}
         className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-400/10 py-2 text-[11.5px] font-semibold text-emerald-300 transition-colors hover:border-emerald-400/80 hover:text-emerald-200"
       >
         <UserPlus size={14} weight="bold" />
-        Bazaga qo&apos;shish
+        {tx.button}
       </button>
 
       {/* ⚠️ PORTAL: dossiye oynasida `backdrop-filter` bor va u

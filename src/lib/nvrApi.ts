@@ -681,6 +681,24 @@ export async function deleteNvrPerson(id: number): Promise<{ ok: boolean; remove
 }
 
 /**
+ * Hodisani BUTUNLAY o'chirish — panel API `DELETE /api/events/{id}`.
+ *
+ * ⚠️ Ochiq API'da (`/api/v1`) butun hodisani o'chiradigan yo'l YO'Q —
+ * u yerda faqat `DELETE /events/{id}/image` (RASMNI o'chiradi, hodisa
+ * qoladi). O'sha yo'lning o'z hujjati butun hodisa uchun AYNAN shu panel
+ * manzilini ko'rsatadi. O'lchandi (2026-09-14, mavjud bo'lmagan id bilan):
+ * ikkala yo'l ham `404 "Hodisa topilmadi"` qaytardi — ya'ni yo'l bor va
+ * proxy `DELETE`ni o'tkazadi.
+ *
+ * ⚠️ QAYTARIB BO'LMAYDI va hamma operator uchun o'chadi (yozuv serverda).
+ * `404` — allaqachon o'chirilgan, maqsadga erishilgan deb qabul qilinadi.
+ */
+export async function deleteNvrEvent(id: number): Promise<void> {
+  const res = await fetch(panelUrl(`/api/events/${id}`), { method: "DELETE" });
+  if (!res.ok && res.status !== 404) throw new Error(`kuzatuv posti hodisa o'chirish: ${res.status}`);
+}
+
+/**
  * Hodisaning O'Z KADRIDAN yuz bazasiga qo'shish — `POST /events/{id}/enroll`
  * (`FRONTEND.md` 10-bo'lim, "Kadrdagi yuzni qo'shish").
  *

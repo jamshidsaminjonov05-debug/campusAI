@@ -250,7 +250,7 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
 
            Buning O'RNI YO'QLIGI aynan "bitta kartochka bosilganda
            qo'shimcha so'rovlar" muammosining sababi edi: prefetch'siz
-           video HAR DOIM foydalanuvchi dossiyeni OCHGAN paytda
+           video HAR DOIM foydalanuvchi ma'lumotlarni OCHGAN paytda
            aylantirila boshlaydi (`EventVideo.tsx` → `probeVideo()` →
            `state:"preparing"` → har 5 soniyada QAYTA so'raladigan
            `refetchInterval`). Endi ro'yxat yuklanishi bilanoq server

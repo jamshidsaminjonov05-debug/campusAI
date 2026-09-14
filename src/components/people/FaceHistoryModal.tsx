@@ -59,7 +59,7 @@ import type { NvrEvent } from "@/lib/nvrApi";
  * bo'yicha topiladi (`PeoplePage.tsx` — aniq FK yo'q, `FRONTEND.md` buni
  * bermaydi).
  *
- * ⚠️ **Kadr bosilsa hodisa DOSSIYESI ochiladi** (`EventDossier`) — bu
+ * ⚠️ **Kadr bosilsa hodisa MA'LUMOTLARI ochiladi** (`EventDossier`) — bu
  * oynaning USTIDAN, "Aniqlanganlar" dagi bilan AYNI oyna: video, ramka,
  * yuz belgilari.
  */
@@ -67,6 +67,7 @@ export function FaceHistoryModal({
   faceId,
   personId,
   onClose,
+  zClass = "z-[85]",
 }: {
   /** Kuzatuv jurnalidagi yuz raqami. */
   faceId?: number;
@@ -82,6 +83,12 @@ export function FaceHistoryModal({
    */
   personId?: number;
   onClose: () => void;
+  /**
+   * Oyna z-qatlami. Default `z-[85]`; hodisa dossiyesidan ("Shaxs haqida
+   * ma'lumot") ochilganda BALANDROQ beriladi — dossiye `EventDossier`
+   * orqali `z-[92]` o'ramda turishi mumkin va bu oyna uning ORTIDA qolardi.
+   */
+  zClass?: string;
 }) {
   const pnl = useT().people.panel;
   const t = useT();
@@ -206,7 +213,7 @@ export function FaceHistoryModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-[85] grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-sm"
+      className={`fixed inset-0 ${zClass} grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-sm`}
     >
       <div
         role="dialog"

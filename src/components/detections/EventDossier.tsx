@@ -8,7 +8,7 @@ import { getEvent, type NvrEvent } from "@/lib/nvrApi";
 import { DetectionModal } from "@/components/detections/DetectionsPage";
 
 /**
- * HODISA DOSSIYESI — `id` bo'yicha ochiladigan to'liq oyna.
+ * HODISA MA'LUMOTLARI — `id` bo'yicha ochiladigan to'liq oyna.
  *
  * "Aniqlanganlar" bo'limida kartochka bosilganda ochiladigan AYNI oyna
  * (`DetectionModal`), faqat bu yerda yozuv qo'lda emas, SERVERDAN olinadi.
@@ -54,7 +54,7 @@ export function EventDossier({ eventId, onClose }: { eventId: number | null; onC
        REACT DARAXTI bo'yicha ko'tariladi (DOM daraxti bo'yicha emas):
        dossiye `document.body` ga chiqarilgan bo'lsa-da, uning ichidagi
        klik ochuvchi modalning o'ramiga yetib borardi. O'sha o'ramda esa
-       `onClick={onClose}` turibdi — natijada dossiyeni yopganda ostidagi
+       `onClick={onClose}` turibdi — natijada ma'lumotlarni yopganda ostidagi
        oyna ham birga yopilib ketardi. */
     <div className="fixed inset-0 z-[92]" onClick={(e) => e.stopPropagation()}>
       {ev ? (

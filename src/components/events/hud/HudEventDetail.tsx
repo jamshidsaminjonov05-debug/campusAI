@@ -21,7 +21,7 @@ import type { DetectionEvent } from "@/lib/detectionEvents";
  * chiqarardi. Ya'ni ekranning ko'p qismi HAQIQIY hodisaga tegishli emas
  * edi va operatorni chalg'itardi.
  *
- * Endi AYNAN o'sha hodisaning dossiyesi ochiladi — "Aniqlanganlar"
+ * Endi AYNAN o'sha hodisaning ma'lumotlari ochiladi — "Aniqlanganlar"
  * bo'limidagi bilan BITTA komponent (`DetectionModal`): haqiqiy kadr,
  * nishon ramkalari, yuz belgilari, video va o'tish kadrlari.
  *

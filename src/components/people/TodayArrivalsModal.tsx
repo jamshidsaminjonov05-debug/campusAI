@@ -58,7 +58,7 @@ export function TodayArrivalsModal({
   const [periodId, setPeriodId] = useState(initialPeriod);
   const [q, setQ] = useState("");
   const [known, setKnown] = useState<"all" | "yes" | "no">(initialKnown);
-  /* Bosilgan yozuvning DOSSIYESI — "Aniqlanganlar" dagi bilan ayni oyna. */
+  /* Bosilgan yozuvning MA'LUMOTLARI — "Aniqlanganlar" dagi bilan ayni oyna. */
   const [openId, setOpenId] = useState<number | null>(null);
   /** Ro'yxat/kartochka — `AttendanceListModal`dagi bilan AYNI naqsh (2026-09-11). */
   const [viewMode, setViewMode] = useViewMode("arrivals-list", "card");

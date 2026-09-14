@@ -644,7 +644,7 @@ function DrilldownRow({ r, onOpen }: { r: NvrAttendanceRow; onOpen: () => void }
       type="button"
       onClick={onOpen}
       disabled={r.event_id == null}
-      title={r.event_id != null ? `${r.full_name} — hodisa dossiyesi` : r.full_name}
+      title={r.event_id != null ? `${r.full_name} — hodisa ma'lumotlari` : r.full_name}
       className="flex w-full items-center gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-left transition-colors hover:border-ice/30 hover:bg-ice/[0.06] disabled:cursor-default disabled:hover:border-white/[0.06] disabled:hover:bg-white/[0.02]"
     >
       <LibraryPhoto

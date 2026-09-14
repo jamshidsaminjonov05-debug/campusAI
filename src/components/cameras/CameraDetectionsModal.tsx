@@ -38,12 +38,12 @@ export function CameraDetectionsModal({
   useModalHistory(onClose);
   const t = useT();
   const ch = String(channel);
-  /* Bosilgan kadrning DOSSIYESI — "Aniqlanganlar" bo'limidagi bilan AYNI
+  /* Bosilgan kadrning MA'LUMOTLARI — "Aniqlanganlar" bo'limidagi bilan AYNI
      oyna (`DetectionModal`).
      ⚠️ Ilgari bu yerda faqat RASM KO'RUVCHISI (`ImageLightbox`) ochilardi:
      kadrni kattalashtirish mumkin edi, lekin kim/qachon/qaysi kamera,
      nishon ramkalari, yuz belgilari, video va o'tish kadrlari
-     ko'rinmasdi. Kattalashtirish yo'qolmadi — u dossiyening o'z ichida
+     ko'rinmasdi. Kattalashtirish yo'qolmadi — u ma'lumotlarning o'z ichida
      (butun kadr bosilganda). */
   const [openId, setOpenId] = useState<number | null>(null);
   const { events, isLoading } = useDetections({ category: "all", channel: ch, limit: 100 });
@@ -114,7 +114,7 @@ export function CameraDetectionsModal({
         </div>
       </div>
 
-      {/* Hodisa dossiyesi — shu oynaning USTIDAN (`EventDossier` o'zi
+      {/* Hodisa ma'lumotlari — shu oynaning USTIDAN (`EventDossier` o'zi
           portal qiladi va z-index'ni hal etadi). */}
       <EventDossier eventId={openId} onClose={() => setOpenId(null)} />
     </motion.div>
@@ -136,7 +136,7 @@ function DetectionShot({ ev, onOpen }: { ev: NvrEvent; onOpen: () => void }) {
       className="overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--c)_35%,transparent)] bg-black/40 transition-colors hover:border-[color:var(--c)]"
       title={`${nvrDateTime(ev.time)} — tafsilotini ochish`}
     >
-      {/* Kadr BOSILADI — hodisa dossiyesi ochiladi */}
+      {/* Kadr BOSILADI — hodisa ma'lumotlari ochiladi */}
       <button type="button" onClick={onOpen} className="relative block w-full cursor-pointer aspect-[4/3] bg-[#04070f]">
         {shot ? (
           /* eslint-disable-next-line @next/next/no-img-element */
