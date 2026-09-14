@@ -110,6 +110,9 @@ export function StatAttendance({ from, to }: { from: string; to: string }) {
         from={from}
         to={to}
         points={range.points}
+        /* Bugungi katak kun TUGAGANDAN keyin bo'yaladi — sababi
+           `AttendanceDrilldown` dagi `todayDone` izohida. */
+        todayDone={today.deadlinePassed}
         onSelectDay={setDay}
         onOpenEvent={setOpenEvent}
         onOpenSettings={() => setSettingsOpen(true)}

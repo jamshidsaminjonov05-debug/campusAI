@@ -310,6 +310,26 @@ const CAMPUS_LAYERS = [
 ] as const;
 
 /**
+ * Kampus qatlamlariga filtr — FAQAT MAVJUD bo'lganlariga.
+ *
+ * 🔴 **"Cannot filter non-existing layer" XATOSI** (2026-09-14,
+ * foydalanuvchi konsoldan xabar qildi). `CAMPUS_LAYERS` — ro'yxat,
+ * lekin qatlamlarning HAMMASI ham har doim qo'shilavermaydi: masalan
+ * `app-campus-trees` yashil zona topilmasa (kampusda daraxt nuqtasi
+ * chiqmasa) UMUMAN yaratilmaydi. Ro'yxat bo'ylab ko'r-ko'rona
+ * `setFilter` chaqirilsa MapLibre xato hodisasini otadi, u esa
+ * `map.on("error")` da "tile/source" naqshiga TUSHMAGANI uchun
+ * xaritani `status: "error"` ga o'tkazib yuborardi — natijada xarita
+ * o'rniga bo'sh ekran qolardi.
+ */
+function setCampusFilter(map: MlMap, filter: Parameters<MlMap["setFilter"]>[1]): void {
+  for (const id of CAMPUS_LAYERS) {
+    if (map.getLayer(id)) map.setFilter(id, filter);
+  }
+}
+
+
+/**
  * **DARAXT IKONKASI — canvas'da chiziladi** (2026-09-05).
  *
  * ⚠️ Loyiha TO'LIQ OFFLINE: sprite yoki PNG yuklab bo'lmaydi, uslub
@@ -1325,7 +1345,7 @@ export const MapLibreMap = memo(function MapLibreMap({
         // `selected` rejimida boshida hech narsa ko'rinmasin — hudud faqat
         // yorliq bosilgandan keyin chiqadi
         if (campusAreas === "selected") {
-          for (const id of CAMPUS_LAYERS) map.setFilter(id, ["==", ["get", "id"], "___none___"]);
+          setCampusFilter(map, ["==", ["get", "id"], "___none___"]);
           setCampusReady(true);
           return;
         }
@@ -1408,11 +1428,11 @@ export const MapLibreMap = memo(function MapLibreMap({
 
     if (campusAreas === "selected") {
       // `selected` rejimida boshqa hududlar umuman chizilmaydi
-      for (const id of CAMPUS_LAYERS) map.setFilter(id, ["==", ["get", "id"], key]);
+      setCampusFilter(map, ["==", ["get", "id"], key]);
     } else {
       // `all` rejimida HAMMASI ko'rinadi — oldingi "selected" filtri bo'lsa
       // (masalan "Umumiy xarita" tugmasi bosilganda) tozalanadi.
-      for (const id of CAMPUS_LAYERS) map.setFilter(id, null);
+      setCampusFilter(map, null);
     }
 
     // Tanlangan hudud to'yingroq va chegarasi qalinroq. Bino RANGI tanlovga
@@ -1465,7 +1485,11 @@ export const MapLibreMap = memo(function MapLibreMap({
     if (!map || status !== "ready" || !regions || !map.getLayer("app-regions-selected")) return;
     const key = selectedRegion ?? "___none___";
     map.setFilter("app-regions-selected", ["==", ["get", "region_name"], key]);
-    map.setFilter("app-regions-selected-line", ["==", ["get", "region_name"], key]);
+    /* ⚠️ Ikkinchi qatlam ALOHIDA tekshiriladi — birinchisi bor deb
+       ikkinchisi ham bor deb o'ylash xato (yuqoridagi izohga qarang). */
+    if (map.getLayer("app-regions-selected-line")) {
+      map.setFilter("app-regions-selected-line", ["==", ["get", "region_name"], key]);
+    }
     if (!selectedRegion) return;
 
     /* ⚠️ KAMPUS TANLANGAN BO'LSA KADR VILOYATGA OLINMAYDI.

@@ -8,7 +8,7 @@ import {
 } from "framer-motion";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
-import { ThemeSwitcher } from "@/theme";
+import { ThemeSwitcher, useScheme } from "@/theme";
 import {
   ArrowLeft,
   CameraOff,
@@ -158,6 +158,9 @@ function CardHeader({ icon, title, subtitle }: { icon: ReactNode; title: string;
 
 export function AuthPage() {
   const login = useAuthStore((s) => s.login);
+  /* Yorug'/qorong'i — bir nechta rang QORONG'I shisha uchun tanlangan,
+     yorug' rejimda ular oqarib ketadi (pastdagi "Parolni unutdingizmi?"). */
+  const scheme = useScheme();
   const [method, setMethod] = useState<Method>("password");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -559,7 +562,18 @@ export function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setNotice("Parolni tiklash uchun tizim administratoriga murojaat qiling")}
-                    className="font-medium text-[#AFCBFF] transition-colors hover:text-[#C8DAFF]"
+                    /* ⚠️ **YORUG' REJIMDA KO'RINMAY QOLGAN EDI** (2026-09-14,
+                       foydalanuvchi skrinshot bilan ko'rsatdi): `#AFCBFF` —
+                       QORONG'I shisha karta uchun tanlangan och ko'k, karta
+                       esa yorug' mavzuda oqaradi va yozuv oq fonda oq
+                       ustida qolardi. Qolgan `#AFCBFF` lar (kartochka
+                       sarlavhasidagi ikonkalar) o'z QORONG'I gradient
+                       qutisi ichida turadi — ular o'zgarmaydi. */
+                    className={
+                      scheme === "light"
+                        ? "font-medium text-[#1D4ED8] transition-colors hover:text-[#1E40AF]"
+                        : "font-medium text-[#AFCBFF] transition-colors hover:text-[#C8DAFF]"
+                    }
                   >
                     Parolni unutdingizmi?
                   </button>

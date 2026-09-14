@@ -16,6 +16,7 @@ import { MapLibreMap, type YMarker } from "@/map/maplibre/MapLibreMap";
 import { nvrImageUrl, type NvrEvent } from "@/lib/nvrApi";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useModalHistory } from "@/hooks/useModalHistory";
+import { DetectionThumb } from "@/components/detections/DetectionThumb";
 
 /*
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -72,6 +73,11 @@ const BARS = 24;
 const TRAIL = 8; // nur izi bo'laklari
 /** Chap ro'yxat kengligi (px) — kartochka shu tomonga uchadi. */
 const LIST_W = 228;
+/** Bitta kartochka balandligi va oraliq — sig'imni hisoblash uchun
+ *  (`gap-1.5` = 6 px bilan MOS bo'lishi shart, aks holda oxirgi
+ *  kartochka pastdan chiqib ketadi). */
+const LIST_ITEM_H = 46;
+const LIST_GAP = 6;
 
 function polar(r: number, deg: number): [number, number] {
   const a = (deg * Math.PI) / 180;
@@ -116,6 +122,23 @@ const PALETTE = {
     line: "rgba(100,116,139,0.36)",
     lineLit: "rgba(71,85,105,0.9)",
     core: "rgba(255,255,255,0.86)",
+    /* ── Ro'yxat/kartochka SIRTLARI (2026-09-14) ──
+       ⚠️ Ilgari bu yerlar QATTIQ `bg-[rgba(11,18,32,…)]` edi. Bunday
+       bir martalik hex/rgba sinf `index.css` dagi yorug' mavzu
+       ro'yxatlariga TUSHMAYDI (CLAUDE.md, "Mavzu" bo'limi), ya'ni
+       yorug' rejimda kartochka QORONG'I qolardi; matn esa
+       `text-slate-100` bo'lgani uchun o'sha yerda QORAYARDI —
+       natijada qora fonda qora yozuv, hech narsa o'qilmasdi
+       (foydalanuvchi skrinshot bilan ko'rsatdi).
+       Endi rang MAVZUDAN olinadi va INLINE beriladi: inline uslubga
+       `text-slate-*` qoidalari (ular `!important`) umuman tegmaydi. */
+    listBg: "rgba(255,255,255,0.78)",
+    cardBg: "rgba(255,255,255,0.94)",
+    cardBorder: "rgba(15,23,42,0.12)",
+    cardBorderHi: "rgba(217,119,6,0.75)",
+    text: "#0F172A",
+    textSoft: "#475569",
+    edge: "rgba(15,23,42,0.10)",
     /* Parda — markaz ochiqroq (kampus ko'rinsin), chetlari quyuq (matn o'qilsin) */
     veil: "radial-gradient(60% 62% at 50% 55%, rgba(243,245,248,0.42) 0%, rgba(243,245,248,0.8) 62%, rgba(243,245,248,0.95) 100%)",
   },
@@ -129,6 +152,13 @@ const PALETTE = {
     line: "rgba(148,163,184,0.3)",
     lineLit: "rgba(203,213,225,0.85)",
     core: "rgba(7,11,20,0.82)",
+    listBg: "rgba(6,11,22,0.55)",
+    cardBg: "rgba(11,18,32,0.86)",
+    cardBorder: "rgba(255,255,255,0.09)",
+    cardBorderHi: "rgba(251,191,36,0.7)",
+    text: "#E2E8F0",
+    textSoft: "#94A3B8",
+    edge: "rgba(255,255,255,0.06)",
     veil: "radial-gradient(60% 62% at 50% 55%, rgba(7,11,20,0.4) 0%, rgba(7,11,20,0.8) 62%, rgba(7,11,20,0.95) 100%)",
   },
 } as const;
@@ -498,6 +528,7 @@ export function RadarScreen({ onPick, onOpenMap }: { onPick: (id: number) => voi
       <BlipList
         items={blips}
         r={r}
+        p={p}
         width={LIST_W}
         justLanded={flight?.ev.id ?? null}
         onPick={setModalEv}
@@ -554,15 +585,19 @@ function FlightLayer({
         <div key={flight.key} className="pointer-events-none absolute inset-0 z-[25] overflow-hidden">
           {/* Kameradan chiqayotgan chiziq */}
           <svg className="absolute inset-0 h-full w-full">
+            {/* ⚠️ `x2`/`y2` `initial` DA HAM bo'lishi SHART. Ular SVG
+                ATRIBUTLARI: framer-motion animatsiya qiladigan qiymatning
+                boshlang'ichini `initial` dan o'qiydi va u yerda
+                bo'lmasa `undefined` yuboradi — brauzer konsolida
+                `<line> attribute x2: Expected length, "undefined"`
+                xatosi shundan edi (2026-09-14 da tuzatildi). */}
             <motion.line
               x1={flight.from.x}
               y1={flight.from.y}
-              x2={flight.from.x}
-              y2={flight.from.y}
               stroke={p.lineLit}
               strokeWidth={1.2}
               strokeDasharray="4 4"
-              initial={{ opacity: 0 }}
+              initial={{ opacity: 0, x2: flight.from.x, y2: flight.from.y }}
               animate={{ x2: flight.from.x - 46, y2: flight.from.y - 34, opacity: [0, 1, 1, 0] }}
               transition={{ duration: 2.8, times: [0, 0.15, 0.55, 1], ease: "easeOut" }}
             />
@@ -587,8 +622,8 @@ function FlightLayer({
             onAnimationComplete={() => onDone(flight.key)}
           >
             <div
-              className="w-[148px] overflow-hidden rounded-xl border-2 bg-[#0B1220] shadow-[0_18px_38px_-14px_rgba(0,0,0,0.8)]"
-              style={{ borderColor: LEVEL_TONE[detectionLevel(flight.ev)] }}
+              className="w-[148px] overflow-hidden rounded-xl border-2 shadow-[0_18px_38px_-14px_rgba(0,0,0,0.55)]"
+              style={{ borderColor: LEVEL_TONE[detectionLevel(flight.ev)], background: p.cardBg }}
             >
               <img
                 src={nvrImageUrl(flight.ev) ?? ""}
@@ -599,8 +634,8 @@ function FlightLayer({
                 }}
               />
               <div className="px-2 py-1">
-                <p className="truncate text-[11px] font-semibold text-slate-100">{nvrEventLabel(flight.ev)}</p>
-                <p className="text-[10px] text-slate-400">{time(flight.ev.time)}</p>
+                <p className="truncate text-[11px] font-semibold" style={{ color: p.text }}>{nvrEventLabel(flight.ev)}</p>
+                <p className="text-[10px]" style={{ color: p.textSoft }}>{time(flight.ev.time)}</p>
               </div>
             </div>
           </motion.div>
@@ -622,6 +657,7 @@ function FlightLayer({
 function BlipList({
   items,
   r,
+  p,
   width,
   justLanded,
   onPick,
@@ -629,22 +665,57 @@ function BlipList({
 }: {
   items: NvrEvent[];
   r: Messages["dashboard"]["radar"];
+  /** Mavzu palitrasi — sirt va matn rangi SHUNDAN (yorug'/qorong'i). */
+  p: (typeof PALETTE)[keyof typeof PALETTE];
   width: number;
   justLanded: number | null;
   onPick: (ev: NvrEvent) => void;
   time: (iso: string) => string;
 }) {
+  /**
+   * ⚠️ **AYLANTIRISH YO'Q — nechta kartochka SIG'SA, shuncha chiziladi**
+   * (2026-09-14, foydalanuvchi so'rovi: "to'liq pastgacha tushmasligi
+   * kerak, scrolling bo'lmasligi kerak, tag qismida 100 px joy ochiq
+   * tursin").
+   *
+   * Ro'yxat balandligi ekranga qarab o'zgaradi, shuning uchun sig'im
+   * QAT'IY son bilan emas, O'LCHAB topiladi (`ResizeObserver`): aks
+   * holda past ekranda oxirgi kartochka pastdan chiqib ketardi, baland
+   * ekranda esa bo'sh joy behuda qolardi.
+   */
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState(0);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setAvail(e.contentRect.height));
+    ro.observe(el);
+    setAvail(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, []);
+
+  const capacity = Math.max(1, Math.floor((avail + LIST_GAP) / (LIST_ITEM_H + LIST_GAP)));
+  const shown = items.slice(0, capacity);
+  /* Sig'magani JIM qoldirilmaydi — sarlavha yonida "+N" bo'lib turadi
+     (kartochka uyasini egallamasin deb aynan sarlavhada). */
+  const hidden = items.length - shown.length;
+
   return (
     <div
-      className="absolute bottom-0 left-0 top-0 z-20 flex flex-col gap-2 border-r border-white/[0.06] bg-[rgba(6,11,22,0.55)] px-3 py-4 backdrop-blur-[2px]"
-      style={{ width }}
+      /* `bottom-[100px]` — pastda ATAYLAB ochiq joy (so'rov bo'yicha). */
+      className="absolute bottom-[100px] left-0 top-0 z-20 flex flex-col gap-2 px-3 py-4 backdrop-blur-[2px]"
+      style={{ width, background: p.listBg, borderRight: `1px solid ${p.edge}` }}
     >
-      <p className="px-1 text-[11px] font-bold uppercase leading-tight tracking-[0.14em] text-slate-400">{r.list}</p>
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-0.5">
+      <p className="flex items-baseline gap-1.5 px-1 text-[11px] font-bold uppercase leading-tight tracking-[0.14em]" style={{ color: p.textSoft }}>
+        <span className="min-w-0 flex-1">{r.list}</span>
+        {hidden > 0 && <span className="flex-none font-mono text-[10px] opacity-80">+{hidden}</span>}
+      </p>
+      {/* ⚠️ `overflow-hidden` — `overflow-y-auto` EMAS: aylantirish yo'q. */}
+      <div ref={boxRef} className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
         {items.length === 0 ? (
-          <p className="px-1 text-[11.5px] leading-snug text-slate-500">{r.empty}</p>
+          <p className="px-1 text-[11.5px] leading-snug" style={{ color: p.textSoft }}>{r.empty}</p>
         ) : (
-          items.map((ev) => {
+          shown.map((ev) => {
             const landed = justLanded === ev.id;
             return (
               <motion.button
@@ -654,16 +725,30 @@ function BlipList({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 onClick={() => onPick(ev)}
-                className={`flex flex-none flex-col items-start gap-0.5 rounded-lg border bg-[rgba(11,18,32,0.86)] px-2.5 py-2 text-left transition-colors hover:border-white/25 ${
-                  landed ? "border-amber-400/70" : "border-white/[0.09]"
-                }`}
+                style={{
+                  height: LIST_ITEM_H,
+                  background: p.cardBg,
+                  border: `1px solid ${landed ? p.cardBorderHi : p.cardBorder}`,
+                }}
+                className="flex flex-none items-center gap-2 rounded-lg p-1.5 text-left transition-colors"
               >
-                <span className="flex w-full items-center gap-2">
-                  <span className="h-2 w-2 flex-none rounded-full" style={{ background: LEVEL_TONE[detectionLevel(ev)] }} />
-                  <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-100">{nvrEventLabel(ev)}</span>
-                </span>
-                <span className="w-full truncate pl-4 text-[10.5px] text-slate-400">
-                  {cameraPlaceLabel(ev.channel, ev.camera)} · {time(ev.time)}
+                {/* Kadr — ekranga kirganda yuklanadi (`DetectionThumb`),
+                    `picture_lost` da rasm UMUMAN so'ralmaydi. */}
+                <DetectionThumb
+                  id={ev.id}
+                  pictureLost={ev.picture_lost}
+                  className="h-full w-[46px] flex-none rounded-md"
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex w-full items-center gap-1.5">
+                    <span className="h-2 w-2 flex-none rounded-full" style={{ background: LEVEL_TONE[detectionLevel(ev)] }} />
+                    <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" style={{ color: p.text }}>
+                      {nvrEventLabel(ev)}
+                    </span>
+                  </span>
+                  <span className="w-full truncate text-[10.5px]" style={{ color: p.textSoft }}>
+                    {cameraPlaceLabel(ev.channel, ev.camera)} · {time(ev.time)}
+                  </span>
                 </span>
               </motion.button>
             );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Bar,
   BarChart,
@@ -13,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CheckCircle, Clock, Prohibit, UsersThree } from "@phosphor-icons/react";
+import { CheckCircle, Clock, CornersIn, CornersOut, Prohibit, UsersThree } from "@phosphor-icons/react";
 import type { PersonType } from "@/lib/api";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
 import {
@@ -28,6 +29,7 @@ import { EventDossier } from "@/components/detections/EventDossier";
 import type { NvrAttendanceRow, NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvrApi";
 import { AXIS, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
 import { useT } from "@/i18n";
+import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
 
 const STATUS_TEXT: Record<NvrAttendanceStatus, { label: string; cls: string }> = {
@@ -57,14 +59,19 @@ interface ClassRow {
 }
 
 /** Sinf kartochkalari saralashi (foydalanuvchi so'rovi: katta/kichik, yaxshi/yomon). */
-const CLASS_SORTS = [
-  { id: "class", label: "Sinf" },
-  { id: "big", label: "Katta" },
-  { id: "small", label: "Kichik" },
-  { id: "good", label: "Yaxshi" },
-  { id: "bad", label: "Yomon" },
-] as const;
-type ClassSort = (typeof CLASS_SORTS)[number]["id"];
+/**
+ * Sinf kartochkalari saralashi — **DAVOMAT TAXTASIDAGI bilan AYNI**
+ * (2026-09-14, foydalanuvchi so'rovi: "3-rasmdagini olib tashla,
+ * 2-rasmdagidek qil"). Ilgari bu yerda beshta tugma bor edi
+ * (Sinf/Katta/Kichik/Yaxshi/Yomon) va u `AttendanceListModal` dagi
+ * uchta tugmadan farq qilardi — bir xil ro'yxat ikki joyda ikki xil
+ * boshqarilardi.
+ *
+ * "Davomat" QAYTA bosilsa yo'nalish teskari bo'ladi (yuqoridan pastga ↔
+ * pastdan yuqoriga) — shu bilan eski "Yaxshi/Yomon" tugmalari ham
+ * ortiqcha bo'ldi.
+ */
+type ClassSort = "class-asc" | "class-desc" | "rate";
 
 /** Chiziqlar — kalitlar `dailySeries` maydon nomlari bilan AYNI. */
 const LINES = [
@@ -139,6 +146,8 @@ export function StatPeopleNvr({
   const role: NvrPersonRole | null =
     personType === "teacher" ? "teacher" : personType === "student" ? "student" : null;
 
+  /** Davr BIR KUNMI — grafik shunga qarab kunlik yoki soatlik bo'ladi. */
+  const singleDay = period.from === period.to;
   const range = useNvrAttendanceRange(period.from, period.to);
   const rowsQ = useNvrAttendanceRows(period.from, period.to, role ?? undefined);
   /* Oxirgi kun — "bugungi holat" nishonchasi va dam olish kuni izohi uchun. */
@@ -223,6 +232,35 @@ export function StatPeopleNvr({
   }, [range.workPoints, personType]);
 
   /**
+   * 🔵 **"BUGUN" TANLANSA — SOAT KESIMI** (2026-09-14, foydalanuvchi
+   * so'rovi: "bugun kun uchun bosilganda soat kesimida o'zgarishi
+   * kerak").
+   *
+   * ⚠️ Bir kunlik davrda kunma-kun chiziq BITTA nuqtadan iborat bo'lib
+   * qolardi — grafik sifatida ma'nosiz (`StatPeriodPanel` va
+   * `StatDensity` da ham AYNI qoida: bir kun → soat kesimi).
+   *
+   * ⚠️ **"Kelmagan" SOATGA BO'LINMAYDI** va bu ataylab: kelmagan odamning
+   * kelish SOATI yo'q (u umuman kelmagan). Shuning uchun soatlik
+   * ko'rinishda faqat ikki chiziq bo'ladi, kelmaganlar soni esa panel
+   * sarlavhasida (izohda) ko'rsatiladi — jim tashlab ketilmaydi.
+   *
+   * Manba — `rowsQ.byHour` ("Kelish soatlari" paneli bilan AYNI kesh,
+   * qo'shimcha so'rov YO'Q): har soatda nechta odam kelgan, `early`/
+   * `late` bo'yicha ajratilgan.
+   */
+  const hourlySeries = useMemo(() => {
+    if (!singleDay) return [];
+    return rowsQ.byHour
+      .filter((b) => b.total > 0)
+      .map((b) => ({
+        day: `${String(b.hour).padStart(2, "0")}:00`,
+        Kelgan: b.total,
+        Kechikkan: b.late,
+      }));
+  }, [rowsQ.byHour, singleDay]);
+
+  /**
    * Sinflar kesimi — **KARTOCHKADA BUGUNGI HOLAT** (2026-09-14,
    * foydalanuvchi so'rovi: "sinf kesimi uchun faqat bugungilik kelgan
    * ketganlar chiqishi kerak, qolgani davomat foizini o'zi chiqadi").
@@ -269,6 +307,11 @@ export function StatPeopleNvr({
       };
     });
   }, [lastDay.rows, rowsQ.people, role]);
+
+  /** Grafik ma'lumoti — bir kunda SOATLIK, uzun davrda KUNLIK. */
+  const chartData = singleDay ? hourlySeries : dailySeries;
+  /** Bir kunlik ko'rinishda kelmaganlar soni — sarlavhada ko'rsatiladi. */
+  const dayAbsent = singleDay ? (lastDay.byRole[role ?? "staff"]?.absent ?? 0) : 0;
 
   /** Jadval qatorlari — qidiruv + saralash. */
   const rows = useMemo(() => {
@@ -372,8 +415,8 @@ export function StatPeopleNvr({
       <StatPanel
         title="Kelganlar / Kechikkanlar / Kelmaganlar"
         hint={
-          period.from === period.to
-            ? `${period.to} — bir kun`
+          singleDay
+            ? `${period.to} — soat kesimi${dayAbsent > 0 ? ` · ${n(dayAbsent)} kelmagan` : ""}`
             : `${period.from} … ${period.to} · ${range.days.length} kun`
         }
         right={
@@ -397,12 +440,14 @@ export function StatPeopleNvr({
           </div>
         }
       >
-        {dailySeries.length === 0 ? (
-          <p className="py-12 text-center text-[11.5px] text-slate-500">Bu davrda davomat yozuvi yo&apos;q</p>
+        {chartData.length === 0 ? (
+          <p className="py-12 text-center text-[11.5px] text-slate-500">
+            {singleDay ? "Bu kunda hali kelish qaydi yo'q" : "Bu davrda davomat yozuvi yo'q"}
+          </p>
         ) : (
           <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailySeries} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
+              <LineChart data={chartData} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" vertical={false} />
                 <XAxis dataKey="day" tick={AXIS} tickLine={false} axisLine={false} />
                 <YAxis width={Y_AXIS_W} tick={AXIS} tickLine={false} axisLine={false} />
@@ -421,7 +466,9 @@ export function StatPeopleNvr({
                     if (key) setHidden((h) => ({ ...h, [key]: !h[key] }));
                   }}
                 />
-                {LINES.map((l) => (
+                {/* Soat kesimida "Kelmagan" chizig'i YO'Q — kelmagan
+                    odamning soati yo'q (yuqoridagi izoh). */}
+                {(singleDay ? LINES.filter((l) => l.key !== "Kelmagan") : LINES).map((l) => (
                   <Line
                     key={l.key}
                     type="monotone"
@@ -439,8 +486,10 @@ export function StatPeopleNvr({
           </div>
         )}
         <p className="mt-1 text-[10px] leading-snug text-slate-500">
-          Yuqoridagi yorliqni bosib chiziqni yashirish/ko&apos;rsatish mumkin. O&apos;ng
-          burchakdagi toifa tugmalari o&apos;sha toifa tabiga o&apos;tkazadi.
+          {singleDay
+            ? "Bir kun tanlanganda grafik SOAT kesimiga o'tadi — kelmaganlar bu yerda ko'rsatilmaydi, chunki ularning kelish soati yo'q (soni sarlavhada)."
+            : "Yuqoridagi yorliqni bosib chiziqni yashirish/ko'rsatish mumkin."}{" "}
+          O&apos;ng burchakdagi toifa tugmalari o&apos;sha toifa tabiga o&apos;tkazadi.
           {range.totals.staff.total === 0 && " Xodimlar — kuzatuv postida bu toifa yo'q."}
         </p>
       </StatPanel>
@@ -561,69 +610,128 @@ function ClassBreakdown({
   n: (v: number) => string;
   onPickPerson: (personId: number) => void;
 }) {
-  const [sort, setSort] = useState<ClassSort>("class");
+  /* Saralash tugmalari matni — davomat taxtasi bilan AYNI kalitlar. */
+  const u = useT().dashboard.ui.att;
+  /**
+   * 🔵 **TO'LIQ EKRAN** (2026-09-14, foydalanuvchi so'rovi: "sinflar
+   * kesimini katta ekranga qilish imkoni bo'lsin"). Panel o'z joyida
+   * tor ustunda turadi; bu tugma uni butun ekranga ochadi — sinf
+   * kartochkalari va ro'yxat bemalol joylashadi.
+   */
+  const [full, setFull] = useState(false);
+  /* ⚠️ To'liq ekranda `Esc` yopadi — modal odatiga mos. */
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFull(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [full]);
+  /** Ro'yxat / kartochka — loyihaning UMUMIY almashtirgichi. */
+  const [view, setView] = useViewMode("stat-class-roster");
+  const [sort, setSort] = useState<ClassSort>("class-asc");
+  /** "Davomat" saralashi yo'nalishi — tugma qayta bosilsa teskari. */
+  const [rateDesc, setRateDesc] = useState(true);
+  /** Sinf ichidagi ro'yxat tartibi: holat bo'yicha yoki DAVOMAT foizi. */
+  const [rosterSort, setRosterSort] = useState<"status" | "rate">("status");
+  const [rosterDesc, setRosterDesc] = useState(true);
   const [open, setOpen] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
     const list = [...classes];
-    switch (sort) {
-      case "big":
-        return list.sort((a, b) => b.total - a.total || classOrder(a.klass) - classOrder(b.klass));
-      case "small":
-        return list.sort((a, b) => a.total - b.total || classOrder(a.klass) - classOrder(b.klass));
-      case "good":
-        return list.sort((a, b) => b.rate - a.rate || classOrder(a.klass) - classOrder(b.klass));
-      case "bad":
-        return list.sort((a, b) => a.rate - b.rate || classOrder(a.klass) - classOrder(b.klass));
-      default:
-        /* ⚠️ `classOrder` — MATN emas, bosh RAQAM bo'yicha: oddiy alifboda
-           "10-A" "2-B" dan oldin kelardi (`FaceDatabasePage.tsx`). */
-        return list.sort((a, b) => classOrder(a.klass) - classOrder(b.klass));
+    /* ⚠️ `classOrder` — MATN emas, bosh RAQAM bo'yicha: oddiy alifboda
+       "10-A" "2-B" dan oldin kelardi (`FaceDatabasePage.tsx`). */
+    if (sort === "rate") {
+      return list.sort(
+        (a, b) => (rateDesc ? b.rate - a.rate : a.rate - b.rate) || classOrder(a.klass) - classOrder(b.klass)
+      );
     }
-  }, [classes, sort]);
+    const mul = sort === "class-desc" ? -1 : 1;
+    return list.sort((a, b) => mul * (classOrder(a.klass) - classOrder(b.klass)));
+  }, [classes, sort, rateDesc]);
 
-  /** Ochilgan sinfning BUGUNGI ro'yxati + har kimning davr foizi. */
+  /**
+   * Ochilgan sinfning BUGUNGI ro'yxati + har kimning DAVR foizi.
+   *
+   * 🔵 **DAVOMAT BO'YICHA SARALASH** (2026-09-14, foydalanuvchi so'rovi:
+   * "eng yaxshi davomatdagi o'quvchini birinchiga yoki teskarisini").
+   * Foiz — DAVR bo'yicha (`PersonPeriodRow.rate`), ya'ni "bugun kelgan-
+   * kelmagan" emas, "shu davrda necha foiz kun kelgan". Qaydi bo'lmagan
+   * shaxs (`period` yo'q) DOIM oxirida turadi — uni 0% deb ko'rsatish
+   * "hech qachon kelmagan" degan yolg'on xulosa bo'lardi.
+   */
   const roster = useMemo(() => {
     if (!open) return [];
     const byPerson = new Map(people.map((p) => [p.person_id, p]));
     const ORDER: Record<NvrAttendanceStatus, number> = { early: 0, late: 1, absent: 2, waiting: 3 };
-    return todayRows
+    const list = todayRows
       .filter((r) => (role ? r.role === role : true) && (r.note || r.role_label || "—") === open)
-      .map((r) => ({ r, period: byPerson.get(r.person_id) ?? null }))
-      .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || a.r.full_name.localeCompare(b.r.full_name, "uz"));
-  }, [open, todayRows, people, role]);
+      .map((r) => ({ r, period: byPerson.get(r.person_id) ?? null }));
+    if (rosterSort === "rate") {
+      return list.sort((a, b) => {
+        const ar = a.period && a.period.days > 0 ? a.period.rate : null;
+        const br = b.period && b.period.days > 0 ? b.period.rate : null;
+        if (ar == null || br == null) return (ar == null ? 1 : 0) - (br == null ? 1 : 0);
+        return (rosterDesc ? br - ar : ar - br) || a.r.full_name.localeCompare(b.r.full_name, "uz");
+      });
+    }
+    return list.sort(
+      (a, b) => ORDER[a.r.status] - ORDER[b.r.status] || a.r.full_name.localeCompare(b.r.full_name, "uz")
+    );
+  }, [open, todayRows, people, role, rosterSort, rosterDesc]);
+
+  /** Ochilgan sinfning BUGUNGI kesimi — uchala son ham ko'rinadi. */
+  const rosterCounts = useMemo(() => {
+    const c = { early: 0, late: 0, absent: 0, waiting: 0 };
+    for (const { r } of roster) {
+      if (r.status === "early") c.early++;
+      else if (r.status === "late") c.late++;
+      else if (r.status === "absent") c.absent++;
+      else c.waiting++;
+    }
+    return c;
+  }, [roster]);
 
   const cur = open ? classes.find((c) => c.klass === open) ?? null : null;
 
-  return (
+  const panel = (
     <StatPanel
       title="Sinflar kesimi"
       hint={open ? `${open} · bugungi ro'yxat` : `${n(classes.length)} ta guruh · bugun`}
       right={
         open ? (
-          <button
-            type="button"
-            onClick={() => setOpen(null)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
-          >
-            ◀ Sinflar
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setOpen(null)}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
+            >
+              ◀ Sinflar
+            </button>
+            <ViewToggle mode={view} onChange={setView} />
+            <FullBtn full={full} onClick={() => setFull((v) => !v)} />
+          </div>
         ) : (
           <div className="flex flex-wrap items-center gap-1">
-            {CLASS_SORTS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSort(s.id)}
-                className={`rounded-lg border px-2 py-1 text-[10.5px] font-semibold transition-colors ${
-                  sort === s.id
-                    ? "border-ice/40 bg-ice/10 text-ice-bright"
-                    : "border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
+            <SortBtn active={sort === "class-asc"} onClick={() => setSort("class-asc")} title={u.sortAsc}>
+              {u.classUp}
+            </SortBtn>
+            <SortBtn active={sort === "class-desc"} onClick={() => setSort("class-desc")} title={u.sortDesc}>
+              {u.classDown}
+            </SortBtn>
+            {/* "Davomat" QAYTA bosilsa yo'nalish teskari bo'ladi. */}
+            <SortBtn
+              active={sort === "rate"}
+              title={u.sortRate}
+              onClick={() => {
+                if (sort === "rate") setRateDesc((v) => !v);
+                else setSort("rate");
+              }}
+            >
+              {u.rate} {sort === "rate" ? (rateDesc ? "↓" : "↑") : ""}
+            </SortBtn>
+            <FullBtn full={full} onClick={() => setFull((v) => !v)} />
           </div>
         )
       }
@@ -646,12 +754,73 @@ function ClassBreakdown({
                 <span className="text-[10px] text-slate-500">{periodLabel.toLowerCase()}</span>
               </>
             )}
-            <span className="ml-auto text-[10px] text-slate-500">
-              {n(cur.present)} kelgan · {n(cur.absent)} kelmagan · {n(cur.total)} ta
+            {/* Uchala son ham — davomat taxtasidagi kabi. */}
+            <span className="ml-auto flex flex-wrap items-center gap-x-2 text-[10px]">
+              <span className="text-emerald-300">{n(rosterCounts.early)} kelgan</span>
+              <span className="text-amber-300">{n(rosterCounts.late)} kechikkan</span>
+              <span className="text-rose-300">{n(rosterCounts.absent)} kelmagan</span>
+              <span className="text-slate-500">{n(cur.total)} ta</span>
             </span>
           </div>
 
-          <div className="max-h-[210px] overflow-y-auto pr-0.5">
+          {/* Ro'yxat tartibi — holat yoki DAVOMAT foizi (ikki yo'nalish). */}
+          <div className="flex flex-wrap items-center gap-1">
+            <SortBtn active={rosterSort === "status"} onClick={() => setRosterSort("status")} title="Holat bo'yicha: kelgan → kechikkan → kelmagan">
+              Holat
+            </SortBtn>
+            <SortBtn
+              active={rosterSort === "rate"}
+              title="Davr davomat foizi bo'yicha"
+              onClick={() => {
+                if (rosterSort === "rate") setRosterDesc((v) => !v);
+                else setRosterSort("rate");
+              }}
+            >
+              {u.rate} {rosterSort === "rate" ? (rosterDesc ? "↓" : "↑") : ""}
+            </SortBtn>
+          </div>
+
+          {/* KARTOCHKA ko'rinishi — rasm katta, davomat foizi ostida. */}
+          {view === "card" ? (
+            <div
+              className={`grid gap-2 overflow-y-auto pr-0.5 ${
+                full ? "max-h-[calc(100vh-330px)] grid-cols-4 md:grid-cols-6 xl:grid-cols-8" : "max-h-[210px] grid-cols-3 sm:grid-cols-4"
+              }`}
+            >
+              {roster.map(({ r, period }) => {
+                const st = STATUS_TEXT[r.status];
+                return (
+                  <button
+                    key={r.person_id}
+                    type="button"
+                    onClick={() => onPickPerson(r.person_id)}
+                    title="Shaxs panelini ochish"
+                    className="flex flex-col items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center transition-colors hover:border-ice/30 hover:bg-ice/[0.06]"
+                  >
+                    <LibraryPhoto
+                      personId={r.person_id}
+                      name={r.full_name}
+                      size={0}
+                      className="aspect-[3/4] w-full rounded-md object-cover ring-1 ring-white/10"
+                    />
+                    <span className="line-clamp-2 min-h-[26px] text-[10.5px] font-semibold leading-tight text-slate-100">
+                      {r.full_name}
+                    </span>
+                    <span className={`w-full truncate rounded-md border px-1 py-0.5 text-[9px] font-semibold ${st.cls}`}>
+                      {st.label}
+                    </span>
+                    <span className="flex w-full items-center justify-between text-[9.5px]">
+                      <span className="font-mono text-slate-400">{r.time || "—"}</span>
+                      {period && period.days > 0 && (
+                        <span className={`font-mono ${rateTone(period.rate)}`}>{period.rate}%</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+          <div className={`overflow-y-auto pr-0.5 ${full ? "max-h-[calc(100vh-330px)]" : "max-h-[210px]"}`}>
             <ul className="flex flex-col gap-1">
               {roster.map(({ r, period }) => {
                 const st = STATUS_TEXT[r.status];
@@ -685,10 +854,15 @@ function ClassBreakdown({
               })}
             </ul>
           </div>
+          )}
         </div>
       ) : (
         /* ── KARTOCHKALAR: BUGUNGI holat ── */
-        <div className="grid max-h-[248px] grid-cols-2 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-3">
+        <div
+          className={`grid gap-2 overflow-y-auto pr-0.5 ${
+            full ? "max-h-[calc(100vh-260px)] grid-cols-3 md:grid-cols-4 xl:grid-cols-6" : "max-h-[248px] grid-cols-2 sm:grid-cols-3"
+          }`}
+        >
           {sorted.map((c) => (
             <button
               key={c.klass}
@@ -703,16 +877,50 @@ function ClassBreakdown({
               </span>
               <span className={`font-mono text-[26px] font-extrabold leading-none ${rateTone(c.rate)}`}>{c.rate}%</span>
               {/* FAQAT bugungi kelgan/kelmagan — davr yig'indisi EMAS. */}
+              {/* Uchala son ham — davomat taxtasining sinf kartochkasi
+                  bilan AYNI (`AttendanceListModal`). */}
               <span className="flex flex-wrap items-center gap-x-2 text-[9.5px]">
-                <span className="text-emerald-300">{n(c.present)} kelgan</span>
+                <span className="text-emerald-300">{n(c.early + c.late)} kelgan</span>
+                <span className="text-amber-300">{n(c.late)} kechikkan</span>
                 <span className="text-rose-300">{n(c.absent)} kelmagan</span>
-                {c.waiting > 0 && <span className="text-slate-500">{n(c.waiting)} kutilmoqda</span>}
               </span>
             </button>
           ))}
         </div>
       )}
     </StatPanel>
+  );
+
+  /* ⚠️ To'liq ekranda panel `document.body` ga PORTAL bilan chiqadi:
+     sahifa o'ramlarida `backdrop-filter` bor va u `position: fixed`
+     uchun yangi containing block yaratadi — portalsiz "to'liq ekran"
+     faqat ustun ichida ochilardi (CLAUDE.md, `CamerasPage` bilan AYNI
+     tuzoq). Fonni bosish yopadi, `Esc` ham. */
+  if (!full || typeof document === "undefined") return panel;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[88] flex flex-col bg-[#03060E]/92 p-4 backdrop-blur-md"
+      onClick={() => setFull(false)}
+    >
+      <div className="flex min-h-0 flex-1 flex-col" onClick={(e) => e.stopPropagation()}>
+        {panel}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/** To'liq ekran tugmasi — panelni butun ekranga ochadi/yopadi. */
+function FullBtn({ full, onClick }: { full: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={full ? "Oddiy ko'rinish (Esc)" : "To'liq ekran"}
+      className="grid h-[26px] w-[26px] place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-colors hover:text-ice-bright"
+    >
+      {full ? <CornersIn size={13} weight="bold" /> : <CornersOut size={13} weight="bold" />}
+    </button>
   );
 }
 
@@ -772,3 +980,30 @@ function Mini({ label, value, cls }: { label: string; value: string; cls: string
   );
 }
 
+/** Saralash tugmasi — sinf kartochkalari va sinf ro'yxati uchun umumiy. */
+function SortBtn({
+  active,
+  title,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  title?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`rounded-lg border px-2 py-1 text-[10.5px] font-semibold transition-colors ${
+        active
+          ? "border-ice/40 bg-ice/10 text-ice-bright"
+          : "border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}

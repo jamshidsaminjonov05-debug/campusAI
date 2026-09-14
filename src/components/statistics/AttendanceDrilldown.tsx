@@ -16,7 +16,7 @@ import { StatPanel, TabPill, fmt } from "@/components/common/panels";
 import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { useT } from "@/i18n";
 import type { NvrAttendanceRow, NvrAttendanceStatus } from "@/lib/nvrApi";
-import type { AttendanceDayPoint } from "@/hooks/useNvrAttendance";
+import { attDay, type AttendanceDayPoint } from "@/hooks/useNvrAttendance";
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -66,6 +66,7 @@ export function AttendanceDrilldown({
   from,
   to,
   points,
+  todayDone,
   onSelectDay,
   onOpenEvent,
   onOpenSettings,
@@ -83,6 +84,15 @@ export function AttendanceDrilldown({
    *  (`useNvrAttendanceRange().points`, "Kunlar bo'yicha" jadvali bilan
    *  AYNI manba, qo'shimcha so'rov yo'q). */
   points: AttendanceDayPoint[];
+  /**
+   * BUGUNGI kun davomati YAKUNLANDIMI (`/attendance` → `deadline_passed`).
+   *
+   * ⚠️ Kalendarda bugungi katak SHUNGA qarab bo'yaladi: kun tugamagan
+   * bo'lsa hali kelmaganlar "kelmadi" emas, ular yo'lda bo'lishi
+   * mumkin — foiz past chiqib katak QIZIL bo'lardi (2026-09-14,
+   * foydalanuvchi so'rovi: "kalendarni bugungi kun uchun to'g'rila").
+   */
+  todayDone: boolean;
   /** Kalendarda kun bosilsa — `StatAttendance.tsx`dagi `setDay`. */
   onSelectDay: (date: string) => void;
   /** Qator bosilsa — "Ro'yxat" jadvalidagi bilan AYNI dossiye (`EventDossier`). */
@@ -200,7 +210,14 @@ export function AttendanceDrilldown({
           {/* ── KALENDAR — chap tomonda, bo'lak tanlansa TUGMAGA aylanadi ── */}
           {showCalendar &&
             (calendarOpen ? (
-              <AttendanceCalendarWidget from={from} to={to} day={day} points={points} onPick={onSelectDay} />
+              <AttendanceCalendarWidget
+                from={from}
+                to={to}
+                day={day}
+                points={points}
+                todayDone={todayDone}
+                onPick={onSelectDay}
+              />
             ) : (
               <button
                 type="button"
@@ -451,12 +468,15 @@ function AttendanceCalendarWidget({
   to,
   day,
   points,
+  todayDone,
   onPick,
 }: {
   from: string;
   to: string;
   day: string;
   points: AttendanceDayPoint[];
+  /** Bugungi kun davomati yakunlandimi (`deadline_passed`). */
+  todayDone: boolean;
   onPick: (date: string) => void;
 }) {
   const t = useT();
@@ -482,6 +502,8 @@ function AttendanceCalendarWidget({
   for (let i = 0; i < trail; i++) cells.push({ day: i + 1, kind: "next" });
 
   const byDate = useMemo(() => new Map(points.map((p) => [p.date, p])), [points]);
+  /* "Bugun" — SERVER zonasidan (`attDay`), brauzer soatidan emas. */
+  const today = attDay();
   const monthLabel = t.chart.months[m - 1] ? `${t.chart.months[m - 1][0].toUpperCase()}${t.chart.months[m - 1].slice(1)}` : shown;
 
   const navBtn =
@@ -539,11 +561,22 @@ function AttendanceCalendarWidget({
              `is_weekend` — SERVER bergan sozlama (`/attendance/settings`
              dagi `weekend`), taxmin emas. */
           const weekend = p?.isWeekend ?? false;
-          const rate = !weekend && p && p.total > 0 ? Math.round((p.present / p.total) * 100) : null;
-          const tone = rateTone(inRange && !weekend ? rate : null);
+          /* 🔵 **BUGUN — KUN TUGAMAGUNCHA BAHOLANMAYDI** (2026-09-14,
+             foydalanuvchi so'rovi: "kalendarni bugungi kun uchun
+             to'g'rila"). Kun o'rtasida hali kelmaganlar "kelmadi" emas —
+             ular yo'lda bo'lishi mumkin, `absent_after` vaqti hali
+             o'tmagan. Shunday paytda foiz past chiqib katak QIZIL
+             bo'lardi, ya'ni "bugun davomat yomon" degan YOLG'ON xulosa
+             ko'rinardi. Server `deadline_passed` bergandan keyin katak
+             odatdagidek bo'yaladi. */
+          const isToday = dateStr === today;
+          const pending = isToday && !todayDone;
+          const rate = !weekend && !pending && p && p.total > 0 ? Math.round((p.present / p.total) * 100) : null;
+          const tone = rateTone(inRange && !weekend && !pending ? rate : null);
           const isSelected = dateStr === day;
-          /* Rangsiz katak: oraliqdan tashqarida YOKI dam olish kuni. */
-          const plain = !inRange || weekend;
+          /* Rangsiz katak: oraliqdan tashqarida, dam olish kuni YOKI
+             hali tugamagan bugungi kun. */
+          const plain = !inRange || weekend || pending;
           return (
             <div key={dateStr} className="flex items-center justify-center">
               <button
@@ -555,26 +588,44 @@ function AttendanceCalendarWidget({
                     ? undefined
                     : weekend
                       ? `${dateStr} — dam olish kuni`
-                      : rate != null
-                        ? `${dateStr} — ${rate}% davomat`
-                        : dateStr
+                      : pending
+                        ? `${dateStr} — bugun, kun hali tugamagan`
+                        : rate != null
+                          ? `${dateStr} — ${rate}% davomat`
+                          : dateStr
                 }
                 className="grid h-8 w-8 place-items-center rounded-lg font-mono text-[10px] font-bold transition-all hover:brightness-125 disabled:cursor-default"
                 style={{
-                  color: !inRange ? "#334155" : weekend ? "#64748B" : "#fff",
-                  background: !inRange ? "transparent" : weekend ? "rgba(255,255,255,0.035)" : `color-mix(in srgb, ${tone} 20%, #0B1220)`,
+                  color: !inRange ? "#334155" : weekend ? "#64748B" : pending ? "#93C5FD" : "#fff",
+                  background: !inRange
+                    ? "transparent"
+                    : weekend
+                      ? "rgba(255,255,255,0.035)"
+                      : pending
+                        ? "rgba(56,189,248,0.10)"
+                        : `color-mix(in srgb, ${tone} 20%, #0B1220)`,
                   border: !inRange
                     ? "1px solid transparent"
                     : weekend
                       ? "1px solid rgba(255,255,255,0.08)"
-                      : `1px solid color-mix(in srgb, ${tone} 45%, transparent)`,
-                  boxShadow: plain
-                    ? isSelected && inRange
-                      ? "0 0 0 1.5px rgba(148,163,184,0.6)"
-                      : undefined
-                    : isSelected
-                      ? `0 0 0 1.5px ${tone}, 0 0 16px 1px color-mix(in srgb, ${tone} 75%, transparent)`
-                      : `0 0 8px -2px color-mix(in srgb, ${tone} 65%, transparent)`,
+                      : pending
+                        ? "1px solid rgba(56,189,248,0.45)"
+                        : `1px solid color-mix(in srgb, ${tone} 45%, transparent)`,
+                  /* BUGUN doim ajralib turadi (tanlangan bo'lmasa ham) —
+                     kalendarda "qaysi kun bugun" savoli birinchi. */
+                  boxShadow: pending
+                    ? isSelected
+                      ? "0 0 0 1.5px #38BDF8, 0 0 16px 1px rgba(56,189,248,0.5)"
+                      : "0 0 0 1px rgba(56,189,248,0.5)"
+                    : plain
+                      ? isSelected && inRange
+                        ? "0 0 0 1.5px rgba(148,163,184,0.6)"
+                        : undefined
+                      : isSelected
+                        ? `0 0 0 1.5px ${tone}, 0 0 16px 1px color-mix(in srgb, ${tone} 75%, transparent)`
+                        : isToday
+                          ? `0 0 0 1px #38BDF8, 0 0 8px -2px color-mix(in srgb, ${tone} 65%, transparent)`
+                          : `0 0 8px -2px color-mix(in srgb, ${tone} 65%, transparent)`,
                 }}
               >
                 {d}
