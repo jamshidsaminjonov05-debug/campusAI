@@ -4,17 +4,30 @@ name: Deploy (self-hosted)
 # ║  Campus AI — production deploy (self-hosted runner)                  ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 #
-# ⚠️ **BU WORKFLOW HALI HAQIQIY SERVERDA SINALMAGAN** — birinchi marta
-# ishlatishdan oldin qo'lda (workflow_dispatch) ishga tushirib tekshiring.
+# Birinchi haqiqiy deploy 2026-09-14 da shu runnerda o'tdi. O'sha kuni
+# RELIZ PAPKALARI (pastda, 3-band) qo'shildi — ⚠️ bu qism hali SINALMAGAN,
+# birinchi ishga tushishda Actions loglarini kuzating.
 #
 # ── ISHLASH TARTIBI ───────────────────────────────────────────────────
 # 1. `CI` workflow (`ci.yml`) `main`ga push bo'lganda lint/typecheck/test/
 #    build'ni GitHub'ning bepul (ubuntu-latest) runnerida tekshiradi.
 # 2. `CI` MUVAFFAQIYATLI tugagandan keyingina shu workflow ishga tushadi
-#    (`workflow_run`) va HAQIQIY serverda (self-hosted) qayta build qilib,
-#    pm2 orqali qayta ishga tushiradi. Shu tartib tufayli sinovdan
-#    o'tmagan kod hech qachon productionga tushmaydi.
-# 3. Kerak bo'lsa Actions sahifasidan qo'lda ham (workflow_dispatch)
+#    (`workflow_run`) va HAQIQIY serverda (self-hosted) qayta build qiladi.
+#    Shu tartib tufayli sinovdan o'tmagan kod hech qachon productionga
+#    tushmaydi.
+# 3. Build runner workspace'ida bo'ladi, lekin ilova U YERDAN ISHLAMAYDI:
+#    `actions/checkout` har run BOSHIDA workspace'ni tozalaydi (`.next`,
+#    `node_modules`) — ilova shu papkadan ishlasa, yangi build tugaguncha
+#    sayt yiqilib turardi. Shuning uchun tayyor build alohida ko'chiriladi:
+#      ~/campus-ai/releases/<vaqt>-<commit>/   — har deploy uchun yangi papka
+#      ~/campus-ai/current → releases/...      — pm2 FAQAT shu yerdan ishlaydi
+#    `current` symlink bir zumda almashtiriladi va pm2 jarayoni qayta
+#    yaratiladi — uzilish faqat jarayon ko'tariladigan bir necha soniya.
+#    O'zgarmagan fayllar (asosan `node_modules`) oldingi relizga hardlink
+#    qilinadi (`rsync --link-dest`) — har reliz diskda qayta joy olmaydi.
+# 4. `/healthz` javob bermasa OLDINGI relizga qaytiladi (rollback) va job
+#    yiqiladi. Oxirgi 3 ta reliz saqlanadi.
+# 5. Kerak bo'lsa Actions sahifasidan qo'lda ham (workflow_dispatch)
 #    ishga tushirish mumkin.
 #
 # ── SELF-HOSTED RUNNERNI SERVERDA O'RNATISH (BIR MARTA) ───────────────
@@ -36,7 +49,10 @@ name: Deploy (self-hosted)
 #      ko'rinishi kerak.
 #   4. Serverda bir marta global o'rnating: `npm install -g pm2`
 #      va `node --version` 20.x ekanini tekshiring (Dockerfile'dagi
-#      `node:20-bookworm-slim` bilan mos bo'lishi uchun).
+#      `node:20-bookworm-slim` bilan mos bo'lishi uchun). `rsync` ham
+#      kerak (Ubuntu'da odatda bor).
+#   5. Server qayta yuklanganda pm2 ilovani o'zi ko'tarishi uchun (bir marta):
+#        sudo env PATH=$PATH:/usr/local/bin pm2 startup systemd -u <user> --hp <home>
 #
 # ── PROD ENV (.env.local) — OFFLINE QOIDASI ────────────────────────────
 # Bu workflow haqiqiy IP/kalitlarni O'ZI YARATMAYDI va repoga yozmaydi.
@@ -56,9 +72,10 @@ name: Deploy (self-hosted)
 #     # Quyidagilarni bo'sh qoldirish TAVSIYA qilinadi (proxy rejimi):
 #     NEXT_PUBLIC_API_ORIGIN=
 #     NEXT_PUBLIC_TILES_ORIGIN=
+#   chmod 600 ~/campus-ai-secrets/.env.local
 #
-# Har deploy'da shu fayldan nusxa olinadi (build uchun) va shell'ga
-# export qilinadi (pm2 runtime uchun) — pastdagi qadamlarga qarang.
+# Har deploy'da shu fayldan nusxa olinadi (build uchun), relizga ko'chiriladi
+# va shell'ga export qilinadi (pm2 runtime uchun) — pastdagi qadamlarga qarang.
 
 on:
   workflow_run:
@@ -83,7 +100,9 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: .env.local'ni serverdagi maxfiy joydan nusxalash
-        run: cp ~/campus-ai-secrets/.env.local .env.local
+        run: |
+          cp ~/campus-ai-secrets/.env.local .env.local
+          chmod 600 .env.local
 
       - uses: actions/setup-node@v4
         with:
@@ -95,10 +114,84 @@ jobs:
       - name: Build (haqiqiy ENV bilan)
         run: npm run build
 
-      - name: PM2 orqali qayta ishga tushirish
+      # Workspace keyingi run'da tozalanadi — ilova ishlaydigan nusxa alohida.
+      # `.git` va `.next/cache` (faqat build uchun kerak, katta) ko'chirilmaydi.
+      - name: Tayyor build'ni reliz papkasiga ko'chirish
         run: |
+          set -euo pipefail
+          APP_ROOT="$HOME/campus-ai"
+          RELEASE="$APP_ROOT/releases/$(date -u +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
+          mkdir -p "$APP_ROOT/releases"
+
+          LINK_DEST=()
+          if [ -d "$APP_ROOT/current/" ]; then
+            LINK_DEST=(--link-dest="$(readlink -f "$APP_ROOT/current")/")
+          fi
+          rsync -a --delete --exclude .git --exclude .next/cache "${LINK_DEST[@]}" ./ "$RELEASE/"
+          chmod 600 "$RELEASE/.env.local"
+
+          echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
+          echo "RELEASE=$RELEASE" >> "$GITHUB_ENV"
+          if [ -L "$APP_ROOT/current" ]; then
+            echo "PREVIOUS=$(readlink -f "$APP_ROOT/current")" >> "$GITHUB_ENV"
+          fi
+          echo "Reliz tayyor: $RELEASE ($(du -sh "$RELEASE" | cut -f1), hardlinklar hisobga olinmagan)"
+
+      - name: current'ni yangi relizga almashtirish va PM2 qayta ishga tushirish
+        run: |
+          set -euo pipefail
+          # Symlink'ni ATOMAR almashtirish: avval yangi nom, keyin `mv -T`
+          ln -sfn "$RELEASE" "$APP_ROOT/current.new"
+          mv -Tf "$APP_ROOT/current.new" "$APP_ROOT/current"
+
           set -a
-          source .env.local
+          source "$APP_ROOT/current/.env.local"
           set +a
-          pm2 startOrReload ecosystem.config.cjs --update-env
-          pm2 save
+          export CAMPUS_AI_APP_DIR="$APP_ROOT/current"
+
+          # `startOrReload --update-env` EMAS — har safar o'chirib qayta yaratamiz:
+          # pm2 `.env.local`da BO'SHATILGAN yoki O'CHIRILGAN o'zgaruvchining ESKI
+          # qiymatini jarayonda saqlab qoladi (2026-09-14: NEXT_PUBLIC_* bo'shatilgach
+          # ham eski IP qolgan) va cwd'ni ham yangilamaydi. fork rejimida reload
+          # baribir to'liq restart — uzilish farqi yo'q.
+          pm2 delete campus-ai >/dev/null 2>&1 || true
+          pm2 start "$APP_ROOT/current/ecosystem.config.cjs"
+
+      - name: Sog'liq tekshiruvi (/healthz), yiqilsa oldingi relizga qaytish
+        run: |
+          set -uo pipefail
+          if curl -fsS --retry 15 --retry-delay 2 --retry-connrefused --max-time 5 \
+              http://127.0.0.1:3080/healthz; then
+            echo
+            echo "Yangi reliz ishlayapti: $RELEASE"
+            pm2 save
+            exit 0
+          fi
+
+          echo "::error::/healthz javob bermadi — oldingi relizga qaytilmoqda"
+          if [ -n "${PREVIOUS:-}" ] && [ -d "$PREVIOUS" ]; then
+            ln -sfn "$PREVIOUS" "$APP_ROOT/current.new"
+            mv -Tf "$APP_ROOT/current.new" "$APP_ROOT/current"
+            set -a
+            source "$APP_ROOT/current/.env.local"
+            set +a
+            export CAMPUS_AI_APP_DIR="$APP_ROOT/current"
+            pm2 delete campus-ai >/dev/null 2>&1 || true
+            pm2 start "$APP_ROOT/current/ecosystem.config.cjs"
+            pm2 save
+            echo "::warning::Oldingi relizga qaytildi: $PREVIOUS"
+          else
+            echo "::error::Oldingi reliz yo'q — qaytishning iloji bo'lmadi"
+          fi
+          exit 1
+
+      - name: Eski relizlarni tozalash (oxirgi 3 tasi qoladi)
+        run: |
+          set -euo pipefail
+          CURRENT=$(readlink -f "$APP_ROOT/current")
+          # Vaqt bo'yicha (`ls -t`) EMAS, nom bo'yicha saralanadi: `rsync -a`
+          # papka mtime'ini workspace'dan ko'chiradi, shuning uchun mtime reliz
+          # yaratilgan vaqtni bildirmaydi. Nom esa UTC vaqt bilan boshlanadi.
+          ls -1d "$APP_ROOT"/releases/*/ | sed 's#/$##' | sort -r | grep -vxF "$CURRENT" \
+            | tail -n +3 | xargs -r rm -rf
+          ls -1 "$APP_ROOT/releases"

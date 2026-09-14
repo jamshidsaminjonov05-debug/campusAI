@@ -19,7 +19,11 @@ module.exports = {
       name: "campus-ai",
       script: "npm",
       args: "start",
-      cwd: __dirname,
+      // Deploy (`.github/workflows/deploy.yml`) ilovani `~/campus-ai/current`
+      // symlinkidan ishga tushiradi va shu yo'lni `CAMPUS_AI_APP_DIR` bilan
+      // beradi. `__dirname` bu yerda YETMAYDI: Node symlinkni haqiqiy reliz
+      // papkasiga aylantiradi va keyingi deploy'larda ham ESKI relizda qolardi.
+      cwd: process.env.CAMPUS_AI_APP_DIR || __dirname,
       instances: 1,
       // Klasterlash YO'Q — SSE va jonli oqim (video/MJPEG) ulanishlari
       // bitta jarayonda tutilib turishi kerak (CLAUDE.md #13: bitta Next
