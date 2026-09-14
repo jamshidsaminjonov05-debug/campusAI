@@ -46,14 +46,23 @@ import { AbsenceReasonModal } from "./AbsenceReasonModal";
 import type { PersonBrief } from "@/lib/studentStats";
 import type { NvrAttendanceRow, NvrAttendanceSettings, NvrAttendanceStatus } from "@/lib/nvrApi";
 
-/** Holat rangi va nomi — Statistikadagi davomat jadvali bilan bir xil. */
-const STATUS: Record<NvrAttendanceStatus, { label: string; cls: string }> = {
-  early: { label: "Erta keldi", cls: "bg-emerald-500/15 text-emerald-300" },
-  late: { label: "Kechikdi", cls: "bg-amber-500/15 text-amber-300" },
-  absent: { label: "Kelmadi", cls: "bg-rose-500/15 text-rose-300" },
+/**
+ * Holat RANGI — Statistikadagi davomat jadvali bilan bir xil.
+ *
+ * ⚠️ **NOMI BU YERDA YO'Q** (2026-09-14): ilgari `label` ham shu yerda
+ * QOTIRILGAN o'zbekcha matn edi, ya'ni til almashtirilganda ham
+ * "Erta keldi / Kechikdi" o'zbekcha qolardi. Matn lug'atdan olinadi —
+ * `t.dashboard.ui.att.status` (uz/ru/en da ALLAQACHON bor edi, faqat
+ * ishlatilmagan). Rang esa tarjima qilinmaydi, shuning uchun bu
+ * jadvalda faqat u qoladi.
+ */
+const STATUS_CLS: Record<NvrAttendanceStatus, string> = {
+  early: "bg-emerald-500/15 text-emerald-300",
+  late: "bg-amber-500/15 text-amber-300",
+  absent: "bg-rose-500/15 text-rose-300",
   /* `waiting` — kun hali tugamagan, `absent_after` vaqti kelmagan:
      "kelmadi" deb belgilash ERTA bo'lardi (server o'zi hisoblaydi). */
-  waiting: { label: "Kutilmoqda", cls: "bg-white/[0.06] text-slate-400" },
+  waiting: "bg-white/[0.06] text-slate-400",
 };
 
 /** Bir sahifadagi qatorlar — oyna balandligiga mos (86vh). */
@@ -581,7 +590,7 @@ function Row({
   onOpen: () => void;
 }) {
   const u = useT().dashboard.ui.att;
-  const st = STATUS[r.status];
+  const st = { label: u.status[r.status], cls: STATUS_CLS[r.status] };
   /**
    * 🔴 TOPILDI VA TUZATILDI (2026-09-10, foydalanuvchi so'rovi:
    * "o'quvchilarni qancha vaqt kech qolgani chiqmayabdi ... shunda
@@ -649,7 +658,7 @@ function CardTile({
   onOpen: () => void;
 }) {
   const u = useT().dashboard.ui.att;
-  const st = STATUS[r.status];
+  const st = { label: u.status[r.status], cls: STATUS_CLS[r.status] };
   const diff = attendanceDiffMinutes(r, settings);
   return (
     <button
@@ -771,7 +780,7 @@ function AttendanceQuickView({
   useModalHistory(onClose);
   const t = useT();
   const u = t.dashboard.ui.att;
-  const st = STATUS[r.status];
+  const st = { label: u.status[r.status], cls: STATUS_CLS[r.status] };
 
   /** "N daqiqa kech qoldi" / "N daqiqa erta keldi" — faqat kelgan bo'lsa.
    *  ⚠️ Ishora `r.status`dan (`Row`dagi bilan AYNI qoida — chegara

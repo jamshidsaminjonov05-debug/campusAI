@@ -15,9 +15,12 @@ import {
   MagnifyingGlass,
   MagnifyingGlassPlus,
   UserFocus,
+  Warning,
   X,
 } from "@phosphor-icons/react";
 import { useModalHistory } from "@/hooks/useModalHistory";
+import { PersonIncidents } from "@/components/people/PersonIncidents";
+import { faceKey, personKey } from "@/lib/personIncidents";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { ImageLightbox } from "@/components/common/ImageLightbox";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
@@ -80,6 +83,7 @@ export function FaceHistoryModal({
   personId?: number;
   onClose: () => void;
 }) {
+  const pnl = useT().people.panel;
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
   useModalHistory(onClose);
@@ -173,7 +177,7 @@ export function FaceHistoryModal({
   const framePageClamped = Math.min(framePage, frameTotalPages - 1);
   const pageFrames = frames.slice(framePageClamped * FRAMES_PER_PAGE, (framePageClamped + 1) * FRAMES_PER_PAGE);
 
-  const displayName = data?.name?.trim() || `Begona shaxs #${faceId}`;
+  const displayName = data?.name?.trim() || pnl.unknownFace(faceId ?? 0);
 
   /**
    * Sarlavhadagi rasm va uni kattalashtirish.
@@ -186,14 +190,14 @@ export function FaceHistoryModal({
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarImages = useMemo(() => {
     const out: { src: string; label: string }[] = [];
-    if (data?.person) out.push({ src: nvrPersonPhotoUrl(data.person.id), label: "Bazadagi surat" });
+    if (data?.person) out.push({ src: nvrPersonPhotoUrl(data.person.id), label: pnl.libraryPhoto });
     const frame = (data?.events ?? []).find((e) => e.image_url);
     if (frame) {
       const u = nvrImageUrl(frame, 0);
-      if (u) out.push({ src: u, label: `Kamera kadri · ${nvrDateTime(frame.time)}` });
+      if (u) out.push({ src: u, label: `${pnl.camera} · ${nvrDateTime(frame.time)}` });
     }
     return out;
-  }, [data]);
+  }, [data, pnl]);
   const avatar = avatarImages[0] ?? null;
 
   const body = (
@@ -223,7 +227,7 @@ export function FaceHistoryModal({
             <button
               type="button"
               onClick={() => setAvatarOpen(true)}
-              title="Rasmni kattalashtirish"
+              title={pnl.zoomPhoto}
               className="group relative h-full w-[80px] flex-none overflow-hidden rounded-lg ring-1 ring-ice/25 hover:ring-ice/60"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -260,7 +264,7 @@ export function FaceHistoryModal({
               className="flex flex-none items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300 hover:border-emerald-400/70"
             >
               <LinkIcon size={13} weight="bold" />
-              Bog'lash
+              {pnl.link}
             </button>
           )}
           {/* "Ajratish" — ADASHIB bog'langan bo'lsa, `person_id: null`. */}
@@ -269,15 +273,15 @@ export function FaceHistoryModal({
               type="button"
               onClick={() => assign.mutate(null)}
               disabled={assign.isPending}
-              title="Bu yuzni bog'lanishdan ajratish"
+              title={pnl.unlinkHint}
               className="flex flex-none items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-300 hover:border-amber-400/70 disabled:opacity-50"
             >
               <LinkBreak size={13} weight="bold" />
-              Ajratish
+              {pnl.unlink}
             </button>
           )}
 
-          <button type="button" onClick={onClose} className="neon-icon-btn h-8 w-8 flex-none" aria-label="Yopish">
+          <button type="button" onClick={onClose} className="neon-icon-btn h-8 w-8 flex-none" aria-label={t.common.close}>
             <X size={17} />
           </button>
 
@@ -285,7 +289,7 @@ export function FaceHistoryModal({
         </header>
         {assign.isError && (
           <p className="flex-none border-b border-rose-500/20 bg-rose-500/[0.06] px-4 py-1.5 text-[11px] text-rose-300">
-            Bog'lab bo'lmadi — qayta urinib ko'ring
+            {pnl.linkFailed}
           </p>
         )}
 
@@ -295,7 +299,7 @@ export function FaceHistoryModal({
               <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
             </div>
           ) : !stats ? (
-            <p className="py-10 text-center text-[12px] text-slate-500">Ma'lumot topilmadi</p>
+            <p className="py-10 text-center text-[12px] text-slate-500">{pnl.notFound}</p>
           ) : (
             <>
               {/* JAMI / DAVOMAT FOIZI / OXIRGI / KUNLAR / KAMERALAR
@@ -305,19 +309,19 @@ export function FaceHistoryModal({
                   ko'rsatkich. Faqat davomat ro'yxatidagi shaxs uchun
                   (`attRole` topilganda) — notanish yuzda bu tushuncha yo'q. */}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                <StatCell label="Jami" value={n(stats.total)} hint="kameraga tushgan barcha holatlar" />
+                <StatCell label={pnl.total} value={n(stats.total)} hint={pnl.hintAllCases} />
                 <StatCell
-                  label="Davomat foizi"
+                  label={pnl.attRate}
                   value={attRole == null ? "—" : attRate.isLoading ? "…" : attRate.rate != null ? `${attRate.rate}%` : "—"}
-                  hint={attRole == null ? "davomat ro'yxatida yo'q" : "so'nggi 7 kun"}
+                  hint={attRole == null ? pnl.hintNotInList : pnl.hintLast7}
                 />
                 <StatCell
-                  label="Oxirgi marta"
+                  label={pnl.lastSeen}
                   value={stats.last_seen ? nvrTime(stats.last_seen) : "—"}
-                  hint={stats.last_seen ? dateOnly(stats.last_seen) : "hali ko'rinmagan"}
+                  hint={stats.last_seen ? dateOnly(stats.last_seen) : pnl.hintNotSeen}
                 />
-                <StatCell label="Kunlar" value={n(stats.days)} hint="necha xil kunda ko'ringan" />
-                <StatCell label="Kameralar" value={n(stats.cameras.length)} hint="ta" />
+                <StatCell label={pnl.days} value={n(stats.days)} hint={pnl.hintDaysSeen} />
+                <StatCell label={t.common.cameras} value={n(stats.cameras.length)} hint={pnl.hintCountUnit} />
               </div>
 
               {/* 🔵 ARALASH GURUH OGOHLANTIRISHI (`GUIDE.md`, 2026-09-10
@@ -329,21 +333,20 @@ export function FaceHistoryModal({
                   bo'lishi mumkin. Jim qoldirilmaydi, sababi ochiq yoziladi. */}
               {data && data.mixed_face_ids && data.mixed_face_ids.length > 0 && (
                 <p className="mt-2.5 rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-3 py-2 text-[10.5px] leading-snug text-amber-300">
-                  ⚠️ Bu yuz guruhi aralash — ba&apos;zi kadrlar boshqa odamnikiga o&apos;xshab ketgani uchun tashlab
-                  yuborilgan, tarix chala bo&apos;lishi mumkin.
+                  ⚠️ {pnl.mixedWarn}
                 </p>
               )}
 
               {/* QAYSI KAMERADA */}
-              <Section icon={Camera} title="Qaysi kamerada">
+              <Section icon={Camera} title={pnl.whichCamera}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-[11.5px]">
                     <thead className="text-[9.5px] uppercase tracking-wide text-slate-500">
                       <tr className="border-b border-white/[0.08]">
-                        <th className="px-2 py-1.5 text-left font-medium">Kamera</th>
-                        <th className="px-2 py-1.5 text-right font-medium">Necha marta</th>
-                        <th className="px-2 py-1.5 text-right font-medium">Birinchi</th>
-                        <th className="px-2 py-1.5 text-right font-medium">Oxirgi</th>
+                        <th className="px-2 py-1.5 text-left font-medium">{pnl.camera}</th>
+                        <th className="px-2 py-1.5 text-right font-medium">{pnl.howMany}</th>
+                        <th className="px-2 py-1.5 text-right font-medium">{pnl.first}</th>
+                        <th className="px-2 py-1.5 text-right font-medium">{pnl.last}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -363,7 +366,7 @@ export function FaceHistoryModal({
               </Section>
 
               {/* QAYSI KUNLARI — OY KESIMIDA KALENDAR + KUN TAFSILOTI */}
-              <Section icon={CalendarBlank} title="Qaysi kunlari" hint={`jami ${n(stats.by_day.length)} kun`}>
+              <Section icon={CalendarBlank} title={pnl.whichDays} hint={pnl.daysTotal(n(stats.by_day.length))}>
                 <AttendanceCalendarSection
                   byDay={stats.by_day}
                   firstSeen={stats.first_seen}
@@ -378,8 +381,29 @@ export function FaceHistoryModal({
                   StatCell'ida ALLAQACHON bor edi, bu yerda faqat
                   takrorlanardi va joy egallardi. */}
 
+              {/* BOSHQA HODISALAR — janjal/qurol/chekish (operator biriktiradi).
+                  Server bu bog'lanishni BERMAYDI — sababi
+                  `components/people/PersonIncidents.tsx` boshida. */}
+              <Section
+                icon={Warning}
+                title={pnl.incidents}
+                hint={pnl.incidentsHint}
+              >
+                <PersonIncidents
+                  subjectKey={
+                    data?.person?.id != null
+                      ? personKey(data.person.id)
+                      : personId != null
+                        ? personKey(personId)
+                        : faceKey(faceId ?? 0)
+                  }
+                  cameras={(stats?.cameras ?? []).map((c) => c.channel)}
+                  onOpenEvent={setOpenEventId}
+                />
+              </Section>
+
               {/* BARCHA KADRLAR */}
-              <Section icon={Clock} title="Barcha kadrlar" hint="rasmni bosing — hodisa va videosi ochiladi">
+              <Section icon={Clock} title={pnl.allFrames} hint={pnl.framesHint}>
                 <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
                   {/* 🔵 "Bugun" — STANDART tanlov (2026-09-10, foydalanuvchi
                       so'rovi), "Butun tarix" esa ORQADA — qidirish kerak
@@ -399,7 +423,7 @@ export function FaceHistoryModal({
                           : "border-white/10 bg-white/[0.04] text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      {p === "today" ? "Bugun" : p === "all" ? "Butun tarix" : `${p} kun`}
+                      {p === "today" ? pnl.today : p === "all" ? pnl.allHistory : `${p} ${pnl.daysUnit}`}
                     </button>
                   ))}
                   <input
@@ -433,7 +457,7 @@ export function FaceHistoryModal({
                       }}
                       className="text-[10.5px] text-slate-500 hover:text-slate-300"
                     >
-                      Tozalash
+                      {pnl.clear}
                     </button>
                   )}
                   <span className="ml-auto font-mono text-[10.5px] text-slate-500">
@@ -442,7 +466,7 @@ export function FaceHistoryModal({
                 </div>
 
                 {frames.length === 0 ? (
-                  <p className="py-6 text-center text-[11.5px] text-slate-500">Bu davrda kadr yo'q</p>
+                  <p className="py-6 text-center text-[11.5px] text-slate-500">{pnl.noFramesPeriod}</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                     {pageFrames.map((ev) => (
@@ -450,7 +474,7 @@ export function FaceHistoryModal({
                         key={ev.id}
                         type="button"
                         onClick={() => setOpenEventId(ev.id)}
-                        title={`${nvrDateTime(ev.time)} — hodisani ochish`}
+                        title={pnl.openEventAt(nvrDateTime(ev.time))}
                         className="group relative overflow-hidden rounded-lg border border-white/[0.1] transition-colors hover:border-ice/50"
                       >
                         <DetectionThumb id={ev.id} pictureLost={ev.picture_lost} className="aspect-[4/3] w-full" alt="" index={ev.image_count > 1 ? 1 : 0} />
@@ -517,6 +541,7 @@ export function FaceHistoryModal({
  * qo'ygan chegara, klientda tuzatib bo'lmaydi.
  */
 export function FaceHistoryModalByName({ name, onClose }: { name: string; onClose: () => void }) {
+  const pnl = useT().people.panel;
   const q = useQuery({
     queryKey: ["nvr-face-by-name", name],
     queryFn: () => listFaces({ search: name, known: "yes", limit: 5 }),
@@ -531,7 +556,7 @@ export function FaceHistoryModalByName({ name, onClose }: { name: string; onClos
     return (
       <div onClick={onClose} className="fixed inset-0 z-[85] grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-sm">
         <div onClick={(e) => e.stopPropagation()} className="hik-glass-blue rounded-xl px-5 py-4 text-[12.5px] text-slate-300">
-          Bu shaxs hali kamerada ko'rinmagan.
+          {pnl.notSeenYet}
           <button type="button" onClick={onClose} className="ml-3 text-ice-bright hover:underline">
             Yopish
           </button>
@@ -550,6 +575,8 @@ export function FaceHistoryModalByName({ name, onClose }: { name: string; onClos
  * bosilsa "Ajratish" bilan darhol tuzatiladi.
  */
 function AssignPicker({ onPick, busy }: { onPick: (personId: number) => void; busy: boolean }) {
+  const t = useT();
+  const pnl = t.people.panel;
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
@@ -568,15 +595,15 @@ function AssignPicker({ onPick, busy }: { onPick: (personId: number) => void; bu
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ism bo'yicha qidirish..."
+          placeholder={pnl.searchName}
           className="w-full bg-transparent text-[11.5px] outline-none placeholder:text-slate-600"
         />
       </label>
       <div className="max-h-[220px] overflow-y-auto">
         {q.isLoading ? (
-          <p className="py-3 text-center text-[11px] text-slate-500">Yuklanmoqda…</p>
+          <p className="py-3 text-center text-[11px] text-slate-500">{t.common.loading}</p>
         ) : people.length === 0 ? (
-          <p className="py-3 text-center text-[11px] text-slate-500">Topilmadi</p>
+          <p className="py-3 text-center text-[11px] text-slate-500">{t.common.nothingFound}</p>
         ) : (
           people.map((p) => (
             <button
@@ -736,6 +763,7 @@ function AttendanceCalendarSection({
   /** Ro'yxatga OLINGAN shaxs raqami (`NvrPerson.id`) — sabab qidirish uchun. `null` — notanish yuz, sabab tekshirilmaydi. */
   personId: number | null;
 }) {
+  const pnl = useT().people.panel;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const dayMap = useMemo(() => new Map(byDay.map((d) => [d.day, d])), [byDay]);
   /* Hooklar SHARTSIZ chaqirilishi shart (`DayDetail`dagi bilan bir xil
@@ -764,7 +792,7 @@ function AttendanceCalendarSection({
   if (!firstSeen || !lastSeen) {
     return (
       <p className="py-6 text-center text-[11.5px] leading-snug text-slate-500">
-        Bu shaxs hali kamerada ko&apos;rinmagan — davomat kalendari yo&apos;q.
+        {pnl.noCalendar}
       </p>
     );
   }
@@ -797,6 +825,7 @@ function AttendanceCalendar({
   selectedDay: string | null;
   onSelectDay: (day: string) => void;
 }) {
+  const pnl = useT().people.panel;
   const t = useT();
   const firstDate = firstSeen.slice(0, 10);
   const lastDate = lastSeen.slice(0, 10);
@@ -842,13 +871,13 @@ function AttendanceCalendar({
        [x]`), ya'ni ikkala mavzuda ham to'g'ri ko'rinadi. */
     <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-4">
       <div className="mb-3 flex flex-none items-center justify-between">
-        <button type="button" disabled={!canPrev} onClick={() => setMonth(shiftMonth(shown, -1))} title="Oldingi oy" className={navBtn}>
+        <button type="button" disabled={!canPrev} onClick={() => setMonth(shiftMonth(shown, -1))} title={pnl.prevMonth} className={navBtn}>
           <CaretLeft size={15} weight="bold" />
         </button>
         <p className="text-[13px] font-semibold tracking-wide text-white">
           {monthLabel}, {y}
         </p>
-        <button type="button" disabled={!canNext} onClick={() => setMonth(shiftMonth(shown, 1))} title="Keyingi oy" className={navBtn}>
+        <button type="button" disabled={!canNext} onClick={() => setMonth(shiftMonth(shown, 1))} title={pnl.nextMonth} className={navBtn}>
           <CaretRight size={15} weight="bold" />
         </button>
       </div>
@@ -896,10 +925,10 @@ function AttendanceCalendar({
 
       {/* Rang izohi — sababli (sarg'ish) shu bilan qo'shildi. */}
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] text-slate-500">
-        <Legend tone="bg-emerald-400" label="Kelgan" />
-        <Legend tone="bg-rose-400" label="Kelmagan" />
-        <Legend tone="bg-amber-400" label="Sababli" />
-        <Legend tone="bg-slate-500" label="Dam olish kuni" />
+        <Legend tone="bg-emerald-400" label={pnl.came} />
+        <Legend tone="bg-rose-400" label={pnl.absentDay} />
+        <Legend tone="bg-amber-400" label={pnl.excused} />
+        <Legend tone="bg-slate-500" label={t.board.weekend} />
       </div>
     </div>
   );
@@ -920,6 +949,7 @@ function DayDetail({
   statusOf: (dateStr: string) => { status: DayStatus; hit?: ByDayEntry };
   events: NvrEvent[];
 }) {
+  const pnl = useT().people.panel;
   const t = useT();
   const [openId, setOpenId] = useState<number | null>(null);
   /* ⚠️ Hooks QOIDASI — `day` bo'lmaganda ham SHU TARTIBDA chaqirilishi
@@ -937,7 +967,7 @@ function DayDetail({
       <div className="grid place-items-center rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
         <div>
           <CalendarBlank size={22} weight="duotone" className="mx-auto mb-2 text-slate-600" />
-          <p className="text-[11.5px] text-slate-500">Tafsilotni ko&apos;rish uchun kalendardan bir kunni tanlang</p>
+          <p className="text-[11.5px] text-slate-500">{pnl.pickDayHint}</p>
         </div>
       </div>
     );
@@ -959,17 +989,17 @@ function DayDetail({
 
       {hit ? (
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          <StatCell label="Necha marta" value={String(hit.count)} hint="ta qayd" />
-          <StatCell label="Birinchi" value={nvrTime(hit.first_seen)} hint="kirish" />
-          <StatCell label="Oxirgi" value={nvrTime(hit.last_seen)} hint="ko'rinish" />
+          <StatCell label={pnl.howMany} value={String(hit.count)} hint={pnl.hintRecords} />
+          <StatCell label={pnl.first} value={nvrTime(hit.first_seen)} hint={pnl.hintEntry} />
+          <StatCell label={pnl.last} value={nvrTime(hit.last_seen)} hint={pnl.hintSeen} />
         </div>
       ) : (
         <p className="mt-2 text-[11px] leading-snug text-slate-500">
           {status === "weekend"
-            ? "Bu kun dam olish kuni — davomatga kirmaydi."
+            ? pnl.weekendNote
             : status === "excused"
-              ? "Kelmagan, lekin sababi belgilangan."
-              : "Bu kuni kamerada ko'rinmagan."}
+              ? pnl.excusedNote
+              : pnl.absentNote}
         </p>
       )}
 
@@ -981,7 +1011,7 @@ function DayDetail({
         return (
           <div className="mt-3.5">
             <p className="mb-1.5 flex items-center justify-between text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">
-              <span>Shu kungi kadrlar</span>
+              <span>{pnl.dayFrames}</span>
               <span className="normal-case tracking-normal text-slate-600">{dayFrames.length} ta</span>
             </p>
             <div className="grid grid-cols-4 gap-1.5">
@@ -1004,8 +1034,8 @@ function DayDetail({
               page={frameSafePage}
               totalPages={frameTotalPages}
               onChange={setFramePage}
-              prevLabel="Oldingi"
-              nextLabel="Keyingi"
+              prevLabel={t.dashboard.ui.prev}
+              nextLabel={t.dashboard.ui.next}
               ariaLabel={`${frameSafePage}-sahifa`}
               className="mt-2"
             />

@@ -24,6 +24,7 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { SpaceBackground } from "@/components/common/SpaceBackground";
+import { Logo } from "@/components/common/Logo";
 
 type Method = "password" | "face";
 
@@ -659,7 +660,9 @@ export function AuthPage() {
         </motion.div>
       </motion.div>
 
-      <p className="absolute bottom-5 left-0 right-0 z-10 text-center text-[10.5px] tracking-wide text-slate-600">
+      {/* Brend belgisi — `public/logo/` dagi "CA" monogrammasi (2026-09-14) */}
+      <p className="absolute bottom-5 left-0 right-0 z-10 flex items-center justify-center gap-2 text-center text-[10.5px] tracking-wide text-slate-600">
+        <Logo className="h-[13px] w-auto" />
         Campus AI + 3D GIS Monitoring · v1.0
       </p>
     </div>

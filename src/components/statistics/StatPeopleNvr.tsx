@@ -22,9 +22,10 @@ import {
   useNvrAttendanceRows,
   type PersonPeriodRow,
 } from "@/hooks/useNvrAttendance";
-import { LibraryPhoto } from "@/components/people/FaceDatabasePage";
+import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
+import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { EventDossier } from "@/components/detections/EventDossier";
-import type { NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvrApi";
+import type { NvrAttendanceRow, NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvrApi";
 import { AXIS, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
 import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
@@ -37,6 +38,33 @@ const STATUS_TEXT: Record<NvrAttendanceStatus, { label: string; cls: string }> =
 };
 
 type SortKey = "name" | "klass" | "rate" | "late" | "absent" | "time";
+
+/** Sinf kesimi qatori — BUGUNGI sonlar + davr foizi. */
+interface ClassRow {
+  klass: string;
+  /** Ro'yxatdagi shaxslar (bugun). */
+  total: number;
+  early: number;
+  late: number;
+  absent: number;
+  waiting: number;
+  /** `early + late`. */
+  present: number;
+  /** Bugungi davomat foizi. */
+  rate: number;
+  /** Davr bo'yicha foiz (kun × shaxs) — manba bo'lmasa `null`. */
+  periodRate: number | null;
+}
+
+/** Sinf kartochkalari saralashi (foydalanuvchi so'rovi: katta/kichik, yaxshi/yomon). */
+const CLASS_SORTS = [
+  { id: "class", label: "Sinf" },
+  { id: "big", label: "Katta" },
+  { id: "small", label: "Kichik" },
+  { id: "good", label: "Yaxshi" },
+  { id: "bad", label: "Yomon" },
+] as const;
+type ClassSort = (typeof CLASS_SORTS)[number]["id"];
 
 /** Chiziqlar — kalitlar `dailySeries` maydon nomlari bilan AYNI. */
 const LINES = [
@@ -92,9 +120,6 @@ export function StatPeopleNvr({
 }) {
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
-  /* Sinf kartochkalari matni — davomat taxtasi bilan AYNI lug'at kaliti
-     (kelgan/kechikkan/kelmagan), ya'ni so'z ikki joyda farq qilmaydi. */
-  const u = t.dashboard.ui.att;
   /* "O'quvchi" ↔ "Talaba" — muassasa turiga qarab (`useStudentLabel`). */
   const student = useStudentLabel();
 
@@ -105,6 +130,8 @@ export function StatPeopleNvr({
   const dir = "asc" as "asc" | "desc";
   const [selectedId] = useState<number | null>(null);
   const [openEvent, setOpenEvent] = useState<number | null>(null);
+  /** Sinf chuqurlashuvidan tanlangan shaxs — to'liq SHAXS PANELI ochiladi. */
+  const [personPanelId, setPersonPanelId] = useState<number | null>(null);
   /** Yorliq bosilganda yashiriladigan chiziqlar. */
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
 
@@ -195,22 +222,53 @@ export function StatPeopleNvr({
       .filter((v): v is NonNullable<typeof v> => v !== null);
   }, [range.workPoints, personType]);
 
-  /** Sinflar kesimi — QATORLARDAN (`note`), qo'lda ro'yxat yozilmaydi. */
-  const classes = useMemo(() => {
-    const m = new Map<string, { klass: string; total: number; early: number; late: number; absent: number }>();
-    for (const p of rowsQ.people) {
-      const key = p.klass || "—";
-      const c = m.get(key) ?? { klass: key, total: 0, early: 0, late: 0, absent: 0 };
-      c.total += p.days;
-      c.early += p.early;
-      c.late += p.late;
-      c.absent += p.absent;
+  /**
+   * Sinflar kesimi — **KARTOCHKADA BUGUNGI HOLAT** (2026-09-14,
+   * foydalanuvchi so'rovi: "sinf kesimi uchun faqat bugungilik kelgan
+   * ketganlar chiqishi kerak, qolgani davomat foizini o'zi chiqadi").
+   *
+   * ⚠️ Ilgari kartochkada DAVR yig'indisi turardi ("38 kun-shaxs",
+   * "13 kelgan 3 kechikkan 22 kelmagan") — bir odam 7 kunda 7 marta
+   * sanalgani uchun bu sonlar "sinfda nechta o'quvchi keldi" degan
+   * savolga javob bermasdi. Endi:
+   *   · **bugun** — `lastDay.rows` (SHAXSLAR soni, kun-shaxs emas);
+   *   · **davr foizi** — `rowsQ.people` dan, chuqurlashuvda ko'rsatiladi.
+   */
+  const classes = useMemo<ClassRow[]>(() => {
+    const m = new Map<string, ClassRow>();
+    for (const r of lastDay.rows) {
+      if (role && r.role !== role) continue;
+      const key = r.note || r.role_label || "—";
+      const c =
+        m.get(key) ??
+        ({ klass: key, total: 0, early: 0, late: 0, absent: 0, waiting: 0, present: 0, rate: 0, periodRate: null } as ClassRow);
+      c.total++;
+      if (r.status === "early") c.early++;
+      else if (r.status === "late") c.late++;
+      else if (r.status === "absent") c.absent++;
+      else c.waiting++;
       m.set(key, c);
     }
-    return Array.from(m.values())
-      .map((c) => ({ ...c, rate: c.total > 0 ? Math.round(((c.early + c.late) / c.total) * 100) : 0 }))
-      .sort((a, b) => a.klass.localeCompare(b.klass, "uz"));
-  }, [rowsQ.people]);
+    /* Davr foizi — kun × shaxs bo'yicha (`PersonPeriodRow.days`/`present`). */
+    const per = new Map<string, { days: number; present: number }>();
+    for (const p of rowsQ.people) {
+      const key = p.klass || "—";
+      const v = per.get(key) ?? { days: 0, present: 0 };
+      v.days += p.days;
+      v.present += p.present;
+      per.set(key, v);
+    }
+    return Array.from(m.values()).map((c) => {
+      const present = c.early + c.late;
+      const pv = per.get(c.klass);
+      return {
+        ...c,
+        present,
+        rate: c.total > 0 ? Math.round((present / c.total) * 100) : 0,
+        periodRate: pv && pv.days > 0 ? Math.round((pv.present / pv.days) * 100) : null,
+      };
+    });
+  }, [lastDay.rows, rowsQ.people, role]);
 
   /** Jadval qatorlari — qidiruv + saralash. */
   const rows = useMemo(() => {
@@ -421,44 +479,17 @@ export function StatPeopleNvr({
           </p>
         </StatPanel>
 
-        {/* ── 3. Sinflar kesimi (e'tibor panelining o'rnida) ── */}
-        <StatPanel title="Sinflar kesimi" hint={`${n(classes.length)} ta guruh`}>
-          {/* 🔵 **KARTOCHKA KO'RINISHI — BOSHQARUV PANELIDAGIDEK**
-              (2026-09-13, foydalanuvchi so'rovi: "sinf kesimini boshqaruv
-              panelidagidek qilishing kerak"). Ilgari bu yerda 5 ustunli
-              jadval turardi (Sinf/Erta/Kech/Kelmadi/Davomat) — davomat
-              taxtasining sinf kartochkalari (`AttendanceListModal`
-              `AttendanceClassCard`) bilan bir xil ma'lumotni BOSHQACHA
-              ko'rsatardi. Endi ikkalasi ham AYNI naqsh: katta foiz, yon
-              tomonda hajm, ostida kelgan/kechikkan/kelmagan kesimi.
-              ⚠️ Bu yerdagi son — DAVR yig'indisi (kun × shaxs), taxtadagi
-              esa BITTA kunniki: shuning uchun "N ta" o'rniga aniq
-              "kun-shaxs" yozilgan, aks holda ikki xil son bir xil nomda
-              turardi. */}
-          {classes.length === 0 ? (
-            <p className="py-12 text-center text-[11.5px] text-slate-500">Bu davrda yozuv yo&apos;q</p>
-          ) : (
-            <div className="grid max-h-[248px] grid-cols-2 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-3">
-              {classes.map((c) => (
-                <div
-                  key={c.klass}
-                  className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3"
-                >
-                  <span className="truncate text-[15px] font-bold text-white">{c.klass}</span>
-                  <span className="flex items-end justify-between gap-1">
-                    <span className={`font-mono text-[26px] font-extrabold leading-none ${rateTone(c.rate)}`}>{c.rate}%</span>
-                    <span className="flex-none text-[9px] text-slate-500">{n(c.total)} kun-shaxs</span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-x-2 text-[9.5px]">
-                    <span className="text-emerald-300">{u.earlyN(c.early)}</span>
-                    <span className="text-amber-300">{u.lateN(c.late)}</span>
-                    <span className="text-rose-300">{u.absentN(c.absent)}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </StatPanel>
+        {/* ── 3. Sinflar kesimi — BUGUNGI holat + chuqurlashuv ── */}
+        <ClassBreakdown
+          classes={classes}
+          todayRows={lastDay.rows}
+          people={rowsQ.people}
+          role={role}
+          periodLabel={period.label}
+          isWeekend={lastDay.isWeekend}
+          n={n}
+          onPickPerson={setPersonPanelId}
+        />
       </div>
 
       {/* ── 4. Kun kesimi — har bir shaxs ── */}
@@ -486,7 +517,202 @@ export function StatPeopleNvr({
       )}
 
       {openEvent != null && <EventDossier eventId={openEvent} onClose={() => setOpenEvent(null)} />}
+      {/* Sinf ro'yxatidan tanlangan shaxs — to'liq shaxs paneli. */}
+      {personPanelId != null && (
+        <FaceHistoryModal personId={personPanelId} onClose={() => setPersonPanelId(null)} />
+      )}
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SINFLAR KESIMI — kartochkalar (BUGUN) → sinf ro'yxati → shaxs paneli
+   ══════════════════════════════════════════════════════════════════════
+
+   🔵 **2026-09-14, foydalanuvchi so'rovi.** Uch talab:
+     1. kartochkada FAQAT bugungi kelgan/kelmagan (davr yig'indisi emas —
+        bir odam 7 kunda 7 marta sanalardi);
+     2. sinflarni SARALASH: katta/kichik (ro'yxat hajmi), yaxshi/yomon
+        (davomat foizi);
+     3. sinf bosilsa — o'sha sinfning BUGUNGI ro'yxati, har bir shaxsning
+        davr foizi bilan; shaxs bosilsa — to'liq SHAXS PANELI.
+
+   ⚠️ **Qo'shimcha so'rov YO'Q.** Bugungi holat `useNvrAttendance(period.to)`
+   dan (KPI qatori bilan AYNI kesh), davr foizi esa `useNvrAttendanceRows`
+   dan (soatlik panel bilan AYNI kesh) — ikkalasi ham allaqachon
+   so'ralgan.
+*/
+function ClassBreakdown({
+  classes,
+  todayRows,
+  people,
+  role,
+  periodLabel,
+  isWeekend,
+  n,
+  onPickPerson,
+}: {
+  classes: ClassRow[];
+  todayRows: NvrAttendanceRow[];
+  people: PersonPeriodRow[];
+  role: NvrPersonRole | null;
+  periodLabel: string;
+  isWeekend: boolean;
+  n: (v: number) => string;
+  onPickPerson: (personId: number) => void;
+}) {
+  const [sort, setSort] = useState<ClassSort>("class");
+  const [open, setOpen] = useState<string | null>(null);
+
+  const sorted = useMemo(() => {
+    const list = [...classes];
+    switch (sort) {
+      case "big":
+        return list.sort((a, b) => b.total - a.total || classOrder(a.klass) - classOrder(b.klass));
+      case "small":
+        return list.sort((a, b) => a.total - b.total || classOrder(a.klass) - classOrder(b.klass));
+      case "good":
+        return list.sort((a, b) => b.rate - a.rate || classOrder(a.klass) - classOrder(b.klass));
+      case "bad":
+        return list.sort((a, b) => a.rate - b.rate || classOrder(a.klass) - classOrder(b.klass));
+      default:
+        /* ⚠️ `classOrder` — MATN emas, bosh RAQAM bo'yicha: oddiy alifboda
+           "10-A" "2-B" dan oldin kelardi (`FaceDatabasePage.tsx`). */
+        return list.sort((a, b) => classOrder(a.klass) - classOrder(b.klass));
+    }
+  }, [classes, sort]);
+
+  /** Ochilgan sinfning BUGUNGI ro'yxati + har kimning davr foizi. */
+  const roster = useMemo(() => {
+    if (!open) return [];
+    const byPerson = new Map(people.map((p) => [p.person_id, p]));
+    const ORDER: Record<NvrAttendanceStatus, number> = { early: 0, late: 1, absent: 2, waiting: 3 };
+    return todayRows
+      .filter((r) => (role ? r.role === role : true) && (r.note || r.role_label || "—") === open)
+      .map((r) => ({ r, period: byPerson.get(r.person_id) ?? null }))
+      .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || a.r.full_name.localeCompare(b.r.full_name, "uz"));
+  }, [open, todayRows, people, role]);
+
+  const cur = open ? classes.find((c) => c.klass === open) ?? null : null;
+
+  return (
+    <StatPanel
+      title="Sinflar kesimi"
+      hint={open ? `${open} · bugungi ro'yxat` : `${n(classes.length)} ta guruh · bugun`}
+      right={
+        open ? (
+          <button
+            type="button"
+            onClick={() => setOpen(null)}
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
+          >
+            ◀ Sinflar
+          </button>
+        ) : (
+          <div className="flex flex-wrap items-center gap-1">
+            {CLASS_SORTS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSort(s.id)}
+                className={`rounded-lg border px-2 py-1 text-[10.5px] font-semibold transition-colors ${
+                  sort === s.id
+                    ? "border-ice/40 bg-ice/10 text-ice-bright"
+                    : "border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )
+      }
+    >
+      {classes.length === 0 ? (
+        <p className="py-12 text-center text-[11.5px] text-slate-500">
+          {isWeekend ? "Dam olish kuni — davomat hisoblanmaydi" : "Bugun uchun davomat yozuvi yo'q"}
+        </p>
+      ) : open && cur ? (
+        /* ── SINF ICHIDA: bugungi ro'yxat ── */
+        <div className="flex min-h-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <span className="text-[13px] font-bold text-white">{cur.klass}</span>
+            <span className={`font-mono text-[15px] font-extrabold ${rateTone(cur.rate)}`}>{cur.rate}%</span>
+            <span className="text-[10px] text-slate-500">bugun</span>
+            {cur.periodRate != null && (
+              <>
+                <span className="text-white/10">·</span>
+                <span className={`font-mono text-[13px] font-bold ${rateTone(cur.periodRate)}`}>{cur.periodRate}%</span>
+                <span className="text-[10px] text-slate-500">{periodLabel.toLowerCase()}</span>
+              </>
+            )}
+            <span className="ml-auto text-[10px] text-slate-500">
+              {n(cur.present)} kelgan · {n(cur.absent)} kelmagan · {n(cur.total)} ta
+            </span>
+          </div>
+
+          <div className="max-h-[210px] overflow-y-auto pr-0.5">
+            <ul className="flex flex-col gap-1">
+              {roster.map(({ r, period }) => {
+                const st = STATUS_TEXT[r.status];
+                return (
+                  <li key={r.person_id}>
+                    <button
+                      type="button"
+                      onClick={() => onPickPerson(r.person_id)}
+                      title="Shaxs panelini ochish"
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-left transition-colors hover:border-ice/30 hover:bg-ice/[0.06]"
+                    >
+                      <LibraryPhoto
+                        personId={r.person_id}
+                        name={r.full_name}
+                        size={28}
+                        className="h-7 w-7 flex-none rounded-md object-cover ring-1 ring-white/10"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-100">{r.full_name}</span>
+                      {/* Davr foizi — "3 kun / hafta" tanlovi sahifaning
+                          yuqorisidagi davr qatoridan keladi. */}
+                      {period && period.days > 0 && (
+                        <span className={`flex-none font-mono text-[10.5px] ${rateTone(period.rate)}`}>{period.rate}%</span>
+                      )}
+                      <span className="flex-none font-mono text-[10.5px] text-slate-400">{r.time || "—"}</span>
+                      <span className={`flex-none rounded-md border px-1.5 py-0.5 text-[9.5px] font-semibold ${st.cls}`}>
+                        {st.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      ) : (
+        /* ── KARTOCHKALAR: BUGUNGI holat ── */
+        <div className="grid max-h-[248px] grid-cols-2 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-3">
+          {sorted.map((c) => (
+            <button
+              key={c.klass}
+              type="button"
+              onClick={() => setOpen(c.klass)}
+              title={`${c.klass} — bugungi ro'yxat`}
+              className="group flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 text-left transition-colors hover:border-ice/30 hover:bg-ice/[0.06]"
+            >
+              <span className="flex w-full items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-white">{c.klass}</span>
+                <span className="flex-none text-[9.5px] text-slate-500">{n(c.total)} ta</span>
+              </span>
+              <span className={`font-mono text-[26px] font-extrabold leading-none ${rateTone(c.rate)}`}>{c.rate}%</span>
+              {/* FAQAT bugungi kelgan/kelmagan — davr yig'indisi EMAS. */}
+              <span className="flex flex-wrap items-center gap-x-2 text-[9.5px]">
+                <span className="text-emerald-300">{n(c.present)} kelgan</span>
+                <span className="text-rose-300">{n(c.absent)} kelmagan</span>
+                {c.waiting > 0 && <span className="text-slate-500">{n(c.waiting)} kutilmoqda</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </StatPanel>
   );
 }
 

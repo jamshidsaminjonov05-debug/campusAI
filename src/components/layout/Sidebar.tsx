@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
+import { Logo } from "@/components/common/Logo";
 import { NAV_GIF_ICONS } from "@/config/navIcons";
 import { GifIcon } from "@/components/common/GifIcon";
 import { LottieIcon } from "@/components/common/LottieIcon";
@@ -80,19 +81,24 @@ export function Sidebar({ collapsed, onToggleCollapsed }: Props) {
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="nexa-card relative my-3.5 ml-3.5 flex flex-none flex-col overflow-hidden"
     >
-      {/* Tipografik brend — logo o'rniga */}
+      {/* Brend — `public/logo/` dagi "CA" belgisi + nomi (2026-09-14).
+          Yig'ilgan holatda faqat belgi qoladi: ilgari "AI" harflari
+          turardi va u logo bilan bog'lanmasdi. */}
       <div className="flex-none px-5 pb-5 pt-7">
         {collapsed ? (
-          <p className="hik-brand text-center text-[16px]">AI</p>
+          <Logo className="mx-auto h-[18px] w-auto text-ice-bright" />
         ) : (
-          <>
-            <p className="hik-brand whitespace-nowrap text-[16px]">
-              Campus <b>AI</b>
-            </p>
-            <p className="mt-1 whitespace-nowrap text-[9px] uppercase tracking-[0.32em] text-slate-500">
-              {t.sidebar.brandSub}
-            </p>
-          </>
+          <div className="flex items-center gap-2.5">
+            <Logo className="h-[22px] w-auto flex-none text-ice-bright" />
+            <div className="min-w-0">
+              <p className="hik-brand whitespace-nowrap text-[16px]">
+                Campus <b>AI</b>
+              </p>
+              <p className="mt-1 whitespace-nowrap text-[9px] uppercase tracking-[0.32em] text-slate-500">
+                {t.sidebar.brandSub}
+              </p>
+            </div>
+          </div>
         )}
       </div>
       <div className="mx-5 h-px flex-none bg-gradient-to-r from-transparent via-white/10 to-transparent" />

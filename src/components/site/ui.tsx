@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Moon, Plus, ScanFace, Sun, type LucideIcon } from "lucide-react";
+import { ArrowRight, Moon, Plus, Sun, type LucideIcon } from "lucide-react";
 import { LANGS, useI18n, useT, type Lang } from "@/i18n";
 import { hydrateTheme, setTheme, useScheme } from "@/theme";
+import { Logo } from "@/components/common/Logo";
 
 /*
  * Ommaviy sayt (landing + ichki sahifalar) — UMUMIY bo'laklar.
@@ -75,8 +76,10 @@ export function Pill({ href, tone, small, children }: { href: string; tone: Pill
 export function Brand({ onDark }: { onDark: boolean }) {
   return (
     <Link href="/" className="group flex items-center gap-2.5" aria-label="Campus AI">
+      {/* Brend belgisi — `public/logo/` dagi "CA" monogrammasi
+          (2026-09-14; ilgari umumiy `ScanFace` ikonkasi turardi). */}
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-[linear-gradient(135deg,#2584FF,#2050E0)] text-[#FFFFFF] shadow-[0_8px_20px_-8px_rgba(37,132,255,0.8)] transition-transform duration-500 ease-out group-hover:-rotate-[10deg] group-hover:scale-110">
-        <ScanFace size={19} strokeWidth={2} />
+        <Logo className="h-[15px] w-auto" />
       </span>
       <span className={`text-[19px] font-semibold tracking-[-0.02em] transition-colors duration-300 ${onDark ? "text-[#FFFFFF]" : "text-[var(--s-text)]"}`}>
         Campus <span className="text-[#2584FF]">AI</span>
@@ -405,7 +408,7 @@ export function QuoteBlock({ text, author, role, cta, href }: { text: string; au
         <blockquote className="text-[clamp(21px,1.9vw,30px)] leading-[1.4] tracking-[-0.02em] text-[var(--s-text)]">“{text}”</blockquote>
         <div className="mt-8 flex items-center gap-3.5">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-[linear-gradient(135deg,#2584FF,#2050E0)] text-[#FFFFFF]">
-            <ScanFace size={22} />
+            <Logo className="h-[17px] w-auto" />
           </span>
           <span>
             <span className="block text-[16px] font-semibold text-[var(--s-text)]">{author}</span>

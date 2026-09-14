@@ -3,10 +3,11 @@
 import { useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  BarChart3, BellRing, Box, Cigarette, Crosshair, FileVideo, ListChecks, Pause, Play, ScanFace, Swords, UserX,
+  BarChart3, BellRing, Box, Cigarette, Crosshair, FileVideo, ListChecks, Pause, Play, Swords, UserX,
 } from "lucide-react";
 import { useT } from "@/i18n";
 import { SiteShell } from "@/components/site/Footer";
+import { Logo } from "@/components/common/Logo";
 import { BlueBanner, EASE, FloatChip, Pill, QuoteBlock, TELEGRAM_ORDER_URL, WRAP, reveal, type ChipKind } from "@/components/site/ui";
 
 /*
@@ -119,7 +120,7 @@ function News() {
           <div className="relative flex h-full flex-col items-center justify-center px-8 text-center text-[#FFFFFF]">
             <div className="flex items-center gap-3 text-[clamp(18px,1.7vw,26px)] font-semibold tracking-[-0.02em]">
               <span className="flex items-center gap-2">
-                <ScanFace size={24} /> Campus AI
+                <Logo className="h-[18px] w-auto" /> Campus AI
               </span>
               <span className="text-[rgba(255,255,255,0.6)]">×</span>
               <span>{n.cardA}</span>

@@ -2,17 +2,23 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowUp, Mail, Phone, Send } from "lucide-react";
+import { ArrowUp, Phone, Send } from "lucide-react";
 import { useT } from "@/i18n";
 import { SpaceBackground } from "@/components/common/SpaceBackground";
 import { BlueBanner, Brand, TELEGRAM_ORDER_URL, WRAP } from "./ui";
 import { Nav } from "./Nav";
 
-/* TODO: telefon/email hali namuna — real bo'lgach shu yerda almashtiring (landing/README.md). Telegram — HAQIQIY, buyurtma shu hisobga keladi. */
+/**
+ * Aloqa — HAQIQIY ma'lumot (2026-09-14, foydalanuvchi bergan).
+ *
+ * ⚠️ **E-POCHTA ATAYLAB YO'Q** — foydalanuvchi so'rovi bilan olib
+ * tashlandi (ilgari `info@example.uz` degan NAMUNA turardi, ya'ni
+ * ishlamaydigan manzil). Buyurtma va savollar Telegram yoki telefon
+ * orqali keladi. Pochta paydo bo'lsa — shu ro'yxatga bitta yozuv.
+ */
 const CONTACTS = [
-  { Icon: Phone, value: "+998 00 000-00-00", href: "tel:+998000000000" },
+  { Icon: Phone, value: "+998 91 153-57-05", href: "tel:+998911535705" },
   { Icon: Send, value: "@Jsaminjonov", href: TELEGRAM_ORDER_URL },
-  { Icon: Mail, value: "info@example.uz", href: "mailto:info@example.uz" },
 ];
 
 /* Footer ustunlaridagi havolalar — matni lug'atda (`footer.cols[i].links`), SHU tartibda */
