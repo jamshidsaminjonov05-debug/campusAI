@@ -1268,7 +1268,6 @@ export const en: Messages = {
       caseItems: ["Violence and weapons", "Rapid response", "Lower costs", "Frequently asked questions"],
     },
     hero: {
-      badge: "CI/CD • System Active",
       titleA: "Redefining campus safety",
       titleB: "through artificial intelligence",
       text: "Automatic attendance via face recognition, real-time detection of dangerous incidents and nationwide geo-analytics — all in a single control panel.",
