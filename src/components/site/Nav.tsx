@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight, BellRing, BookOpen, Building2, CircleHelp, Crosshair, GraduationCap, Menu, PiggyBank, School,
-  Sparkles, Tag, Users, Workflow, X, type LucideIcon,
+  Presentation, Sparkles, Tag, Users, Workflow, X, type LucideIcon,
 } from "lucide-react";
 import { useT } from "@/i18n";
 import { Brand, EASE, LangSwitch, Pill, TELEGRAM_ORDER_URL, ThemeToggle, WRAP } from "./ui";
@@ -19,11 +19,13 @@ import { Brand, EASE, LangSwitch, Pill, TELEGRAM_ORDER_URL, ThemeToggle, WRAP } 
  */
 
 type MenuId = "product" | "campus";
-type TopKey = "product" | "campus" | "docs" | "about" | "pricing";
+type TopKey = "product" | "campus" | "presentation" | "docs" | "about" | "pricing";
 
 const TOP: { key: TopKey; href: string; menu?: MenuId }[] = [
   { key: "product", href: "/mahsulot", menu: "product" },
   { key: "campus", href: "/campus-qoriqlash", menu: "campus" },
+  /* Taqdimot — to'liq ekranli shou (`/taqdimot`), saytning o'zi emas */
+  { key: "presentation", href: "/taqdimot" },
   { key: "docs", href: "/qollanma" },
   { key: "about", href: "/biz-haqimizda" },
   { key: "pricing", href: "/narxlar" },
@@ -48,7 +50,7 @@ const CASE_LINKS: MenuLinkDef[] = [
   { href: "/campus-qoriqlash#samaradorlik", Icon: PiggyBank },
   { href: "/campus-qoriqlash#savollar", Icon: CircleHelp },
 ];
-const PLAIN_ICONS: Partial<Record<TopKey, LucideIcon>> = { docs: BookOpen, about: Users, pricing: Tag };
+const PLAIN_ICONS: Partial<Record<TopKey, LucideIcon>> = { presentation: Presentation, docs: BookOpen, about: Users, pricing: Tag };
 
 /** Mega-menyu bandi: kulrang doiradagi ikonka + sarlavha (+ izoh). Hover'da ko'k */
 function MenuLink({ def, title, text, i, onPick }: { def: MenuLinkDef; title: string; text?: string; i: number; onPick: () => void }) {

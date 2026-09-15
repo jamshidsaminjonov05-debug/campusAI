@@ -1182,6 +1182,7 @@ export const ru: Messages = {
     nav: {
       product: "Продукт",
       campus: "Охрана кампуса",
+      presentation: "Презентация",
       docs: "Руководство",
       about: "О нас",
       pricing: "Цены",

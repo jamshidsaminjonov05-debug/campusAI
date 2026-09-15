@@ -1,0 +1,23 @@
+{
+ "texts": [
+  "Endi eng muhim savol: tizim aynan qanday ishlaydi?",
+  "Birinchi bosqich. Mavjud kameraning oqimi kuzatuv postiga keladi. Yangi uskuna qo'shilmaydi.",
+  "Ikkinchi bosqich. Oqim kadrlarga bo'linadi. Model videoni emas, aynan kadrni ko'radi.",
+  "Uchinchi bosqich. Kompyuter ko'rish modeli kadrdagi har bir obyektga ramka va ishonch darajasini beradi.",
+  "To'rtinchi bosqich. Bir odam kadrdan kadrga bitta raqam bilan kuzatiladi. Yuz vektori esa muassasa bazasidagi vektorlar bilan solishtiriladi.",
+  "Beshinchi bosqich. Ishonch chegarasi, zona va vaqt bo'yicha saralash. Bitta o'tishdagi o'nlab kadr bitta hodisaga birlashadi.",
+  "Oltinchi bosqich. Hodisa avtomatik qayd etiladi: panelda, ovozli signalda va ota-ona ilovasida paydo bo'ladi. Xavflilik darajasiga qarab mas'ul xodimga yoki tashqi xizmatlarga yo'naltiriladi.",
+  "Va bularning hammasi muassasaning o'z serverida bajariladi."
+ ],
+ "duration": 51.85,
+ "offsets": [
+  0.25,
+  3.44,
+  9.26,
+  14.38,
+  20.37,
+  28.86,
+  35.96,
+  48.25
+ ]
+}

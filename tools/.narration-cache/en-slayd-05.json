@@ -1,0 +1,25 @@
+{
+ "texts": [
+  "Now let us look closely at the two most important scenarios. A fight, and a weapon.",
+  "A fight. The model detects sharp movement between two or more people, from their posture and the speed of motion.",
+  "The frame and the incident video are stored automatically. A high level alert appears on the panel and an audible signal on the control screen.",
+  "The security officer gets a notification and the camera point on the map. If the student is recognised, the parent is notified too.",
+  "The incident enters the log automatically and is attached to that person's history. Statistics then show where and when fights repeat. If the pattern continues, a referral to the prevention inspector is generated.",
+  "The weapon scenario is different. Here the system does not wait for confirmation.",
+  "As soon as the model finds a weapon-like object, the level becomes critical at once. A siren, a full screen alarm on every control screen, and the camera stream opens automatically.",
+  "Management and the responsible officer are notified at the same moment. A ready case file — frame, video, time and place — is sent automatically to the National Guard and the Ministry of Internal Affairs.",
+  "If the signal was wrong, the responsible officer flags it and the model threshold is tuned automatically for that specific camera."
+ ],
+ "duration": 70.16,
+ "offsets": [
+  0.25,
+  5.4,
+  11.54,
+  19.11,
+  26.24,
+  37.96,
+  42.44,
+  52.15,
+  63.02
+ ]
+}

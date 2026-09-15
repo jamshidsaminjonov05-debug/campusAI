@@ -1180,6 +1180,7 @@ export const en: Messages = {
     nav: {
       product: "Product",
       campus: "Campus security",
+      presentation: "Presentation",
       docs: "Guide",
       about: "About us",
       pricing: "Pricing",

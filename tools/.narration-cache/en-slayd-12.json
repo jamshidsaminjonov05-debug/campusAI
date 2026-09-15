@@ -1,0 +1,17 @@
+{
+ "texts": [
+  "And now the most important part — your data.",
+  "The system runs on the institution's own server and never reaches out to the internet.",
+  "The map, the fonts, the face database. All of it stays inside.",
+  "Images and video are visible only to a signed in user. Access keys stay on the server and never reach the browser.",
+  "Only accounts created by the administrator can sign in."
+ ],
+ "duration": 22.69,
+ "offsets": [
+  0.25,
+  2.89,
+  7.77,
+  11.77,
+  18.99
+ ]
+}

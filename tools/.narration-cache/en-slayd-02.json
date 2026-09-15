@@ -1,0 +1,23 @@
+{
+ "texts": [
+  "Now the most important question. How exactly does the system work?",
+  "Step one. The stream from a camera you already own arrives at the surveillance post. No new hardware is added.",
+  "Step two. The stream is split into frames. The model does not watch video, it looks at frames.",
+  "Step three. A computer vision model gives every object in the frame a box and a confidence score.",
+  "Step four. One person is tracked from frame to frame under a single identifier. The face vector is compared against the vectors in the institution's own database.",
+  "Step five. Filtering by confidence threshold, zone and time. Dozens of frames from one passage collapse into a single event.",
+  "Step six. The event is logged automatically: on the panel, as an audible alert, and in the parent app. Depending on its severity it is routed to the responsible officer or to external services.",
+  "And all of this runs on the institution's own server."
+ ],
+ "duration": 51.94,
+ "offsets": [
+  0.25,
+  4.14,
+  10.0,
+  15.63,
+  21.6,
+  30.27,
+  37.83,
+  48.93
+ ]
+}

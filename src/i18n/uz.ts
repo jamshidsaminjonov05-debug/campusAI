@@ -1232,6 +1232,7 @@ export const uz = {
     nav: {
       product: "Mahsulot",
       campus: "Campus qo'riqlash",
+      presentation: "Taqdimot",
       docs: "Qo'llanma",
       about: "Biz haqimizda",
       pricing: "Narxlar",
