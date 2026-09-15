@@ -14,8 +14,6 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { WifiOff } from "lucide-react";
-import { YandexMap } from "@/map/yandex/YandexMap";
-import { isYandexHost } from "@/config/yandexMaps";
 import { useAppStore } from "@/store/useAppStore";
 import { useScheme } from "@/theme";
 import {
@@ -595,7 +593,7 @@ function hasWebgl(): boolean {
 }
 
 /** Marker uchun DOM — CSS `.ymk*` klasslari YandexMap bilan bir xil qoladi. */
-export function markerElement(m: YMarker): HTMLElement {
+function markerElement(m: YMarker): HTMLElement {
   const root = document.createElement("div");
   root.style.setProperty("--ymk", m.color);
   if (m.tooltip) root.title = m.tooltip;
@@ -697,7 +695,7 @@ export function markerElement(m: YMarker): HTMLElement {
  * `TILES_BASE` ga qayta yoziladi, shuning uchun tile server manzili o'zgarsa
  * faqat `config/services.mjs` reyestridagi `tiles` yozuvi almashtiriladi.
  */
-const MapLibreGlMap = memo(function MapLibreGlMap({
+export const MapLibreMap = memo(function MapLibreMap({
   center,
   zoom,
   markers = [],
@@ -1729,21 +1727,4 @@ const MapLibreGlMap = memo(function MapLibreGlMap({
       )}
     </div>
   );
-});
-
-/**
- * XARITA — host bo'yicha IKKI xil manba (2026-09-14, foydalanuvchi so'rovi).
- *
- *   · lokal (localhost, ichki IP `10.181…`) — OFFLINE MapLibre + ichki tayl
- *     server (yuqoridagi `MapLibreGlMap`, butun 3D kampus bilan);
- *   · global domen (`campusai.uz`) — Yandex (`map/yandex/YandexMap.tsx`):
- *     u yerdan ichki tayl serverga yetib bo'lmaydi.
- *
- * Tanlov `config/yandexMaps.ts` `isYandexHost()` da. Host sahifa davomida
- * o'zgarmaydi — shuning uchun faqat birinchi renderda o'qiladi.
- * Chaqiruvchilar (`Map3D`, `GeoMap`, HUD, radar) hech narsani bilmaydi.
- */
-export const MapLibreMap = memo(function MapLibreMap(props: MapProps) {
-  const [yandex] = useState(isYandexHost);
-  return yandex ? <YandexMap {...props} /> : <MapLibreGlMap {...props} />;
 });
