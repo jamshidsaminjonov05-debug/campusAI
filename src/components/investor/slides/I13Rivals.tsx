@@ -38,10 +38,23 @@ const GRID: Cell[][] = [
   ["yes", "no", "no", "no"],              // o'quvchiga hisoblangan tarif
 ];
 
+/**
+ * ⚠️ RANG — SLAYDNING ASOSIY QUROLI.
+ *
+ * "Yo'q" ataylab QIZIL: kulrang belgi ko'zga tashlanmasdi va investor
+ * matritsani qatorma-qator o'qishga majbur bo'lardi. Qizil bilan esa
+ * bir qarashda ko'rinadi — bizning ustun to'liq yashil, raqobatchilarniki
+ * qizilga to'la.
+ *
+ * ⚠️ Rang FAQAT javobga bog'liq, ustunga emas: raqobatchida "bor" bo'lsa
+ * u ham yashil bo'ladi (masalan uskuna vendorlari on-prem ishlaydi).
+ * Aks holda matritsa soxta bo'lib qolardi va birinchi savoldayoq
+ * ishonchni yo'qotardik.
+ */
 const MARK = {
-  yes: { Icon: Check, cls: "text-emerald-400", bg: "bg-emerald-500/12" },
-  partial: { Icon: Minus, cls: "text-amber-300", bg: "bg-amber-500/12" },
-  no: { Icon: X, cls: "text-slate-600", bg: "bg-white/[0.03]" },
+  yes: { Icon: Check, cls: "text-emerald-300", bg: "bg-emerald-500/[0.18]", ring: "ring-emerald-400/40" },
+  partial: { Icon: Minus, cls: "text-amber-300", bg: "bg-amber-500/[0.14]", ring: "ring-amber-400/30" },
+  no: { Icon: X, cls: "text-rose-300", bg: "bg-rose-500/[0.16]", ring: "ring-rose-400/35" },
 } as const;
 
 export default function I13Rivals({ t, fresh, at }: SlideProps) {
@@ -62,9 +75,11 @@ export default function I13Rivals({ t, fresh, at }: SlideProps) {
             initial={fresh ? { opacity: 0, y: -8 } : false}
             animate={show(1) ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, ease: EASE }}
-            className="rounded-lg border border-ice/45 bg-ice/[0.12] px-2 py-1.5 text-center"
+            /* Bizning ustun sarlavhasi YASHIL — ustun bo'ylab davom etadigan
+               yashil fonning boshlanishi */
+            className="rounded-lg border border-emerald-400/45 bg-emerald-500/[0.14] px-2 py-1.5 text-center"
           >
-            <span className="block text-[11.5px] font-semibold leading-tight text-ice">{c.us}</span>
+            <span className="block text-[11.5px] font-semibold leading-tight text-emerald-200">{c.us}</span>
           </motion.span>
           {c.list.map((r, i) => (
             <motion.span
@@ -92,16 +107,17 @@ export default function I13Rivals({ t, fresh, at }: SlideProps) {
             >
               <span className="truncate text-[12px] leading-snug text-slate-300">{row}</span>
               {GRID[ri].map((cell, ci) => {
-                const { Icon, cls, bg } = MARK[cell];
+                const { Icon, cls, bg, ring } = MARK[cell];
                 const mine = ci === 0;
                 return (
-                  <span key={ci} className="flex justify-center">
+                  <span key={ci} className={`flex justify-center ${mine ? "bg-emerald-500/[0.06]" : ""}`}>
                     <span
-                      className={`grid h-6 w-6 place-items-center rounded-lg ${bg} ${
-                        mine && cell === "yes" ? "ring-1 ring-inset ring-emerald-400/35" : ""
+                      className={`grid place-items-center rounded-lg ring-1 ring-inset ${bg} ${ring} ${
+                        /* Bizning kataklar kattaroq — ustun bir qarashda ajraladi */
+                        mine ? "h-7 w-7" : "h-6 w-6"
                       }`}
                     >
-                      <Icon size={13} className={cls} strokeWidth={cell === "yes" ? 2.6 : 2.2} />
+                      <Icon size={mine ? 15 : 13} className={cls} strokeWidth={2.6} />
                     </span>
                   </span>
                 );
@@ -136,10 +152,12 @@ export default function I13Rivals({ t, fresh, at }: SlideProps) {
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <span className="flex items-center gap-4">
             {(["yes", "partial", "no"] as Cell[]).map((k) => {
-              const { Icon, cls } = MARK[k];
+              const { Icon, cls, bg } = MARK[k];
               return (
                 <span key={k} className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                  <Icon size={12} className={cls} strokeWidth={2.4} />
+                  <span className={`grid h-4 w-4 place-items-center rounded ${bg}`}>
+                    <Icon size={10} className={cls} strokeWidth={2.8} />
+                  </span>
                   {c.legend[k]}
                 </span>
               );

@@ -1385,6 +1385,7 @@ export const uz = {
       product: "Mahsulot",
       campus: "Campus qo'riqlash",
       presentation: "Taqdimot",
+      investor: "Investorlarga",
       about: "Biz haqimizda",
       pricing: "Narxlar",
       login: "Tizimga kirish",
@@ -1639,7 +1640,7 @@ export const uz = {
     footer: {
       tagline: "Ta'lim muassasalari uchun video-kuzatuv va AI monitoring platformasi.",
       cols: [
-        { title: "Mahsulot", links: ["Imkoniyatlar", "Campus qo'riqlash", "Taqdimot"] },
+        { title: "Mahsulot", links: ["Imkoniyatlar", "Campus qo'riqlash", "Investorlarga"] },
         { title: "Kompaniya", links: ["Biz haqimizda", "Narxlar", "Tizimga kirish"] },
       ],
       contactTitle: "Bog'lanish",

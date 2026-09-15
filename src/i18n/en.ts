@@ -1326,6 +1326,7 @@ export const en: Messages = {
       product: "Product",
       campus: "Campus security",
       presentation: "Presentation",
+      investor: "For investors",
       about: "About us",
       pricing: "Pricing",
       login: "Sign in",
@@ -1580,7 +1581,7 @@ export const en: Messages = {
     footer: {
       tagline: "Video surveillance and AI monitoring platform for educational institutions.",
       cols: [
-        { title: "Product", links: ["Features", "Campus security", "Presentation"] },
+        { title: "Product", links: ["Features", "Campus security", "For investors"] },
         { title: "Company", links: ["About us", "Pricing", "Sign in"] },
       ],
       contactTitle: "Contact",
