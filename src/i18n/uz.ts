@@ -1384,7 +1384,7 @@ export const uz = {
     nav: {
       product: "Mahsulot",
       campus: "Campus qo'riqlash",
-      docs: "Qo'llanma",
+      presentation: "Taqdimot",
       about: "Biz haqimizda",
       pricing: "Narxlar",
       login: "Tizimga kirish",
@@ -1592,102 +1592,6 @@ export const uz = {
         { title: "Ishni soddalashtiring", items: ["Davomat qog'ozsiz yuritiladi", "Tayyor statistika va CSV hisobotlar", "Barcha bo'limlar bitta panelda"] },
       ],
     },
-    docs: {
-      search: "Qidirish...",
-      noResults: "Hech narsa topilmadi",
-      sections: "Bo'limlar",
-      onThisPage: "Ushbu sahifada",
-      helpful: "Foydali bo'ldimi?",
-      thanks: "Fikringiz uchun rahmat!",
-      prev: "Oldingi",
-      next: "Keyingi",
-      groups: { start: "Boshlash", panel: "Panel", faq: "Savollar" },
-      pages: {
-        welcome: {
-          title: "Campus AI'ga xush kelibsiz",
-          lead: "Muassasangiz xavfsizligi va davomati — bitta panelda.",
-          sections: [
-            { h: "Umumiy ma'lumot", body: "Chapdagi bo'limlardan kerakli mavzuni tanlang yoki qidiruvdan foydalaning. Qo'llanma tizimni o'rnatishdan tortib kundalik ishgacha bo'lgan jarayonni tushuntiradi.", items: [] },
-            { h: "Joriy holat", body: "Campus AI hozircha bitta muassasada jonli sinovda ishlamoqda va uni bitta administrator boshqaradi: foydalanuvchi hisoblarini yaratadi, kameralar va davomat vaqtlarini sozlaydi, hodisalarni kuzatib tasdiqlaydi. Turli xodimlar uchun alohida huquqlar (operator, rahbariyat) keyingi bosqichda qo'shiladi.", items: [] },
-          ],
-        },
-        login: {
-          title: "Tizimga kirish",
-          lead: "Hisob, til va boshqa kompyuterdan ishlash.",
-          sections: [
-            { h: "Hisob", body: "Login va parolni muassasa administratori beradi. Bosh sahifadagi \"Tizimga kirish\" tugmasi boshqaruv paneliga olib boradi.", items: [] },
-            { h: "Til va mavzu", body: "Panel yuqorisidagi tanlagich orqali o'zbek, rus yoki ingliz tilini, shuningdek qorong'i yoki yorug' mavzuni tanlash mumkin. Tanlov saqlanib qoladi.", items: [] },
-            { h: "Boshqa kompyuterdan", body: "Panel tarmoqdagi istalgan kompyuterdan ochiladi. Mikrofon, kamera (Face ID) va bildirishnomalar esa faqat HTTPS orqali ishlaydi.", items: [] },
-          ],
-        },
-        requirements: {
-          title: "Tarmoq talablari",
-          lead: "Tizim ishlashi uchun nima kerak.",
-          sections: [
-            { h: "Server", body: "Campus AI muassasaning ichki serverida ishlaydi va internetga ulanishni talab qilmaydi.", items: [] },
-            { h: "Kameralar", body: "", items: ["Mavjud IP-kameralar kuzatuv posti orqali ulanadi", "Har bir kamera muassasa va joylashuvga bog'lanadi"] },
-            { h: "Brauzer", body: "Zamonaviy brauzer (Chrome, Edge, Firefox) va WebGL qo'llab-quvvatlashi kerak — xarita shunga tayanadi.", items: [] },
-          ],
-        },
-        dashboard: {
-          title: "Boshqaruv paneli",
-          lead: "Bir qarashda butun manzara.",
-          sections: [
-            { h: "Bugungi davomat", body: "Yuqoridagi kafellar jami, o'qituvchilar, xodimlar va o'quvchilar bo'yicha bugungi holatni ko'rsatadi. Kafel bosilsa kim kelgani ro'yxati ochiladi.", items: [] },
-            { h: "Xarita", body: "Markazdagi 3D xaritada muassasa, kameralar va trevogalar ko'rinadi. Kamera bosilsa jonli oqim ochiladi.", items: [] },
-            { h: "Batafsil ma'lumot", body: "O'ng pastki burchakdagi tugma oxirgi kirishlar, signallar va hodisa turlarini ochadi.", items: [] },
-          ],
-        },
-        alerts: {
-          title: "Ogohlantirishlar",
-          lead: "Hali tasdiqlanmagan hodisalar navbati.",
-          sections: [
-            { h: "Navbat", body: "Bu bo'limda faqat tasdiqlanmagan hodisalar turadi. Tasdiqlangan yozuv navbatdan chiqadi, lekin \"Aniqlanganlar\"da saqlanadi.", items: [] },
-            { h: "Tasdiqlash", body: "", items: ["Kartochkani bosib ma'lumotlarni oching va kadrni ko'ring", "\"Tasdiqlash\" tugmasi yozuvni navbatdan chiqaradi", "\"Hammasini tasdiqlash\" ko'rinayotgan kesim uchun ishlaydi"] },
-          ],
-        },
-        detections: {
-          title: "Aniqlanganlar",
-          lead: "Barcha hodisalar arxivi va qidiruv.",
-          sections: [
-            { h: "Kategoriyalar", body: "Yuqoridagi tablar: Hammasi, Yuz tanish, Qurol, Janjal, Chekish va Telefon. Yuz tanishda tanilgan va notanish shaxslarni ajratish mumkin.", items: [] },
-            { h: "Dossiye", body: "", items: ["Butun kadr va nishon ramkasi", "Hodisa videosi va asl lavhani yuklab olish", "Shaxs tarixi: qaysi kamerada va qachon ko'ringan"] },
-          ],
-        },
-        cameras: {
-          title: "Kameralar",
-          lead: "Barcha kameralar holati bir ekranda.",
-          sections: [
-            { h: "Ro'yxat", body: "Har bir kamera kartochkasida stop-kadr va holat (onlayn/oflayn) ko'rsatiladi.", items: [] },
-            { h: "Jonli oqim", body: "Oqim faqat kartochka bosilganda ochiladi va oyna yopilganda uziladi — tarmoq ortiqcha yuklanmaydi.", items: [] },
-          ],
-        },
-        stats: {
-          title: "Statistika",
-          lead: "Davomat va hodisalar tahlili.",
-          sections: [
-            { h: "Davr tanlovi", body: "Bugun, 3 kun, hafta, oy yoki ixtiyoriy oraliq — tanlov barcha kesimlarga qo'llanadi.", items: [] },
-            { h: "Eksport", body: "", items: ["Jadvallarni CSV faylga yuklab olish", "Sahifani chop etish"] },
-          ],
-        },
-        detectors: {
-          title: "Aniqlash imkoniyatlari",
-          lead: "Campus AI qanday hodisalarni taniydi.",
-          sections: [
-            { h: "Detektorlar", body: "", items: ["Yuz tanish — tanilgan va begona shaxslar", "Qurol", "Janjal va mushtlashuv", "Chekish va telefonda gaplashish"] },
-            { h: "Odamlar sanog'i", body: "Belgilangan chiziqdan kirgan va chiqqanlar soni alohida o'lchanadi.", items: [] },
-          ],
-        },
-        privacy: {
-          title: "Maxfiylik va xavfsizlik",
-          lead: "Ma'lumotlaringiz qanday himoyalanadi.",
-          sections: [
-            { h: "Kirish", body: "Rasm va videolarni faqat tizimga kirgan foydalanuvchi ko'ra oladi. Kirish kalitlari serverda saqlanadi va brauzerga chiqmaydi.", items: [] },
-            { h: "Ma'lumotlar joyi", body: "Barcha ma'lumotlar muassasa serverida saqlanadi. Tizim tashqi xizmatlarga murojaat qilmaydi.", items: [] },
-          ],
-        },
-      },
-    },
     about: {
       kicker: "Bizning maqsadimiz",
       title: "Campus AI xavfsiz kelajakni quradi — odamlarni himoya qiladigan sun'iy intellekt",
@@ -1735,7 +1639,7 @@ export const uz = {
     footer: {
       tagline: "Ta'lim muassasalari uchun video-kuzatuv va AI monitoring platformasi.",
       cols: [
-        { title: "Mahsulot", links: ["Imkoniyatlar", "Campus qo'riqlash", "Qo'llanma"] },
+        { title: "Mahsulot", links: ["Imkoniyatlar", "Campus qo'riqlash", "Taqdimot"] },
         { title: "Kompaniya", links: ["Biz haqimizda", "Narxlar", "Tizimga kirish"] },
       ],
       contactTitle: "Bog'lanish",

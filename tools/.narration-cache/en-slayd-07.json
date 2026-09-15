@@ -1,0 +1,19 @@
+{
+ "texts": [
+  "Attendance is not only about present or absent.",
+  "At every recognition the camera also records the facial expression. Positive, neutral or negative. From that, a mood curve for the whole day is built.",
+  "An attention indicator is calculated per lesson. We say this openly: it is not a measurement, it is derived from the mood records. There is no sensor measuring attention.",
+  "If anger appears in the label, or several negative records follow one another in a short window, the system raises an aggression flag and writes down the reason.",
+  "Is the child under pressure? The system does not diagnose. It only gathers signals: repeated negative mood, involvement in incidents, a sharp break in attendance, more time spent alone.",
+  "Those signals go to the class teacher and the school psychologist. The decision always stays with a human."
+ ],
+ "duration": 46.08,
+ "offsets": [
+  0.25,
+  3.28,
+  11.66,
+  21.34,
+  29.36,
+  39.92
+ ]
+}

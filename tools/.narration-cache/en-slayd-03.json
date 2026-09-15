@@ -1,0 +1,23 @@
+{
+ "texts": [
+  "So what can the ecosystem detect?",
+  "Face recognition. Known people and strangers.",
+  "Weapons. The moment one appears in frame, the alarm is raised.",
+  "Fights and violence. A scuffle is caught before it escalates.",
+  "Smoking. Rule violations on the grounds are logged.",
+  "Phone use. Discipline during lessons.",
+  "Unknown person. If someone who is not in the database enters the grounds, the system reports it immediately.",
+  "And people counting. Who crossed the line in, and who crossed it out."
+ ],
+ "duration": 29.99,
+ "offsets": [
+  0.25,
+  2.42,
+  5.8,
+  9.64,
+  13.63,
+  16.84,
+  19.59,
+  26.04
+ ]
+}

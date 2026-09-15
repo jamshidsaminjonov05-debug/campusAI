@@ -23,7 +23,7 @@ const CONTACTS = [
 
 /* Footer ustunlaridagi havolalar — matni lug'atda (`footer.cols[i].links`), SHU tartibda */
 const FOOTER_HREFS = [
-  ["/mahsulot", "/campus-qoriqlash", "/qollanma"],
+  ["/mahsulot", "/campus-qoriqlash", "/taqdimot"],
   ["/biz-haqimizda", "/narxlar", "/panel"],
 ];
 

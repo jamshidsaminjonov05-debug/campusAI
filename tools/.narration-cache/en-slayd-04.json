@@ -1,0 +1,17 @@
+{
+ "texts": [
+  "An incident has happened. Now count the seconds.",
+  "In less than one second the model detects it and calculates the confidence level.",
+  "By the second second it is on the control screen, with the frame, the camera and the location.",
+  "By the twelfth second the responsible staff member knows.",
+  "The case file is assembled automatically: frame, video, time and place. It goes to the responsible officer and into the archive."
+ ],
+ "duration": 24.27,
+ "offsets": [
+  0.25,
+  3.18,
+  7.79,
+  13.27,
+  16.63
+ ]
+}

@@ -1325,7 +1325,7 @@ export const en: Messages = {
     nav: {
       product: "Product",
       campus: "Campus security",
-      docs: "Guide",
+      presentation: "Presentation",
       about: "About us",
       pricing: "Pricing",
       login: "Sign in",
@@ -1533,102 +1533,6 @@ export const en: Messages = {
         { title: "Streamline operations", items: ["Paperless attendance", "Ready-made statistics and CSV reports", "All sections in one panel"] },
       ],
     },
-    docs: {
-      search: "Search...",
-      noResults: "Nothing found",
-      sections: "Sections",
-      onThisPage: "On this page",
-      helpful: "Was this helpful?",
-      thanks: "Thanks for your feedback!",
-      prev: "Previous",
-      next: "Next",
-      groups: { start: "Getting started", panel: "Panel", faq: "FAQ" },
-      pages: {
-        welcome: {
-          title: "Welcome to Campus AI",
-          lead: "Your institution's safety and attendance — in one panel.",
-          sections: [
-            { h: "Overview", body: "Pick a topic from the sections on the left or use the search. This guide covers everything from installing the system to everyday work.", items: [] },
-            { h: "Current stage", body: "Campus AI is currently running as a live pilot at one institution, managed by a single administrator who creates user accounts, configures cameras and attendance times, and reviews and confirms incidents. Separate permissions for other staff (operator, management) will be added at a later stage.", items: [] },
-          ],
-        },
-        login: {
-          title: "Signing in",
-          lead: "Accounts, language and working from another computer.",
-          sections: [
-            { h: "Account", body: "The login and password are issued by the institution's administrator. The \"Sign in\" button on the home page opens the control panel.", items: [] },
-            { h: "Language and theme", body: "The switcher at the top of the panel lets you choose Uzbek, Russian or English, as well as a dark or light theme. Your choice is remembered.", items: [] },
-            { h: "From another computer", body: "The panel opens from any computer on the network. The microphone, camera (Face ID) and notifications work only over HTTPS.", items: [] },
-          ],
-        },
-        requirements: {
-          title: "Network requirements",
-          lead: "What the system needs to run.",
-          sections: [
-            { h: "Server", body: "Campus AI runs on the institution's internal server and does not require an internet connection.", items: [] },
-            { h: "Cameras", body: "", items: ["Existing IP cameras connect through the surveillance post", "Each camera is linked to an institution and a location"] },
-            { h: "Browser", body: "A modern browser (Chrome, Edge, Firefox) with WebGL support is required — the map relies on it.", items: [] },
-          ],
-        },
-        dashboard: {
-          title: "Control panel",
-          lead: "The whole picture at a glance.",
-          sections: [
-            { h: "Today's attendance", body: "The tiles at the top show today's status for everyone, teachers, staff and students. Click a tile to see who has arrived.", items: [] },
-            { h: "Map", body: "The 3D map in the center shows the institution, cameras and alarms. Click a camera to open its live stream.", items: [] },
-            { h: "Details", body: "The button in the bottom-right corner opens recent entries, signals and incident types.", items: [] },
-          ],
-        },
-        alerts: {
-          title: "Alerts",
-          lead: "The queue of incidents not yet confirmed.",
-          sections: [
-            { h: "Queue", body: "Only unconfirmed incidents appear here. A confirmed record leaves the queue but stays in \"Detections\".", items: [] },
-            { h: "Confirming", body: "", items: ["Click a card to open the details and review the frame", "The \"Confirm\" button removes the record from the queue", "\"Confirm all\" applies to the visible selection"] },
-          ],
-        },
-        detections: {
-          title: "Detections",
-          lead: "Archive and search of all incidents.",
-          sections: [
-            { h: "Categories", body: "The tabs at the top: All, Face recognition, Weapons, Fights, Smoking and Phone. In face recognition you can separate known and unknown persons.", items: [] },
-            { h: "Dossier", body: "", items: ["Full frame with target box", "Incident video and original footage download", "Person history: which camera and when"] },
-          ],
-        },
-        cameras: {
-          title: "Cameras",
-          lead: "The status of every camera on one screen.",
-          sections: [
-            { h: "List", body: "Each camera card shows a still frame and status (online/offline).", items: [] },
-            { h: "Live stream", body: "A stream opens only when you click a card and stops when the window closes — the network is not overloaded.", items: [] },
-          ],
-        },
-        stats: {
-          title: "Statistics",
-          lead: "Attendance and incident analysis.",
-          sections: [
-            { h: "Period", body: "Today, 3 days, week, month or a custom range — the choice applies to every view.", items: [] },
-            { h: "Export", body: "", items: ["Download tables as a CSV file", "Print the page"] },
-          ],
-        },
-        detectors: {
-          title: "Detection capabilities",
-          lead: "Which incidents Campus AI recognizes.",
-          sections: [
-            { h: "Detectors", body: "", items: ["Face recognition — known and unknown persons", "Weapons", "Fights and scuffles", "Smoking and phone use"] },
-            { h: "People counting", body: "The number of people entering and leaving across a set line is measured separately.", items: [] },
-          ],
-        },
-        privacy: {
-          title: "Privacy and security",
-          lead: "How your data is protected.",
-          sections: [
-            { h: "Access", body: "Photos and videos are visible only to signed-in users. Access keys stay on the server and never reach the browser.", items: [] },
-            { h: "Where data lives", body: "All data is stored on the institution's server. The system does not call any external services.", items: [] },
-          ],
-        },
-      },
-    },
     about: {
       kicker: "Our mission",
       title: "Campus AI is building a safe future — AI that protects people",
@@ -1676,7 +1580,7 @@ export const en: Messages = {
     footer: {
       tagline: "Video surveillance and AI monitoring platform for educational institutions.",
       cols: [
-        { title: "Product", links: ["Features", "Campus security", "Guide"] },
+        { title: "Product", links: ["Features", "Campus security", "Presentation"] },
         { title: "Company", links: ["About us", "Pricing", "Sign in"] },
       ],
       contactTitle: "Contact",

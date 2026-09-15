@@ -1,0 +1,13 @@
+{
+ "texts": [
+  "Our solution sits on top of the cameras you already own.",
+  "The stream is split into frames, vision models resolve the objects, and dozens of frames collapse into one incident.",
+  "It all runs on the institution's own server. An outage does not stop it, and video never leaves the building."
+ ],
+ "duration": 15.74,
+ "offsets": [
+  0.25,
+  3.32,
+  9.64
+ ]
+}

@@ -12,7 +12,7 @@ export function readLangCookie(): Lang {
 }
 
 /** Ommaviy sayt ichki sahifasi sarlavhasi: "Narxlar · Campus AI" */
-export function sitePageMetadata(key: "product" | "campus" | "docs" | "about" | "pricing"): Metadata {
+export function sitePageMetadata(key: "product" | "campus" | "about" | "pricing"): Metadata {
   const m = DICTIONARIES[readLangCookie()];
   return { title: `${m.landing.nav[key]} · Campus AI`, description: m.meta.description };
 }

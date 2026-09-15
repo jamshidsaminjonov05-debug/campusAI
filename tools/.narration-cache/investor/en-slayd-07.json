@@ -1,0 +1,13 @@
+{
+ "texts": [
+  "Here are real frames.",
+  "A weapon detected, confidence ninety one percent. Smoking detected. A fight detected in the school yard.",
+  "These are not mockups. These are records from a system that is running."
+ ],
+ "duration": 12.6,
+ "offsets": [
+  0.25,
+  1.93,
+  8.18
+ ]
+}

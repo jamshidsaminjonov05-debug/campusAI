@@ -1,0 +1,19 @@
+{
+ "texts": [
+  "A separate section for the head of the institution. Oversight of teachers and staff.",
+  "Staff arrivals and departures are recorded through face recognition, exactly like students. Who entered the lesson on time, and who did not, is visible in the schedule.",
+  "During the lesson the overall mood of the class and the attention indicator are recorded. Lessons where students were focused can be compared with lessons where they were not.",
+  "In the next stage a speech analysis module is added. The teacher's speech is transcribed and the lesson is scored: talking share, question frequency, silence gaps, drifting off topic.",
+  "The result is not a bare score but a concrete recommendation. For example: attention dropped during the third lesson, increase the share of questions and answers.",
+  "The goal is not to police the teacher, but to let the teacher see their own lesson from the outside."
+ ],
+ "duration": 46.81,
+ "offsets": [
+  0.25,
+  4.9,
+  13.92,
+  22.49,
+  32.66,
+  41.9
+ ]
+}

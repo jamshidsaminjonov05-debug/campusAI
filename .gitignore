@@ -62,3 +62,4 @@ test-results/
 # Terminal chiqishlari (typecheck/test) — ish jarayonidagi artefaktlar
 *output*.txt
 test_output.txt
+__pycache__
