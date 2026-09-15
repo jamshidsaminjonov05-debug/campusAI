@@ -1183,6 +1183,7 @@ export const ru: Messages = {
       product: "Продукт",
       campus: "Охрана кампуса",
       presentation: "Презентация",
+      investor: "Инвесторам",
       docs: "Руководство",
       about: "О нас",
       pricing: "Цены",

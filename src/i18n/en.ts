@@ -1181,6 +1181,7 @@ export const en: Messages = {
       product: "Product",
       campus: "Campus security",
       presentation: "Presentation",
+      investor: "For investors",
       docs: "Guide",
       about: "About us",
       pricing: "Pricing",

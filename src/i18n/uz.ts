@@ -1233,6 +1233,7 @@ export const uz = {
       product: "Mahsulot",
       campus: "Campus qo'riqlash",
       presentation: "Taqdimot",
+      investor: "Investorlarga",
       docs: "Qo'llanma",
       about: "Biz haqimizda",
       pricing: "Narxlar",
