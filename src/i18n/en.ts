@@ -1344,7 +1344,7 @@ export const en: Messages = {
       caseItems: ["Violence and weapons", "Rapid response", "Lower costs", "Frequently asked questions"],
     },
     hero: {
-      titleA: "Discovering campus safety",
+      titleA: "Creating campus safety",
       titleB: "with artificial intelligence",
       text: "Automatic attendance via face recognition, real-time detection of dangerous incidents and geo-analytics of the country — all in a single control panel.",
       cta: "Learn more",
