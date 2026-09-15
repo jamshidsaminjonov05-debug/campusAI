@@ -32,19 +32,28 @@
  * (`FRONTEND.md` 5-B), shuning uchun bu ANIQ sanoq.
  */
 import { useQuery } from "@tanstack/react-query";
-import { isAlarm, listEvents, type NvrEvent, type NvrQueryCategory } from "@/lib/nvrApi";
+import { NVR_MAX_LIMIT, isAlarm, listEvents, type NvrEvent, type NvrQueryCategory } from "@/lib/nvrApi";
 import { nowAdjusted } from "@/lib/serverClock";
 
-/** Bitta so'rovdagi maksimal yozuv — serverning o'z chegarasi. */
-const PAGE = 100;
 /**
- * Xavfsizlik chegarasi: eng ko'pi bilan shuncha so'rov.
+ * Bitta so'rovdagi yozuv — serverning o'z chegarasi (`NVR_MAX_LIMIT` = 500).
+ *
+ * 🔴 **2026-09-15 gacha 100 edi** — server chegarasi 2026-09-03 da 500 ga
+ * ko'tarilgan, bu yer esa eskicha qolgan edi. Natijada Boshqaruv panelidagi
+ * "Hodisa turlari" (`useArrivals({})`) HAR 60 SONIYADA 30+3 = 33 ta so'rov
+ * yuborardi (foydalanuvchi Network skrinshoti bilan xabar qildi). Endi o'sha
+ * 3 000 yozuv 6 ta so'rovda keladi (o'lchandi: `limit=500` — ~400 KB, ~0.06 s).
+ */
+const PAGE = NVR_MAX_LIMIT;
+/**
+ * Xavfsizlik chegarasi: eng ko'pi bilan shuncha so'rov (`PAGE × MAX_PAGES`
+ * = 3 000 yozuv — ilgarigi chegara bilan AYNI, faqat so'rov 5 barobar kam).
  *
  * Bugungi oqim kutilmaganda katta bo'lsa (masalan 50 000 hodisa) sahifa
  * yuzlab so'rov yuborib osilib qolmasin. Chegara ishlaganda `capped:true`
  * qaytadi va UI "kamida shuncha" deb ko'rsatadi.
  */
-const MAX_PAGES = 30;
+const MAX_PAGES = 6;
 
 export interface ArrivalRow {
   faceId: number;
@@ -210,9 +219,12 @@ export function useArrivals(opts: ArrivalsOptions = {}): TodayArrivals {
   const q = useQuery({
     queryKey: ["arrivals", category, from ?? "", to ?? ""],
     queryFn: () => fetchRange(category, from, to),
-    // Kun davomida o'sib boradi — daqiqada bir marta yangilanadi
-    refetchInterval: 60_000,
-    staleTime: 45_000,
+    /* Kun davomida o'sib boradi — daqiqada bir marta yangilanadi.
+       ⚠️ Oraliqsiz (BUTUN tarix) so'rov esa 5 daqiqada bir: u eng og'iri
+       (3 000 yozuv, ~2.4 MB) va bir daqiqada sezilarli o'zgarmaydi —
+       yangi hodisa baribir SSE / `useDetections` orqali darhol ko'rinadi. */
+    refetchInterval: from || to ? 60_000 : 5 * 60_000,
+    staleTime: from || to ? 45_000 : 4 * 60_000,
     enabled,
   });
 

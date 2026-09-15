@@ -6,81 +6,61 @@
  * **`Pie3D`** — qiya qaralgan to'liq doira, yon devori va bo'lak
  * ichidagi foizi bilan.
  *
+ * 🔴 **MANBA — `GET /events/stats`** (2026-09-15, foydalanuvchi so'rovi).
+ * Ilgari `useArrivals({})` butun tarixni 100 tadan 30 sahifa + 3 so'rov
+ * qilib HAR 60 SONIYADA o'qirdi (Network'da 33 qator), 3 000 yozuv esa
+ * amalda ~1 kunga yetardi — "butun tarix" diagrammasi bir kunni
+ * ko'rsatardi. Endi server BUTUN tarixni bazada sanaydi: bitta so'rov,
+ * ~1.3 KB, 5 daqiqada bir (`hooks/useEventStats.ts`).
+ *
+ * ⚠️ Bo'laklar endi SERVER kategoriyalari (Shaxsni aniqlash / Janjal /
+ * Chekish-telefon / Qurol). "Begona odam" va "Telefon" alohida bo'lak
+ * EMAS — server ularni ajratib sanamaydi (`recognized` filtri yo'q).
+ *
  * ⚠️ **`Donut3D` EMAS**: u halqa (o'rtasi teshik) va tekis
  * proyeksiyada — Statistika bo'limida shu qoladi. Bu yerda esa
- * hajmli doira so'raldi, shuning uchun alohida komponent
- * (`components/common/Pie3D.tsx`).
+ * hajmli doira so'raldi (`components/common/Pie3D.tsx`).
  *
- * · **Har bo'lak bosiladi** — o'sha turning XULOSASI oynasi ochiladi
- *   (bo'lakning o'zi + sonlar; ro'yxat ATAYLAB yo'q).
+ * · **Har bo'lak bosiladi** — o'sha turning XULOSASI oynasi ochiladi.
  * · **"Batafsil"** — Statistika bo'limiga o'tadi.
  *
- * ⚠️ Bo'lak nomi TARJIMA qilinadi, shuning uchun moslik `id`
- * (`DetectionId`) bo'yicha — nom bo'yicha emas: til almashganda
- * bog'lanish buzilardi.
+ * ⚠️ Moslik `id` (server kategoriyasi) bo'yicha — nom bo'yicha emas: nom
+ * tarjima qilinadi va til almashganda bog'lanish buzilardi.
  */
 "use client";
 
 import { useT } from "@/i18n";
 import { useMemo, useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
-import { useArrivals } from "@/hooks/useTodayArrivals";
-import { fromNvr, type DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_BY_ID, DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
+import { useEventStats } from "@/hooks/useEventStats";
+import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
+import { NVR_COLOR } from "@/components/detections/DetectionCard";
 import { useAppStore } from "@/store/useAppStore";
 import { Pie3D, type PieSlice } from "@/components/common/Pie3D";
 import { StatPanel } from "@/components/common/panels";
 import { EventTypeModal } from "./EventTypeModal";
 
 export function EventSidebar() {
-  const u = useT().dashboard.ui.types;
-  /**
-   * 🔵 **BUTUN TARIX**, bugungi kun EMAS (2026-09-05, foydalanuvchi
-   * so'rovi).
-   *
-   * ⚠️ Ilgari manba `useDetectionFeed()` edi — u ATAYLAB bugungi
-   * kunga cheklangan (`useArrivals({from: bugun, to: bugun})`), ya'ni
-   * halqa "bugun nima bo'ldi" ni ko'rsatardi. Panel sarlavhasi esa
-   * "Hodisa turlari" — umumiy kesim kutiladi.
-   *
-   * `useArrivals({})` — oraliqsiz, ya'ni BUTUN tarix. So'rov "AI
-   * tahlil" sahifasining "Hammasi" davri bilan AYNI kalitga tushadi
-   * (React Query uni ikkinchi marta so'ramaydi).
-   */
-  const scope = useArrivals({});
+  const t = useT();
+  const u = t.dashboard.ui.types;
+  /** Oraliqsiz — BUTUN tarix, server hisobi. */
+  const stats = useEventStats();
 
-  /** Xom kuzatuv posti yozuvlari → UI turlariga. */
-  const events = useMemo<DetectionEvent[]>(
-    () => scope.raw.map(fromNvr).filter((e): e is DetectionEvent => e !== null),
-    [scope.raw]
-  );
-
-  const eventsByType = useMemo(() => {
-    const map = Object.fromEntries(DETECTION_TYPES.map((d) => [d.id, [] as DetectionEvent[]])) as Record<
-      DetectionId,
-      DetectionEvent[]
-    >;
-    for (const e of events) map[e.type]?.push(e);
-    /* Har turda eng yangisi birinchi — oyna shu tartibda ochiladi. */
-    for (const id of Object.keys(map) as DetectionId[]) map[id].sort((a, b) => b.ts - a.ts);
-    return map;
-  }, [events]);
   const setActivePage = useAppStore((s) => s.setActivePage);
   /** Ochilgan tur — `null` bo'lsa oyna yopiq. */
-  const [openType, setOpenType] = useState<DetectionId | null>(null);
+  const [openType, setOpenType] = useState<NvrRealCategory | null>(null);
 
-  /* ⚠️ Bo'sh turlar CHIZILMAYDI (`Donut3D` o'zi ham `value > 0` ni
-     filtrlaydi): "0 ta qurol" bo'lagi halqada joy egallab, mavjud
-     turlarni siqib qo'yardi. */
+  /* ⚠️ Bo'sh turlar CHIZILMAYDI: "0 ta qurol" bo'lagi halqada joy
+     egallab, mavjud turlarni siqib qo'yardi. */
   const slices = useMemo<PieSlice[]>(
     () =>
-      DETECTION_TYPES.map((d) => ({
-        id: d.id,
-        label: u.names[d.id],
-        value: eventsByType[d.id]?.length ?? 0,
-        color: d.color,
+      NVR_CATEGORIES.map((c) => ({
+        id: c,
+        label: t.detect.category[c],
+        value: stats.byCategory[c],
+        color: NVR_COLOR[c] ?? "#8FB8FF",
       })).filter((s) => s.value > 0),
-    [eventsByType, u]
+    [stats.byCategory, t]
   );
 
   return (
@@ -88,7 +68,7 @@ export function EventSidebar() {
       title={u.title}
       right={
         <span className="font-mono text-[10px] text-slate-500">
-          {scope.isLoading ? "…" : u.count(events.length)}
+          {stats.isLoading ? "…" : u.count(stats.total)}
         </span>
       }
       delay={0.2}
@@ -106,14 +86,14 @@ export function EventSidebar() {
         {slices.length === 0 ? (
           /* Nol o'rniga SABAB — bo'sh panel nosozlik deb o'qilmasin */
           <p className="py-6 text-center text-[11px] leading-snug text-slate-500">
-            {u.empty}
+            {stats.isLoading ? "…" : u.empty}
           </p>
         ) : (
           <Pie3D
             data={slices}
             size={300}
             /* Bo'lak bosilsa — o'sha turning xulosasi oynasi */
-            onSelect={(s) => setOpenType((s.id as DetectionId) ?? null)}
+            onSelect={(s) => setOpenType((s.id as NvrRealCategory) ?? null)}
           />
         )}
       </div>
@@ -135,9 +115,9 @@ export function EventSidebar() {
         <EventTypeModal
           slices={slices}
           activeId={openType}
-          label={u.names[openType] ?? openType}
-          color={DETECTION_BY_ID.get(openType)?.color ?? "#8FB8FF"}
-          list={eventsByType[openType] ?? []}
+          label={t.detect.category[openType]}
+          color={NVR_COLOR[openType] ?? "#8FB8FF"}
+          stats={stats}
           onOpenAll={() => {
             setOpenType(null);
             setActivePage("Aniqlanganlar");

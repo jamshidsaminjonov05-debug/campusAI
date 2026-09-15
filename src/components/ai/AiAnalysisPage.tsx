@@ -1,19 +1,19 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Broadcast, Clock, SecurityCamera, ShieldWarning, UserFocus, Warning } from "@phosphor-icons/react";
+import { Broadcast, Clock, SecurityCamera, ShieldWarning, UserFocus } from "@phosphor-icons/react";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
+import { NVR_COLOR } from "@/components/detections/DetectionCard";
 import { Donut3D } from "@/components/common/Donut3D";
 import { AXIS, KpiTile, StatPanel, TabPill, TOOLTIP, fmt } from "@/components/common/panels";
 import { DataBadge } from "@/components/dashboard/DataBadge";
-import { ARRIVAL_PERIODS, localDay, periodRange, useArrivals, type ArrivalsOptions } from "@/hooks/useTodayArrivals";
-import { useFaces } from "@/hooks/useFaces";
+import { ARRIVAL_PERIODS, localDay, periodRange, type ArrivalsOptions } from "@/hooks/useTodayArrivals";
+import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
+import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { DETECTION_BY_ID, DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
-import { fromNvr, type DetectionEvent } from "@/lib/detectionEvents";
-import { buildAiSummary } from "@/lib/aiSummary";
-import { isAlarm, nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { listEvents, nvrTime, type NvrEvent } from "@/lib/nvrApi";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
 
@@ -26,27 +26,28 @@ import { useT } from "@/i18n";
  * aniqlandi, qaysi soatda zichlik oshdi, qaysi kamera ko'p ishladi va
  * nimaga e'tibor berish kerak.
  *
- * ── IKKI MANBA ────────────────────────────────────────────────────────
- * · **Aniq statistika** — HAQIQIY kuzatuv posti oqimi (`useArrivals` + `useFaces`);
- * · **Namoyish** — `lib/aiDemo.ts` dagi BARQAROR to'plam (`lcg`), ya'ni
- *   tizim to'la ishlaganda ekran qanday ko'rinishini ko'rsatadi.
+ * ── MANBA (2026-09-15 dan) ────────────────────────────────────────────
+ * 🔴 Ilgari `useArrivals(range)` tanlangan davrni XOM holda 100 tadan
+ * sahifalab o'qirdi ("Hammasi"da 30+3 = 33 so'rov, daqiqada bir) va
+ * baribir 3 000 yozuvda to'xtab, uzun davrda faqat oxirgi ~1 kunni
+ * hisoblardi. Endi:
+ * · **sonlar** — `GET /events/stats` (server bazada sanaydi, bitta so'rov);
+ * · **shaxslar** — `GET /faces?limit=1` (`total`/`known`);
+ * · **kadrlar** — har kategoriyaning OXIRGI 3 tasi (`limit=3`, 4 ta mitti
+ *   so'rov). Qolgani kerak bo'lsa — "Aniqlanganlar" (sahifalash bilan).
  *
- * ⚠️ Aniq rejimda hech narsa o'ylab topilmaydi: ma'lumot bo'lmasa qator
- * umuman chizilmaydi.
+ * ⚠️ Turlar — SERVER kategoriyalari (Shaxsni aniqlash / Janjal /
+ * Chekish-telefon / Qurol): "Begona odam"/"Telefon" ajratmasini server
+ * bermaydi. "Trevoga" — janjal + qurol ("Aniqlanganlar" dagi "Xavf
+ * signali" bilan AYNI ta'rif).
  *
- * ── DIAGRAMMALAR ──────────────────────────────────────────────────────
- * Soatlik zichlik — **maydonli chiziq** (kun oqimi uzluksiz), turlar
- * ulushi — **`Donut3D`** (Statistikadagi bilan AYNI diagramma turi —
- * ilgari radial halqa edi, ataylab "ajralib tursin" deb; amalda ikki xil
- * ko'rinish faqat chalkashtirardi), kameralar — **gorizontal ustunlar**
- * (nomlar uzun).
+ * ⚠️ Hech narsa o'ylab topilmaydi: ma'lumot bo'lmasa qator chizilmaydi.
  *
  * ── DAVR ──────────────────────────────────────────────────────────────
  * `ARRIVAL_PERIODS` (Bugun / 7 kun / 30 kun / Hammasi) + **`Oraliq`** —
  * istalgan ikki sana. "Oraliq" SHU SAHIFAGA xos (umumiy ro'yxatga
  * qo'shilmagan): `ARRIVAL_PERIODS` ni Kameralar, Aniqlanganlar va Geo
- * ham ishlatadi, ularda esa sana maydonlari yo'q — ro'yxatga qo'shilsa
- * o'sha sahifalarda bosilib bo'lmaydigan tanlov paydo bo'lardi.
+ * ham ishlatadi, ularda esa sana maydonlari yo'q.
  */
 
 /** `n` kun oldingi sana (`useStatPeriod` dagi bilan AYNI qoida). */
@@ -56,12 +57,14 @@ function daysAgo(n: number): string {
   return localDay(d);
 }
 
+/** Kategoriya kartochkasida ko'rsatiladigan oxirgi kadrlar soni. */
+const SHOTS = 3;
+
 export function AiAnalysisPage() {
   const t = useT();
   const n = useCallback((v: number) => fmt(v, t.locale), [t.locale]);
   const [periodId, setPeriodId] = useState("today");
-  /* "Oraliq" tanlangandagi sanalar. Default — oxirgi 14 kun, ya'ni tanlov
-     bosilganda maydonlar bo'sh emas, tayyor oraliq bilan ochiladi. */
+  /* "Oraliq" tanlangandagi sanalar. Default — oxirgi 14 kun. */
   const [customFrom, setCustomFrom] = useState(() => daysAgo(14));
   const [customTo, setCustomTo] = useState(() => localDay());
 
@@ -69,122 +72,79 @@ export function AiAnalysisPage() {
   const range = useMemo<ArrivalsOptions>(() => {
     if (periodId !== "custom") return periodRange(periodId);
     /* Sana maydoniga qo'lda ham yozish mumkin — tartib buzilsa almashtiramiz,
-       aks holda `from > to` bo'lib server bo'sh ro'yxat qaytarardi. */
+       aks holda `from > to` bo'lib server bo'sh javob qaytarardi. */
     const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
     return { from, to };
   }, [periodId, customFrom, customTo]);
 
-  const scope = useArrivals(range);
-  /* ⚠️ `/faces` `date_from`/`date_to` KUTADI, `useArrivals` esa `from`/`to`
-     bilan ishlaydi. Ilgari bu yerga `{...range}` shundoq uzatilardi va
-     server notanish kalitlarni JIMGINA e'tiborsiz qoldirardi: "Har xil
-     odam", "tanish/notanish" va "Kameralar kesimi" davrga QARAMASDAN
-     butun tarixni ko'rsatardi (o'lchandi 2026-09-04: butun tarix 3 089,
-     bir kunda esa 1 842), yonidagi "Aniqlangan qaydlar" esa davr bo'yicha
-     edi — bitta qatorda ikki xil miqyos turardi. */
-  const faces = useFaces({ date_from: range.from, date_to: range.to, limit: 100, sort: "count" });
+  /** Sonlar — server hisobi (bitta so'rov). */
+  const stats = useEventStats({ from: range.from, to: range.to });
+  /** Har xil odamlar — server birlashtirgan sanoq. */
+  const faces = useFacesCount({ from: range.from, to: range.to });
   const setActivePage = useAppStore((s) => s.setActivePage);
   const setFocusedDetectionId = useAppStore((s) => s.setFocusedDetectionId);
 
-  /** Xom kuzatuv posti yozuvlari → UI turlariga. */
-  const events = useMemo<DetectionEvent[]>(
+  /** Har kategoriyaning OXIRGI kadrlari — ro'yxat emas, faqat ko'rinadigani. */
+  const shotsQ = useQuery({
+    queryKey: ["ai-latest-shots", range.from ?? "", range.to ?? ""],
+    queryFn: async (): Promise<Record<NvrRealCategory, NvrEvent[]>> => {
+      const pages = await Promise.all(
+        NVR_CATEGORIES.map((c) =>
+          listEvents(c, { limit: SHOTS, date_from: range.from, date_to: range.to }).catch(() => null)
+        )
+      );
+      return Object.fromEntries(NVR_CATEGORIES.map((c, i) => [c, pages[i]?.events ?? []])) as Record<
+        NvrRealCategory,
+        NvrEvent[]
+      >;
+    },
+    staleTime: 45_000,
+    refetchInterval: 60_000,
+  });
+
+  /** Tur bo'yicha kesim — server sonlari + haqiqiy kadrlar. */
+  const byType = useMemo(
     () =>
-      scope.raw
-        .map(fromNvr)
-        .filter((e): e is DetectionEvent => e !== null)
-        .sort((a, b) => b.ts - a.ts),
-    [scope.raw]
+      NVR_CATEGORIES.map((c) => {
+        const shots = shotsQ.data?.[c] ?? [];
+        return {
+          id: c,
+          label: t.detect.category[c],
+          color: NVR_COLOR[c] ?? "#8FB8FF",
+          count: stats.byCategory[c],
+          shots,
+          last: shots[0] ?? null,
+        };
+      }).sort((a, b) => b.count - a.count),
+    [stats.byCategory, shotsQ.data, t]
   );
-  /* `buildAiSummary` faqat ANOMALIYALAR (bugun ↔ boshqa kunlar o'rtachasi)
-     uchun — u ATAYLAB oqimning ENG SO'NGGI KUNIGA cheklanadi (o'z izohiga
-     qarang). Soatlik zichlik/trevoga/eng gavjum soat esa pastda `periodStats`
-     bilan — TANLANGAN DAVRNING HAMMASI bo'yicha (`events` — bir necha kunni
-     qamrab olishi mumkin). */
-  const summary = useMemo(() => buildAiSummary(events), [events]);
 
-  /** Tur bo'yicha kesim — haqiqiy kadrlar bilan. */
-  const byType = useMemo(() => {
-    const raw = new Map<DetectionId, NvrEvent[]>();
-    for (const ev of scope.raw) {
-      const d = fromNvr(ev);
-      if (!d) continue;
-      const list = raw.get(d.type) ?? [];
-      list.push(ev);
-      raw.set(d.type, list);
-    }
-    return DETECTION_TYPES.map((d) => {
-      const list = (raw.get(d.id) ?? []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-      return {
-        det: d,
-        count: list.length,
-        alarms: list.filter(isAlarm).length,
-        shots: list.slice(0, 3),
-        last: list[0] ?? null,
-      };
-    }).sort((a, b) => b.count - a.count);
-  }, [scope.raw]);
-
-  /* ── Ko'rsatkichlar — manbaga qarab ── */
-  /**
-   * Soatlik zichlik + trevoga + eng gavjum soat — TANLANGAN DAVRNING
-   * HAMMASI bo'yicha.
-   *
-   * ⚠️ Ilgari bu qiymatlar `buildAiSummary().hourly/dangerous/peakHour`
-   * dan olinardi — u FAQAT oqimdagi ENG SO'NGGI KUNni hisoblaydi ("bugun"
-   * shartli — backendda hodisa bir oy oldingi sanada bo'lishi mumkin,
-   * `lib/aiSummary.ts` izohiga qarang). Natijada "7 kun"/"30 kun"/"Hammasi"
-   * tanlansa ham diagramma FAQAT eng so'nggi kunni ko'rsatardi — agar o'sha
-   * kunda janjal (yoki boshqa tur) bo'lmasa, davr qanchalik uzun tanlansa
-   * ham eski hodisalar diagrammaga umuman ta'sir qilmasdi.
-   */
-  const periodStats = useMemo(() => {
-    const hourly = Array(24).fill(0) as number[];
-    let dangerous = 0;
-    for (const e of events) {
-      hourly[new Date(e.ts).getHours()]++;
-      if (e.severity === "critical" || e.severity === "high") dangerous++;
-    }
-    let peakHour: number | null = null;
-    let peakCount = 0;
-    hourly.forEach((v, h) => {
-      if (v > peakCount) {
-        peakCount = v;
-        peakHour = h;
-      }
-    });
-    return { hourly, dangerous, peakHour, peakCount };
-  }, [events]);
-
-  const total = events.length;
+  const total = stats.total;
   const peopleTotal = faces.total;
   const knownTotal = faces.known;
-  const alarmTotal = periodStats.dangerous;
-  const peak = periodStats.peakHour;
-  const peakCount = periodStats.peakCount;
-  const hourly = periodStats.hourly;
-  const channels = faces.byChannel;
+  const alarmTotal = stats.danger;
+  const peak = stats.peakHour;
+  const peakCount = stats.peakCount;
+  const channels = stats.byChannel;
 
   /** Soatlik zichlik — maydonli chiziq uchun. */
   const hourSeries = useMemo(
-    () => hourly.map((v, h) => ({ hour: `${String(h).padStart(2, "0")}`, [t.chart.count]: v })),
-    [hourly, t.chart.count]
+    () => stats.hourly.map((v, h) => ({ hour: `${String(h).padStart(2, "0")}`, [t.chart.count]: v })),
+    [stats.hourly, t.chart.count]
   );
 
   /** Turlar ulushi — Statistikadagi bilan AYNI pie chart (`Donut3D`). */
   const typeShare = useMemo(
-    () =>
-      byType
-        .filter((r) => r.count > 0)
-        .map((r) => ({ label: r.det.label, value: r.count, color: r.det.color })),
+    () => byType.filter((r) => r.count > 0).map((r) => ({ label: r.label, value: r.count, color: r.color })),
     [byType]
   );
 
-  /** Kameralar kesimi — gorizontal ustunlar. */
+  /** Kameralar kesimi — gorizontal ustunlar (server `by_channel` — qaydlar soni). */
   const camSeries = useMemo(
     () =>
       channels.slice(0, 6).map((c) => ({
         name: cameraPlaceLabel(c.channel, c.camera),
-        [t.chart.count]: c.people,
+        [t.chart.count]: c.total,
       })),
     [channels, t.chart.count]
   );
@@ -198,7 +158,7 @@ export function AiAnalysisPage() {
     if (top && top.count > 0) {
       out.push({
         tone: "info",
-        text: `Eng ko'p aniqlangan tur — ${top.det.label}: ${n(top.count)} ta qayd (oqimning ${Math.round((top.count / total) * 100)}%).`,
+        text: `Eng ko'p aniqlangan tur — ${top.label}: ${n(top.count)} ta qayd (oqimning ${Math.round((top.count / total) * 100)}%).`,
       });
     }
     if (peak != null) {
@@ -210,7 +170,7 @@ export function AiAnalysisPage() {
     if (alarmTotal > 0) {
       out.push({
         tone: "alarm",
-        text: `${n(alarmTotal)} ta qayd TREVOGA deb belgilangan — ularni ko'rib chiqish kerak.`,
+        text: `${n(alarmTotal)} ta janjal/qurol qaydi bor — ularni ko'rib chiqish kerak.`,
       });
     }
     if (peopleTotal > 0) {
@@ -226,23 +186,25 @@ export function AiAnalysisPage() {
     if (busiest) {
       out.push({
         tone: "info",
-        text: `Eng ko'p ishlagan kamera — ${cameraPlaceLabel(busiest.channel, busiest.camera)} (#${busiest.channel}): ${n(busiest.people)} ta odam.`,
+        text: `Eng ko'p ishlagan kamera — ${cameraPlaceLabel(busiest.channel, busiest.camera)} (#${busiest.channel}): ${n(busiest.total)} ta qayd.`,
       });
     }
-    for (const a of summary.anomalies) {
-      const det = DETECTION_BY_ID.get(a.type);
-      if (det) {
-        out.push({ tone: "warn", text: `${det.label} odatdagidan ko'p: ${n(a.count)} ta (odatda ~${n(a.usual)}).` });
-      }
+    for (const a of stats.anomalies) {
+      out.push({
+        tone: "warn",
+        text: `${t.detect.category[a.category]} odatdagidan ko'p: ${n(a.count)} ta (odatda ~${n(a.usual)}).`,
+      });
     }
     return out;
-  }, [total, byType, peak, peakCount, alarmTotal, peopleTotal, knownTotal, channels, summary.anomalies, n]);
+  }, [total, byType, peak, peakCount, alarmTotal, peopleTotal, knownTotal, channels, stats.anomalies, n, t]);
 
   /** Kadrni bosish — "Aniqlanganlar" da o'sha hodisa ochiladi. */
   const openEvent = (id: number) => {
     setFocusedDetectionId(id);
     setActivePage("Aniqlanganlar");
   };
+
+  const live = total > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto">
@@ -279,12 +241,11 @@ export function AiAnalysisPage() {
           </span>
         )}
         <span className="ml-auto flex items-center gap-2 font-mono text-[10.5px] text-slate-500">
-          {/* Qaysi oraliq o'qilayotgani DOIM ko'rinib tursin — "Hammasi"da
-              sana filtri umuman yuborilmaydi (server tarixi bilan cheklanadi). */}
+          {/* Qaysi oraliq o'qilayotgani DOIM ko'rinib tursin */}
           <span title="Tanlangan oraliq">{range.from ? `${range.from} … ${range.to}` : "butun tarix"}</span>
           <span className="text-slate-700">·</span>
-          {scope.isLoading ? "tahlil qilinmoqda…" : `${n(total)} qayd`}
-          <DataBadge live={scope.raw.length > 0} />
+          {stats.isLoading ? "tahlil qilinmoqda…" : `${n(total)} qayd`}
+          <DataBadge live={live} />
         </span>
       </div>
 
@@ -302,7 +263,7 @@ export function AiAnalysisPage() {
           Icon={ShieldWarning}
           label="Trevoga"
           value={n(alarmTotal)}
-          hint={alarmTotal > 0 ? "ko'rib chiqish kerak" : "trevoga yo'q"}
+          hint={alarmTotal > 0 ? "janjal · qurol — ko'rib chiqish kerak" : "trevoga yo'q"}
           tone="#FB7185"
         />
         <KpiTile
@@ -333,7 +294,7 @@ export function AiAnalysisPage() {
 
       {/* ── Soatlik zichlik (maydonli chiziq) + turlar ulushi (Donut3D) ── */}
       <div className="grid flex-none gap-3 xl:grid-cols-[1.5fr_1fr]">
-        <StatPanel title="Soatlik zichlik" hint="24 soat" right={<DataBadge live={scope.raw.length > 0} />} className="min-h-[240px]">
+        <StatPanel title="Soatlik zichlik" hint="24 soat" right={<DataBadge live={live} />} className="min-h-[240px]">
           <div className="h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={hourSeries} margin={{ top: 8, right: 10, bottom: 0, left: -20 }}>
@@ -366,9 +327,11 @@ export function AiAnalysisPage() {
           </div>
         </StatPanel>
 
-        <StatPanel title="Turlar ulushi" right={<DataBadge live={scope.raw.length > 0} />} className="min-h-[240px]">
+        <StatPanel title="Turlar ulushi" right={<DataBadge live={live} />} className="min-h-[240px]">
           {typeShare.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-slate-500">Bu davrda hodisa qayd etilmadi</p>
+            <p className="py-10 text-center text-[12px] text-slate-500">
+              {stats.isLoading ? "Yuklanmoqda…" : "Bu davrda hodisa qayd etilmadi"}
+            </p>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <Donut3D data={typeShare} caption="jami qayd" size={260} format={n} />
@@ -381,8 +344,8 @@ export function AiAnalysisPage() {
       {camSeries.length > 0 && (
         <StatPanel
           title="Kameralar kesimi"
-          hint="qaysi kameradan nechta odam o'tdi"
-          right={<DataBadge live={scope.raw.length > 0} />}
+          hint="qaysi kameradan nechta qayd keldi"
+          right={<DataBadge live={live} />}
           className="min-h-[200px] flex-none"
         >
           <div className="h-[160px]">
@@ -401,15 +364,15 @@ export function AiAnalysisPage() {
 
       {/* ── TUR BO'YICHA TAHLIL ── */}
       <div className="grid gap-3 xl:grid-cols-2">
-        {byType.map(({ det, count, alarms, shots, last }) => (
+        {byType.map(({ id, label, color, count, shots, last }) => (
           <StatPanel
-            key={det.id}
-            title={det.label}
+            key={id}
+            title={label}
             hint={count > 0 ? `${n(count)} ta qayd` : "bu davrda aniqlanmadi"}
             right={
               <span
                 className="rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold"
-                style={{ background: `${det.color}22`, color: det.color }}
+                style={{ background: `${color}22`, color }}
               >
                 {n(count)}
               </span>
@@ -428,15 +391,9 @@ export function AiAnalysisPage() {
                     <SecurityCamera size={12} weight="duotone" />
                     {last ? cameraPlaceLabel(last.channel, last.camera) : "—"}
                   </span>
-                  {alarms > 0 && (
-                    <span className="flex items-center gap-1 text-rose-300">
-                      <Warning size={12} weight="fill" />
-                      {n(alarms)} trevoga
-                    </span>
-                  )}
                 </div>
 
-                {/* Kadrlar — HAQIQIY (namoyish rasmi olib tashlandi) */}
+                {/* Kadrlar — HAQIQIY, faqat oxirgi `SHOTS` tasi */}
                 <div className="grid grid-cols-3 gap-1.5">
                   {shots.map((ev) => (
                     <button

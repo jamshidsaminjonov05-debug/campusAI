@@ -348,17 +348,11 @@ export function StatPeopleNvr({
   /* ── XODIM: kuzatuv posti bu toifani bilmaydi ── */
   if (role === null) {
     return (
-      <StatPanel title={t.stats.people.typeStaff} hint="Manba yo'q">
+      <StatPanel title={t.stats.people.typeStaff} hint={t.dashboard.ui.noSource}>
         <div className="grid place-items-center py-14 text-center">
           <div className="max-w-[460px]">
-            <p className="text-[13px] font-semibold text-slate-200">
-              Kuzatuv postida «xodim» toifasi yo&apos;q
-            </p>
-            <p className="mt-1.5 text-[11.5px] leading-snug text-slate-500">
-              Davomat kuzatuv postidan olinadi, u esa faqat <b>o&apos;quvchi</b> va{" "}
-              <b>o&apos;qituvchi</b> toifalarini biladi. Xodimlar uchun son o&apos;ylab topilmaydi —
-              ular yuz bazasiga qo&apos;shilgach shu yerda o&apos;zi paydo bo&apos;ladi.
-            </p>
+            <p className="text-[13px] font-semibold text-slate-200">{t.missing.blockTitle}</p>
+            <p className="mt-1.5 text-[11.5px] leading-snug text-slate-500">{t.dashboard.ui.att.staffMissing}</p>
           </div>
         </div>
       </StatPanel>

@@ -99,13 +99,13 @@ export function useDashboardData(): DashboardView {
     /* Backend `/statistics/dashboard` — respublika miqyosida ustun manba,
        lekin u amalda deyarli bo'sh (o'lchandi 2026-09-02: 2 talaba,
        1 o'qituvchi, 0 kamera). Bo'sh bo'lsa kuzatuv posti yig'indisiga o'tamiz. */
-    const backendStudents = inst ? null : nz(dash?.students.total);
-    const backendTeachers = inst ? null : nz(dash?.teachers.total);
+    const backendStudents = inst ? null : nz(dash?.students?.total);
+    const backendTeachers = inst ? null : nz(dash?.teachers?.total);
 
     const studentsTotal = backendStudents ?? scopeRow.students;
     const studentsPresent =
       backendStudents !== null
-        ? dash?.students.present ?? null
+        ? dash?.students?.present ?? null
         : scopeRow.students !== null && scopeRow.attendance !== null
           ? Math.round((scopeRow.students * scopeRow.attendance) / 100)
           : null;
@@ -113,7 +113,7 @@ export function useDashboardData(): DashboardView {
     const teachersTotal = backendTeachers ?? scopeRow.teachers;
     const teachersPresent =
       backendTeachers !== null
-        ? dash?.teachers.present ?? null
+        ? dash?.teachers?.present ?? null
         : scopeRow.teachers !== null && scopeRow.attendance !== null
           ? Math.round((scopeRow.teachers * scopeRow.attendance) / 100)
           : null;
@@ -125,16 +125,22 @@ export function useDashboardData(): DashboardView {
        o'lchandi: 30 kun uchun 0 ta qayd). `total: 0` bo'lsa UI halqani
        CHIZMAYDI va sababini yozadi. Soxta foiz hech qachon ko'rsatilmaydi. */
     const emo =
-      dash && dash.emotions_today.total > 0
+      dash?.emotions_today && dash.emotions_today.total > 0
         ? dash.emotions_today
         : { positive: 0, neutral: 0, negative: 0, total: 0 };
 
     /* ⚠️ `daily.length > 0` YETMAYDI: server 7 kunni qaytaradi-yu,
        hammasida `total: 0`. Kamida bitta kunda haqiqiy qayd bo'lsin. */
-    const dailyHasData = (daily ?? []).some((d) => d.total > 0);
+    /* ⚠️ 2026-09-15: kuzatuv posti serveri `/statistics/dashboard` ga BOSHQA shakl
+       (`{events:{…}}`, `students`/`emotions_today` YO'Q), `/emotions/daily` ga
+       `{days,by_day,note}` OBYEKT, `/attendance/recent` ga `{date,rows}` qaytaradi
+       (o'lchandi). Ilgari `dash?.students.total` shu yerda Statistikani
+       "Cannot read properties of undefined (reading 'total')" bilan yiqitardi. */
+    const dailyRows = Array.isArray(daily) ? daily : [];
+    const dailyHasData = dailyRows.some((d) => d.total > 0);
     const trend =
-      daily && dailyHasData
-        ? daily.map((d) => ({
+      dailyHasData
+        ? dailyRows.map((d) => ({
             /* ⚠️ Yorliq bu yerda faqat ZAXIRA — chizuvchi panel uni
                `dayIndex` bo'yicha LUG'ATDAN oladi (`t.chart.weekdays`).
                `toLocaleDateString` brauzerda uz ICU ma'lumoti bo'lmasa
@@ -148,7 +154,7 @@ export function useDashboardData(): DashboardView {
 
     /* Oxirgi kirishlar — FAQAT backend yozuvlari. Mock to'ldiruvchi
        OLIB TASHLANDI: ro'yxatda haqiqiy bo'lmagan ismlar turardi. */
-    const recentList = (recent ?? []).map((r, i) => ({
+    const recentList = (Array.isArray(recent) ? recent : []).map((r, i) => ({
       id: `${r.person_id}-${i}`,
       name: r.full_name,
       group: r.group_name ?? r.person_type,

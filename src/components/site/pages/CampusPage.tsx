@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import {
-  BarChart3, BellRing, Camera, CheckCircle2, ClipboardList, Cpu, Crosshair, Download, Eye, FileVideo, History, Layers,
-  LayoutDashboard, ListChecks, Lock, MapPin, PiggyBank, ShieldCheck, Swords, Users, UserX, Video, X, Zap, type LucideIcon,
+  BarChart3, Camera, CheckCircle2, ClipboardList, Cpu, Crosshair, Download, Eye, FileVideo, History, Layers,
+  LayoutDashboard, Lock, MapPin, PiggyBank, Send, ShieldCheck, Swords, Users, UserX, Video, Zap, type LucideIcon,
 } from "lucide-react";
 import { useT } from "@/i18n";
 import { SiteShell } from "../Footer";
@@ -12,7 +12,7 @@ import { BlueBanner, Bullets, EASE, Faq, FeatureRow, MediaCard, PageHero, Pill, 
 const BENEFIT_ICONS: LucideIcon[] = [ShieldCheck, Zap, PiggyBank];
 const PROTECT_ICONS: LucideIcon[] = [Swords, Crosshair, UserX, Lock];
 const RESP_ICONS: LucideIcon[][] = [
-  [CheckCircle2, BellRing, ListChecks],
+  [Cpu, Send, History],
   [MapPin, Layers, Video],
   [FileVideo, Download, History],
 ];
@@ -22,8 +22,14 @@ const IMPROVE_ICONS: LucideIcon[][] = [
   [ClipboardList, BarChart3, LayoutDashboard],
 ];
 
-/** Operator tasdig'i — kadr + "Tasdiqlandi / Rad etish" qatori (maketdagi UI rasmi o'rniga JSX) */
-function ConfirmArt({ confirmed, dismiss }: { confirmed: string; dismiss: string }) {
+/**
+ * AI aniqladi → mas'ul shaxslarga yuborildi — kadr + holat qatori.
+ *
+ * ⚠️ Ilgari bu yerda OPERATOR TASDIG'I ("Tasdiqlandi / Rad etish") turardi.
+ * 2026-09-14 dan landing hodisa oqimini "hammasini AI qiladi, hodisa
+ * mas'ul shaxslarga yuboriladi" deb tavsiflaydi (foydalanuvchi so'rovi).
+ */
+function DetectArt({ detected, sent }: { detected: string; sent: string }) {
   return (
     <div className="group rounded-[40px] border border-[var(--s-line)] bg-[var(--s-muted)] p-5 lg:rounded-[48px] lg:p-7">
       <div className="relative aspect-[16/10] overflow-hidden rounded-[28px]">
@@ -35,11 +41,11 @@ function ConfirmArt({ confirmed, dismiss }: { confirmed: string; dismiss: string
       <div className="mt-5 flex items-center justify-between rounded-2xl bg-[var(--s-card)] px-4 py-3 shadow-[0_10px_30px_-24px_rgba(14,21,32,0.5)]">
         <span className="inline-flex items-center gap-2 text-[14px] font-medium text-[var(--s-text)]">
           <CheckCircle2 size={18} className="text-[#22C55E]" />
-          {confirmed}
+          {detected}
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--s-muted)] px-3 py-1 text-[13px] text-[var(--s-text2)]">
-          {dismiss}
-          <X size={13} />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#2584FF] px-3 py-1 text-[13px] text-[#FFFFFF]">
+          <Send size={13} />
+          {sent}
         </span>
       </div>
     </div>
@@ -146,7 +152,7 @@ export function CampusPage() {
                 icons={RESP_ICONS[i % RESP_ICONS.length]}
                 media={
                   i === 0 ? (
-                    <ConfirmArt confirmed={c.confirmed} dismiss={c.dismiss} />
+                    <DetectArt detected={c.aiDetected} sent={c.sentResponsible} />
                   ) : i === 1 ? (
                     <MediaCard img="/imges/uz-map.webp" chip={{ kind: "alert", title: c.inProgress, meta: "Campus AI", pos: "left-8 top-8" }} />
                   ) : (

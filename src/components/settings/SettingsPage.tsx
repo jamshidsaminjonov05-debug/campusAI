@@ -138,7 +138,7 @@ export function SettingsPage() {
     }
 
     // 4) Hissiyot tahlili — yozuv bo'lmasa qator umuman chizilmaydi
-    if (s.emotion_engine.available || (dash.data?.emotions_today.total ?? 0) > 0) {
+    if (s.emotion_engine.available || (dash.data?.emotions_today?.total ?? 0) > 0) {
       out.push({ key: "emotion", label: t.settings.emotionEngine, ...ON, hint: s.emotion_engine.error });
     }
 

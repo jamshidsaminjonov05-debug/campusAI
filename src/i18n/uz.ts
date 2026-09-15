@@ -123,10 +123,10 @@ export const uz = {
    * Mock YO'Q — manba bo'lmasa son o'ylab topilmaydi, QIZIL belgi turadi.
    */
   missing: {
-    label: "ma'lumot yo'q",
-    hint: "Bu ko'rsatkichni backend hali bermayapti — son o'ylab topilmaydi",
-    hintSource: (source: string) => `Backend bermayapti: ${source}`,
-    blockTitle: "Backenddan ma'lumot kelmadi",
+    label: "jarayonda",
+    hint: "Hali jarayonda — ma'lumotlar qo'shilmoqda",
+    hintSource: (source: string) => `Hali jarayonda — ma'lumotlar qo'shilmoqda (${source})`,
+    blockTitle: "Hali jarayonda — ma'lumotlar qo'shilmoqda",
   },
 
   /** "Ogohlantirishlar" bo'limi (`components/alerts/AlertsPage.tsx`). */
@@ -254,7 +254,7 @@ export const uz = {
         negative: "Salbiy",
         caption: "ijobiy",
         none: "Kayfiyat ma'lumoti yo'q",
-        noneHint: "Serverda kayfiyat tahlili moduli o'rnatilmagan — qayd yozilmayapti.",
+        noneHint: "Kayfiyat tahlili hali jarayonda — ma'lumotlar qo'shilmoqda.",
       },
       types: {
         title: "Hodisa turlari",
@@ -309,7 +309,7 @@ export const uz = {
       },
       att: {
         status: { early: "Erta keldi", late: "Kechikdi", absent: "Kelmadi", waiting: "Kutilmoqda" },
-        staffMissing: "Kuzatuv postining davomatida «xodim» toifasi umuman yo'q — kuzatuv posti faqat o'quvchi va o'qituvchini biladi. Bu ro'yxat bo'sh emas, MANBASIZ.",
+        staffMissing: "Xodimlar bo'yicha ma'lumot hali jarayonda — ma'lumotlar qo'shilmoqda.",
         classes: "Sinflar",
         sortAsc: "Sinf: kichikdan kattaga",
         sortDesc: "Sinf: kattadan kichikka",
@@ -337,7 +337,7 @@ export const uz = {
         noFrame: "Bugun uchun kadr yo'q",
         openFull: "Umumiy ma'lumotni ko'rish",
       },
-      noSource: "manba ulanmagan",
+      noSource: "jarayonda",
       inst: {
         openList: (label: string) => `${label} — ro'yxatni ochish`,
         camsOnline: "kamera onlayn",
@@ -347,7 +347,7 @@ export const uz = {
         alertsHint: "Qatorni bosing — hodisa tafsiloti ochiladi",
         noAlerts: "Xavfli hodisa qayd etilmagan — bu yaxshi holat.",
         live: "Kuzatuv ishlayapti",
-        notLive: "Kuzatuv hali ulanmagan",
+        notLive: "Hali jarayonda — ma'lumotlar qo'shilmoqda",
         people: "Ro'yxatdagi shaxslar",
       },
     },
@@ -376,7 +376,7 @@ export const uz = {
     byCategory: "Turlari bo'yicha",
     attendance: "Davomat va kayfiyat",
     positiveMood: "Ijobiy kayfiyat",
-    noMoodData: "ma'lumot yo'q",
+    noMoodData: "jarayonda",
     recent: "So'nggi aniqlanganlar",
     viewMap: "Xarita",
     viewCampus: "3D kampus",
@@ -621,11 +621,11 @@ export const uz = {
     logTitle: "Kelib-ketish jurnali",
     logSubtitle: (n: number) => `so'nggi ${n} ta yozuv`,
     logEmpty: "Davomat yozuvi yo'q",
-    logEmptyHint: "Yuz tanish moduli hali kirish/chiqish qayd etmagan.",
+    logEmptyHint: "Hali jarayonda — kirish/chiqish ma'lumotlari qo'shilmoqda.",
     moodTitle: "Kayfiyat",
     moodSubtitle: "bugun va 7 kunlik dinamika",
     moodEmpty: "Kayfiyat ma'lumoti yo'q",
-    moodEmptyHint: "Emotsiya moduli hali ma'lumot yozmagan — davomat yozuvlarida kayfiyat maydonlari bo'sh.",
+    moodEmptyHint: "Hali jarayonda — kayfiyat ma'lumotlari qo'shilmoqda.",
     trendEmpty: "Kunlik dinamika uchun ma'lumot yo'q",
     facesTitle: "Kamerada tanilganlar",
     facesSubtitle: "yuz tanish oqimi",
@@ -758,16 +758,16 @@ export const uz = {
     live: "JONLI",
     liveHint: "Sonlar backend hodisalar oqimidan — real aniqlanishlar",
     demo: "DEMO",
-    demoHint: "Backend hodisa bermayapti — namunaviy oqim ko'rsatilmoqda",
+    demoHint: "Hali jarayonda — hodisa ma'lumotlari qo'shilmoqda",
     total: (n: number) => `${n} ta aniqlanish`,
     fightAlert: (n: number) => `AI ${n} ta janjal aniqladi`,
     openHint: (name: string) => `${name} hodisalarini ochish`,
     none: "Hozircha aniqlanish yo'q",
-    realTitle: "Backenddagi real holat",
+    realTitle: "Joriy holat",
     realStats: (students: string, teachers: string, cameras: string) =>
       `${students} talaba · ${teachers} o'qituvchi · ${cameras} kamera`,
     realHint:
-      "Backend bazasi hali to'lmagan, shuning uchun katta ko'rsatkichlar namunaviy. Ma'lumot kirgan sayin panel avtomatik real songa o'tadi.",
+      "Hali jarayonda — ma'lumotlar qo'shilmoqda. Ma'lumot kirgan sayin panel avtomatik real songa o'tadi.",
     types: {
       smoking: "Chekish",
       fight: "Janjal",
@@ -781,9 +781,9 @@ export const uz = {
     viewStats: "Statistika",
     statsTitle: "Bugungi davomat monitoringi",
     noData: "Bugun uchun davomat yozuvi yo'q",
-    demoHint: "Backend bo'sh — namunaviy o'quvchilar ko'rsatilmoqda. Real yozuv kelishi bilan panel o'zi haqiqiy ma'lumotga o'tadi.",
+    demoHint: "Hali jarayonda — ma'lumotlar qo'shilmoqda. Real yozuv kelishi bilan panel o'zi haqiqiy ma'lumotga o'tadi.",
     noDataHint:
-      "Backend hali kirish-chiqish yozuvlarini bermayapti. Yuz tanish ishlab, davomat qayd etila boshlagach bu bo'lim o'zi to'ladi.",
+      "Hali jarayonda — kirish-chiqish ma'lumotlari qo'shilmoqda. Davomat qayd etila boshlagach bu bo'lim o'zi to'ladi.",
     kpi: {
       total: "Ro'yxatda",
       attended: "Bugun kelgan",
@@ -990,7 +990,7 @@ export const uz = {
       "Ro'yxatdan yoki xaritadagi belgidan bittasini tanlang — shu yerda uning ma'lumotlari chiqadi.",
     clear: "Tanlovni bekor qilish",
     demoBadge: "DEMO",
-    demoHint: "Ko'rsatkichlar namunaviy — backend hozircha muassasa kesimida statistika bermaydi",
+    demoHint: "Hali jarayonda — muassasa kesimidagi ma'lumotlar qo'shilmoqda",
     status: { normal: "Norma", warning: "Diqqat", critical: "Trevoga" },
     stat: {
       students: "Talabalar",
@@ -1057,7 +1057,7 @@ export const uz = {
       coverageLine: (active: string, total: string, pct: number) =>
         `Kamera: ${active}/${total} faol (${pct}%)`,
       eventsTitle: "Hodisa turlari (taqsimot)",
-      noBreakdown: "Muassasa kesimida kunlik davomat tarixi, kayfiyat va hodisa turlari serverdan kelmayapti.",
+      noBreakdown: "Hali jarayonda — muassasa kesimidagi davomat tarixi, kayfiyat va hodisa turlari qo'shilmoqda.",
       clear: "Tanlovni bekor qilish",
       demoNote: "Muassasa kesimidagi sonlar namunaviy",
     },
@@ -1090,7 +1090,7 @@ export const uz = {
       cameraTop: "Eng ko'p hodisa bergan kameralar",
       cameraTopHint: "birinchi 8 ta",
       recent: "So'nggi hodisalar",
-      recentHint: (n: number) => `oxirgi ${n} ta · CSV'da hammasi`,
+      recentHint: (n: number) => `sahifada ${n} ta · CSV'da hammasi`,
     },
     col: {
       region: "Hudud",
@@ -1418,7 +1418,7 @@ export const uz = {
     news: {
       kicker: "Yangilik",
       title: "Kuzatuv posti bilan to'liq integratsiya: xavfsizlik - sifatli ta'lim kaliti",
-      text: "Campus AI kuzatuv postining yuz tanish, qurol, janjal va chekish detektorlarini to'g'ridan-to'g'ri boshqaruv paneliga ulaydi — hodisa sodir bo'lgan zahoti operator ekranida paydo bo'ladi.",
+      text: "Campus AI kuzatuv postining yuz tanish, qurol, janjal va chekish detektorlarini to'g'ridan-to'g'ri boshqaruv paneliga ulaydi — hodisa sodir bo'lgan zahoti mas'ul shaxslarga yuboriladi.",
       text2: "Aniqlash, ogohlantirish va javob — Campus AI bilan yanada qulayroq va osonroq.",
       cta: "Batafsil",
       cardA: "",
@@ -1437,7 +1437,7 @@ export const uz = {
         {
           title: "Hodisani real vaqtda aniqlash",
           text: "Janjal, chekish, telefon, qurol va begona shaxs — AI xavfli holatni soniyalarda vaziyat avj olmasdan oldin aniqlaydi.",
-          chip: "Janjal aniqlandi",
+          chip: "Qurol aniqlandi",
           chipMeta: "Yo'lak · KAM-07 · hozir",
         },
         {
@@ -1466,10 +1466,10 @@ export const uz = {
     empower: {
       kicker: "Jonli xarita",
       heading: "Xavfsizlikni kuchaytiring",
-      sub: "Navbatchi va rahbariyat uchun tayyor vositalar — bitta xodim butun muassasani nazorat qila oladi.",
+      sub: "AI butun muassasani uzluksiz kuzatadi — hodisa aniqlansa, mas'ul shaxslarga darhol yuboriladi.",
       items: [
         "Avtomatik trevoga va bildirishnomalar",
-        "Tasdiqlanmagan ogohlantirishlar navbati",
+        "Mas'ul shaxslarga avtomatik xabar yuborish",
         "3D kampus va kameralar joylashuvi",
         "Hodisa haqida ma'lumot: kadr, video va shaxs tarixi",
         "Davomat va hodisalar statistikasi",
@@ -1507,7 +1507,7 @@ export const uz = {
         { q: "Qanday hodisalarni aniqlaydi?", a: "Yuz tanish (tanilgan va begona shaxslar), qurol, janjal, chekish va telefonda gaplashish. Har bir hodisa kadr, vaqt va kamera bilan qayd etiladi." },
         { q: "Davomat qanday yuritiladi?", a: "Kamera o'quvchi yoki o'qituvchini tanigan vaqtdan kunlik davomat avtomatik quriladi: vaqtida kelgan, kechikkan va kelmaganlar. Kechikish chegarasi paneldan sozlanadi." },
         { q: "Shaxsiy ma'lumotlar himoyalanganmi?", a: "Rasm va videolarni faqat tizimga kirgan foydalanuvchi ko'ra oladi. Kirish kalitlari serverda saqlanadi va brauzerga chiqmaydi, ma'lumotlar muassasa tarmog'idan tashqariga chiqmaydi." },
-        { q: "Hodisa aniqlanganda nima bo'ladi?", a: "Hodisa operator ekranida ogohlantirish bo'lib chiqadi va xaritada kamera joyi ko'rsatiladi. Operator ma'lumotlarni ochib kadr va videoni ko'radi, so'ng tasdiqlaydi." },
+        { q: "Hodisa aniqlanganda nima bo'ladi?", a: "Hodisani AI o'zi aniqlaydi va tahlil qiladi, so'ng kadr, vaqt va kamera joyi bilan mas'ul shaxslarga darhol yuboradi." },
         { q: "Tizimga kim kira oladi?", a: "Faqat administrator yaratgan hisoblar. Har bir foydalanuvchi o'z vakolatiga ko'ra bo'limlarni ko'radi." },
         { q: "Joriy etish qancha vaqt oladi?", a: "Muddat kameralar soni va tarmoq holatiga bog'liq. Aniq rejani muassasangiz bilan birga tuzamiz." },
       ],
@@ -1520,26 +1520,26 @@ export const uz = {
           title: "AI yordamida aniqlash va kuzatish",
           chip: "Janjal aniqlandi",
           chipMeta: "Yo'lak · hozir",
-          items: ["Qurol, janjal, chekish va telefonni aniqlaydigan modellar", "Operator har bir hodisani tasdiqlaydi yoki rad etadi", "Har bir kadr Campus AI nazoratidan chetda qolmaydi"],
+          items: ["Qurol, janjal, chekish va telefonni aniqlaydigan modellar", "Har bir hodisani AI o'zi tahlil qiladi", "Har bir kadr Campus AI nazoratidan chetda qolmaydi"],
         },
         {
           title: "Butun hudud bo'yicha vaziyatni ko'rish",
           chip: "Trevoga — xaritada",
           chipMeta: "Toshkent sh.",
-          items: ["Barcha muassasalar bitta jonli xaritada", "Kameralar aniq joyi va yo'nalishi bilan", "Aniqlangan hodisa xaritada ko'rsatiladi va operatorga yetkaziladi"],
+          items: ["Barcha muassasalar bitta jonli xaritada", "Kameralar aniq joyi va yo'nalishi bilan", "Aniqlangan hodisa xaritada ko'rsatiladi va mas'ul shaxslarga yuboriladi"],
         },
         {
           title: "Maxfiylikni saqlagan holda yuz tanish",
           chip: "Shaxs tanildi",
           chipMeta: "Asosiy kirish",
-          items: ["Yuz bazasi muassasaning o'z serverida", "Bir odam — bitta raqam: kadrlar avtomatik birlashtiriladi", "Hodisa noto'g'ri aniqlangan bo'lsa, operator bir bosishda tuzatadi"],
+          items: ["Yuz bazasi muassasaning o'z serverida", "Bir odam — bitta raqam: kadrlar avtomatik birlashtiriladi", "Tanilgan shaxs haqida xabar mas'ul shaxslarga yuboriladi"],
         },
       ],
       allTitle: "Hodisalarni boshqarish uchun hamma narsa — bitta platformada",
       all: [
         "Hodisalarni boshidan oxirigacha boshqarish",
         "Kuzatuv posti bilan to'g'ridan-to'g'ri integratsiya",
-        "Tasdiqlanmagan ogohlantirishlar navbati",
+        "Mas'ul shaxslarga avtomatik xabar yuborish",
         "Yuz tanish orqali davomat",
         "Hodisa videosi va asl lavhani yuklab olish",
         "Jonli kamera oqimlari",
@@ -1578,16 +1578,16 @@ export const uz = {
       protectChip: "Qurol aniqlandi",
       respTitle: "Tez va muvofiqlashtirilgan javob",
       resp: [
-        { title: "Xavfsizlikka e'tibor", items: ["Operator tasdiqlaydi yoki rad etadi — yolg'on trevoga kamayadi", "Yangi hodisa bildirishnoma qo'ng'irog'ida", "Tasdiqlanmaganlar alohida navbatda"] },
+        { title: "Xavfsizlikka e'tibor", items: ["AI hodisani o'zi aniqlaydi va tahlil qiladi", "Hodisa darhol mas'ul shaxslarga yuboriladi", "Har bir hodisa kadr va vaqti bilan saqlanadi"] },
         { title: "Real vaqtdagi joylashuv", items: ["Hodisa o'zi kelgan kamera ustida, xaritada", "3D kampus va bino qavatlari", "Kamera oqimi bir bosishda ochiladi"] },
         { title: "Kerakli paytda kerakli joyda", items: ["Hodisa ma'lumotlari: kadr, video va shaxs tarixi", "Asl video lavhani yuklab olish", "Shaxs qaysi kamerada, qachon ko'ringani"] },
       ],
-      confirmed: "Tasdiqlandi",
-      dismiss: "Rad etish",
+      aiDetected: "AI aniqladi",
+      sentResponsible: "Mas'ul shaxslarga yuborildi",
       inProgress: "Hodisa jarayonda",
       improveTitle: "Xavfsizlikni kuchaytiring, xarajatlarni kamaytiring",
       improve: [
-        { title: "Nazoratni kuchaytiring", items: ["Barcha kameralar AI nazoratida", "Qo'lda kuzatish ehtiyoji kamayadi", "Navbatchi faqat muhim hodisaga e'tibor beradi"] },
+        { title: "Nazoratni kuchaytiring", items: ["Barcha kameralar AI nazoratida", "Qo'lda kuzatish ehtiyoji kamayadi", "Muhim hodisa mas'ul shaxslarga o'zi yetib boradi"] },
         { title: "Kameralaringiz endi aqlli", items: ["Mavjud kameralar bitta AI tizimga ulanadi", "Kameralarni almashtirish shart emas", "Onlayn/oflayn holati doim ko'rinadi"] },
         { title: "Ishni soddalashtiring", items: ["Davomat qog'ozsiz yuritiladi", "Tayyor statistika va CSV hisobotlar", "Barcha bo'limlar bitta panelda"] },
       ],
@@ -1696,7 +1696,7 @@ export const uz = {
       storyLead: "Kameralar deyarli har bir muassasada bor, lekin ular faqat arxiv uchun yozadi. Biz ularni har soniyada ko'radigan va ogohlantiradigan tizimga aylantirishni maqsad qildik.",
       storyText: [
         "Campus AI O'zbekiston ta'lim muassasalari uchun yaratilgan: o'zbek tilidagi interfeys, ichki tarmoqda ishlash va mavjud kameralar bilan integratsiya.",
-        "Maqsadimiz — navbatchi va rahbariyatga har bir hodisani o'z vaqtida ko'rsatish, davomatni esa qog'ozsiz yuritish.",
+        "Maqsadimiz — har bir hodisani AI yordamida aniqlab, mas'ul shaxslarga o'z vaqtida yetkazish, davomatni esa qog'ozsiz yuritish.",
       ],
       principlesTitle: "Bizning tamoyillarimiz",
       principles: [

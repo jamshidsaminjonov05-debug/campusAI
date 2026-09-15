@@ -24,9 +24,9 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNvrEvents, type NvrTab } from "@/hooks/useNvrEvents";
-import { useArrivals } from "@/hooks/useTodayArrivals";
+import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
 import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
-import { AlertKpiModal, CameraKpiModal, isDangerEvent } from "./DetectionKpiModals";
+import { AlertKpiModal, CameraKpiModal } from "./DetectionKpiModals";
 import {
   deleteNvrEvent,
   getEvent,
@@ -438,11 +438,16 @@ export function DetectionsPage() {
    * faqat OXIRGI 100 hodisadan hisoblanardi. Natijada (2026-09-02 da
    * o'lchandi) "Tanlangan davrda 100", "Odamlar 56", "Kanallar 2" chiqardi,
    * kunning HAQIQIY raqamlari esa **1082 qayd / 640 shaxs** edi.
-   * `useArrivals` oraliqni sahifama-sahifa to'liq o'qiydi.
+   * 🔴 2026-09-15 dan — SERVER hisobi: qaydlar/xavf/kameralar `GET /events/stats`
+   * (bitta so'rov), shaxslar `GET /faces?limit=1` (`total`/`known`). Ilgari
+   * `useArrivals` oraliqni XOM holda 100 tadan sahifalab o'qirdi ("Hammasi"da
+   * 30+3 = 33 so'rov, daqiqada bir) va 3 000 yozuvda to'xtab, uzun davrda
+   * faqat ~1 kunni sanardi.
    *
    * Sana filtri berilmasa (default `range:"all"`) butun tarix o'qiladi.
    */
-  const arrivals = useArrivals({ from: dateFrom, to: dateTo });
+  const kpiStats = useEventStats({ from: dateFrom, to: dateTo });
+  const kpiFaces = useFacesCount({ from: dateFrom, to: dateTo });
   /* ⚠️ **TO'RTALA KPI KARTOCHKA BOSILADI** (2026-09-08, foydalanuvchi
      so'rovi: "yuqori tablardagi hamma cardlar bosilishi kerak").
      "Tanlangan davrda" va "Tanilgan yuzlar" — AYNI `TodayArrivalsModal`,
@@ -455,7 +460,7 @@ export function DetectionsPage() {
   const [showCameras, setShowCameras] = useState(false);
   /** "Xavf signali" — foydalanuvchi ta'rifi: janjal + qurol (`isDangerEvent`,
    *  KPI kartochka va oyna BIR XIL sonni ko'rsatsin). */
-  const dangerCount = useMemo(() => arrivals.raw.filter(isDangerEvent).length, [arrivals.raw]);
+  const dangerCount = kpiStats.danger;
 
   /* 3D kampus markeridan kelgan fokus: filtr tozalanadi (aks holda hodisa
      joriy kategoriyaga tushmay ro'yxatda ko'rinmasdi) va yozuv topilishi
@@ -611,7 +616,7 @@ export function DetectionsPage() {
         >
           <DetKpi
             Icon={ChartLineUp}
-            value={arrivals.events}
+            value={kpiStats.total}
             label={t.nvr.statPeriod}
             /* ⚠️ Ilgari bu yerda `${filteredEvents.length} tasi ro'yxatda`
                turardi — `filteredEvents` esa JORIY SAHIFANING ro'yxati
@@ -626,9 +631,9 @@ export function DetectionsPage() {
                chindan o'zgaradi; "qisman" esa faqat YUQORIDAGI sonning
                o'zi (`arrivals.events`) taxminiy bo'lsa chiqadi. */
             hint={
-              arrivals.isLoading
+              kpiStats.isLoading
                 ? "sanalmoqda…"
-                : `${n(total)} ta "${currentTabLabel}"da${arrivals.capped ? " · kamida shuncha" : ""}`
+                : `${n(total)} ta "${currentTabLabel}"da`
             }
             tone="#22B8E6"
           />
@@ -638,18 +643,18 @@ export function DetectionsPage() {
         <button type="button" onClick={() => setArrivalsKnown("yes")} className="text-left" title="Ro'yxatni ochish">
           <DetKpi
             Icon={UserFocus}
-            value={arrivals.people}
+            value={kpiFaces.total}
             label={t.nvr.statRecognized}
             hint={
-              arrivals.people > 0
-                ? `${arrivals.named} tanilgan · ${arrivals.noFace} ajratilmagan`
+              kpiFaces.total > 0
+                ? `${kpiFaces.known} tanilgan · ${kpiFaces.unknown} notanish`
                 : "yuz qayd etilmagan"
             }
             tone="#22C55E"
           />
         </button>
         {/* "Xavf signali" — janjal + qurol (foydalanuvchi ta'rifi,
-            `isDangerEvent`). Server `alert` bayrog'i (`arrivals.alarms`)
+            `isDangerEvent`). Server `alert` bayrog'i (`stats.alerts`)
             KENGROQ — "begona shaxs" kabi boshqa toifalarni ham qamraydi,
             shuning uchun bu yerda ATAYLAB ishlatilmaydi: kartochka soni
             va oynadagi ro'yxat BIR XIL bo'lishi kerak. */}
@@ -663,11 +668,11 @@ export function DetectionsPage() {
           />
         </button>
         {/* "Faol kameralar" — shu davrda qaysi kameradan nechta odam
-            o'tgani (`arrivals.byChannel`, ALLAQACHON hisoblangan). */}
+            kelgani (`kpiStats.byChannel` — server hisobi). */}
         <button type="button" onClick={() => setShowCameras(true)} className="text-left" title="Ro'yxatni ochish">
           <DetKpi
             Icon={SecurityCamera}
-            value={arrivals.channels}
+            value={kpiStats.byChannel.length}
             label={t.nvr.statCameras}
             hint="hodisa kelgan kanallar"
             tone="#F59E0B"
@@ -698,8 +703,8 @@ export function DetectionsPage() {
           onClose={() => setArrivalsKnown(null)}
         />
       )}
-      {showAlerts && <AlertKpiModal events={arrivals.raw} onClose={() => setShowAlerts(false)} />}
-      {showCameras && <CameraKpiModal byChannel={arrivals.byChannel} onClose={() => setShowCameras(false)} />}
+      {showAlerts && <AlertKpiModal from={dateFrom} to={dateTo} onClose={() => setShowAlerts(false)} />}
+      {showCameras && <CameraKpiModal byChannel={kpiStats.byChannel} onClose={() => setShowCameras(false)} />}
 
       {/* Muassasa + sana + qidiruv */}
       <div className="hik-glass-blue flex flex-none flex-wrap items-center gap-2 rounded-2xl px-3 py-2.5">
@@ -1262,7 +1267,7 @@ export function DetectionModal({
     },
     onSuccess: () => {
       /* Hodisa ko'rinadigan HAMMA ro'yxat/sanoq keshlari */
-      for (const k of ["nvr", "detections", "arrivals", "nvr-faces", "nvr-face", "nvr-visit", "nvr-daily-counts", "nvr-category-totals"]) {
+      for (const k of ["nvr", "detections", "arrivals", "nvr-faces", "nvr-face", "nvr-visit", "nvr-daily-counts", "nvr-category-totals", "nvr-event-stats", "nvr-faces-count"]) {
         qc.invalidateQueries({ queryKey: [k] });
       }
       setConfirmDel(false);

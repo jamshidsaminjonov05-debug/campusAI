@@ -21,6 +21,13 @@ export type ServiceId = keyof typeof SERVICES;
  * qo'shsangiz — uning `publicEnv` ini shu jadvalga ham qo'shing.
  */
 const PUBLIC_ORIGIN: Record<string, string> = {
+  /* 🔴 2026-09-15 — PROXY TO'LIQ OLIB TASHLANDI (foydalanuvchi so'rovi,
+     ogohlantirishdan keyin ongli tanlov). ⚠️ O'lchandi: `/api/v1/*` CORS
+     beradi (GET/POST/DELETE), lekin `/api/login`, `/api/auth/refresh`,
+     `/api/me`, `/api/users`, `/api/channels`, `/api/status` va har qanday
+     `PUT` CORS BERMAYDI (preflight 405/401) — server CORS qo'shmaguncha
+     ular brauzerda ishlamaydi. Proxyga qaytish: `NEXT_PUBLIC_API_ORIGIN`ni
+     bo'shatib, `build`. */
   api: process.env.NEXT_PUBLIC_API_ORIGIN ?? "",
   media: process.env.NEXT_PUBLIC_API_ORIGIN ?? "",
   static: process.env.NEXT_PUBLIC_API_ORIGIN ?? "",
@@ -76,6 +83,25 @@ export const TILES_BASE = serviceBase("tiles");
 
 /** kuzatuv posti hodisalari: `${NVR_BASE}/gun/events`. */
 export const NVR_BASE = serviceBase("nvr");
+
+/** To'g'ridan-to'g'ri rejim kaliti — KLIENT bundle'ga yoziladi (proxysiz boshqa yo'l yo'q:
+ *  `<img>`/`<video>`/`EventSource` sarlavha qo'sha olmaydi, server `?api_key=` ni qabul qiladi). */
+const NVR_PUBLIC_KEY = process.env.NEXT_PUBLIC_NVR_API_KEY ?? "";
+
+/**
+ * kuzatuv posti manzili — `path` `/v1` yo'li (`/faces?limit=1`) yoki panel yo'li
+ * (`/panel/channels`).
+ *   proxy rejimi       → `/nvr/faces?limit=1`, `/nvr/panel/channels`
+ *   to'g'ridan-to'g'ri → `http://<ip>:7007/api/v1/faces?limit=1&api_key=…`,
+ *                        `http://<ip>:7007/api/channels?api_key=…`
+ * Kalit QUERY'da — GET so'rovi "oddiy" bo'lib qoladi, preflight ketmaydi.
+ */
+export function nvrUrl(path: string): string {
+  const origin = serviceOrigin("nvr");
+  if (!origin) return `${NVR_BASE}${path}`;
+  const url = path.startsWith("/panel") ? `${origin}/api${path.slice("/panel".length)}` : `${NVR_BASE}${path}`;
+  return NVR_PUBLIC_KEY ? `${url}${url.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(NVR_PUBLIC_KEY)}` : url;
+}
 
 /** Qurol/janjal — 2-versiya (lokal): `${WEAPON2_BASE}/api/alert/alert-list/`. */
 export const WEAPON2_BASE = serviceBase("weapon2");

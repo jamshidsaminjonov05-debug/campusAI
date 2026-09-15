@@ -44,7 +44,7 @@ export const SERVICES = {
     envOrigin: "BACKEND_ORIGIN",
     proxyPath: "/api",
     upstreamPath: "/api",
-    publicEnv: "NEXT_PUBLIC_API_ORIGIN",
+    publicEnv: "NEXT_PUBLIC_API_ORIGIN", // 2026-09-15 dan proxysiz — `src/config/endpoints.ts` izohiga qarang
     probe: "/v1/cameras",
     expect: [200, 401], // 401 ham "tirik" — auth talab qilyapti
   },
@@ -53,7 +53,7 @@ export const SERVICES = {
     envOrigin: "BACKEND_ORIGIN",
     proxyPath: "/media",
     upstreamPath: "/media",
-    publicEnv: "NEXT_PUBLIC_API_ORIGIN",
+    publicEnv: "NEXT_PUBLIC_API_ORIGIN", // 2026-09-15 dan proxysiz — `src/config/endpoints.ts` izohiga qarang
     originOnly: true, // backend `/media/...` to'liq yo'l qaytaradi
   },
   static: {
@@ -61,7 +61,7 @@ export const SERVICES = {
     envOrigin: "BACKEND_ORIGIN",
     proxyPath: "/static",
     upstreamPath: "/static",
-    publicEnv: "NEXT_PUBLIC_API_ORIGIN",
+    publicEnv: "NEXT_PUBLIC_API_ORIGIN", // 2026-09-15 dan proxysiz — `src/config/endpoints.ts` izohiga qarang
     originOnly: true,
   },
   speech: {
@@ -69,7 +69,7 @@ export const SERVICES = {
     envOrigin: "BACKEND_ORIGIN",
     proxyPath: "/speech",
     upstreamPath: "/api/v1/speech",
-    publicEnv: "NEXT_PUBLIC_API_ORIGIN",
+    publicEnv: "NEXT_PUBLIC_API_ORIGIN", // 2026-09-15 dan proxysiz — `src/config/endpoints.ts` izohiga qarang
     probe: "/health",
     expect: [200, 401],
   },
@@ -83,15 +83,17 @@ export const SERVICES = {
     expect: [200],
   },
   nvr: {
-    label: "NVR hodisalari (yuz/qurol/chekish/sanoq)",
+    // 🔴 2026-09-15 dan PROXYSIZ: `NEXT_PUBLIC_NVR_ORIGIN` to'ldirilsa brauzer
+    // serverga to'g'ridan-to'g'ri boradi, kalit `?api_key=` bilan
+    // (`NEXT_PUBLIC_NVR_API_KEY` — KLIENT bundle'ga yoziladi, ataylab).
+    // Bo'sh bo'lsa — eskicha `/nvr` proxy (`app/nvr/[...path]/route.ts`).
+    label: "kuzatuv posti — hodisalar, yuz bazasi, davomat, kameralar",
     envOrigin: "NVR_ORIGIN",
     proxyPath: "/nvr",
     upstreamPath: "/api/v1",
-    // DIQQAT: to'g'ridan-to'g'ri rejim YO'Q (`publicEnv: null`) — kalit
-    // brauzerga chiqib ketmasligi uchun NVR doim proxy orqali ishlaydi.
-    publicEnv: null,
-    probe: "/gun/events?limit=1&images=false",
-    expect: [200],
+    publicEnv: "NEXT_PUBLIC_NVR_ORIGIN",
+    probe: "/faces?limit=1",
+    expect: [200, 401], // tizim-test kalitsiz so'raydi — 401 ham "tirik"
     // DIQQAT: bu xizmat oddiy rewrite EMAS — `app/nvr/[...path]/route.ts`
     // Route Handler orqali o'tadi, chunki har so'rovga `X-API-Key` sarlavhasi
     // qo'shilishi kerak. Rewrites sarlavha qo'sha olmaydi, kalit esa brauzerga
@@ -145,7 +147,8 @@ export function originOf(id) {
  *  orqali ishlaydi (sarlavha qo'shish kerak bo'lgan xizmatlar). */
 export function buildRewrites() {
   return Object.entries(SERVICES)
-    .filter(([, s]) => !s.handler)
+    // To'g'ridan-to'g'ri rejimdagi xizmatga proxy yo'li QURILMAYDI (2026-09-15)
+    .filter(([, s]) => !s.handler && !process.env[s.publicEnv ?? ""])
     .map(([id, s]) => ({
       source: `${s.proxyPath}/:path*`,
       destination: `${originOf(id)}${s.upstreamPath}/:path*`,

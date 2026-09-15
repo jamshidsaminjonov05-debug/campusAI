@@ -130,7 +130,7 @@ export function KpiTile({
         <span className="truncate text-[9px] uppercase tracking-wide opacity-85">{label}</span>
         {demo && (
           <span
-            title="Bu son to'qilgan — backend bu ko'rsatkichni bermayapti"
+            title="Hali jarayonda — ma'lumotlar qo'shilmoqda"
             className="ml-auto flex-none rounded border border-amber-400/40 bg-amber-400/10 px-1 py-px
                        text-[8px] font-bold uppercase tracking-wide text-amber-300"
           >

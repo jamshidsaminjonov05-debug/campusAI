@@ -386,6 +386,7 @@ function RoleTileCard({
   tone: string;
   onPick: (() => void) | undefined;
 }) {
+  const t = useT();
   const disabled = onPick == null;
   return (
     <button
@@ -408,7 +409,7 @@ function RoleTileCard({
         {!disabled && <CaretRight size={12} className="flex-none text-slate-500 transition-colors group-hover:text-[color:var(--c)]" />}
       </span>
       <span className="font-mono text-[20px] font-bold leading-none text-[color:var(--c)]">{count ?? "—"}</span>
-      {disabled && <span className="text-[9px] leading-snug text-slate-500">manba yo&apos;q</span>}
+      {disabled && <span className="text-[9px] leading-snug text-slate-500">{t.dashboard.ui.noSource}</span>}
     </button>
   );
 }

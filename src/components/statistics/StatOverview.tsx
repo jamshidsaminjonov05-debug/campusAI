@@ -27,7 +27,8 @@ import type { DashboardView } from "@/hooks/useDashboardData";
 import { Donut3D } from "@/components/common/Donut3D";
 import { DataBadge } from "@/components/dashboard/DataBadge";
 import { AXIS, ClickableDot, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
-import { useTodayArrivals } from "@/hooks/useTodayArrivals";
+import { localDay } from "@/hooks/useTodayArrivals";
+import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
 import { useAttendanceBoard } from "@/hooks/useAttendanceBoard";
 import { useNvrAttendance } from "@/hooks/useNvrAttendance";
 import { useWeeklyByType } from "@/hooks/useWeeklyByType";
@@ -58,7 +59,11 @@ export function StatOverview({
 
   /* "Bugun kelganlar" KPI'si — ATAYLAB BUGUNGI kun (kartochka nomi shunday
      va u davrga ergashmasligi kerak). */
-  const arrivals = useTodayArrivals();
+  /* 🔴 2026-09-15: xom skan o'rniga server hisobi — odamlar `/faces` `total`,
+     qaydlar `/events/stats` `total` (`hooks/useEventStats.ts`). */
+  const today = localDay();
+  const dayStats = useEventStats({ from: today, to: today });
+  const dayFaces = useFacesCount({ from: today, to: today });
   const [showArrivals, setShowArrivals] = useState(false);
 
   /**
@@ -343,11 +348,11 @@ export function StatOverview({
           <KpiTile
             Icon={UserFocus}
             label={t.stats.kpi.arrivalsToday}
-            value={n(arrivals.people)}
+            value={n(dayFaces.total)}
             hint={
-              arrivals.isLoading
+              dayFaces.isLoading || dayStats.isLoading
                 ? "sanalmoqda…"
-                : `${n(arrivals.events)} qayd${arrivals.capped ? " (qisman)" : ""}`
+                : `${n(dayStats.total)} qayd`
             }
             tone="#22C55E"
           />

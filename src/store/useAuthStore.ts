@@ -26,7 +26,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ authenticated: true, user, checking: false });
     // Rahbar (admin) kirganda statistika (Boshqaruv paneli) darhol ochilsin —
     // sahifa qayta yuklanganda (restore) emas, faqat aniq LOGIN paytida.
-    if (user?.role === "admin") useAppStore.getState().setActivePage("Boshqaruv paneli");
+    /* Yangi serverda bosh administrator roli — `superadmin` */
+    if (user?.role === "admin" || user?.role === "superadmin") useAppStore.getState().setActivePage("Boshqaruv paneli");
   },
 
   logout: () => {

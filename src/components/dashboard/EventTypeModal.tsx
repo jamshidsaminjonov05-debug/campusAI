@@ -4,17 +4,21 @@
  *
  * ── IKKI USTUN ────────────────────────────────────────────────────────
  * · **CHAPDA — BO'LAKNING O'ZI**: `Pie3D` shu bo'lak "chiqarilgan"
- *   (`highlight`) holatda chiziladi, qolganlari so'niq. Ya'ni
- *   foydalanuvchi qaysi bo'lakni bosganini KO'RIB turadi.
- * · **O'NGDA — UMUMIY XULOSA**: jami, ulush, trevoga, birinchi/oxirgi
- *   qayd, kunma-kun va kamera kesimi.
+ *   (`highlight`) holatda chiziladi, qolganlari so'niq.
+ * · **O'NGDA — UMUMIY XULOSA**: jami, ulush, kunlar, birinchi/oxirgi kun
+ *   va kunma-kun kesim.
  *
- * ⚠️ **RO'YXAT ATAYLAB YO'Q** (foydalanuvchi so'rovi). Ilgari bu yerda
- * o'sha turdagi barcha hodisalar ro'yxati chizilardi — "Begona odam"
- * uchun **1 610** ta bir xil qator ("Notanish shaxs · Kirish posti"),
- * ya'ni aylantirishdan boshqa hech narsa bermasdi. Bitta yozuvni
- * ko'rish kerak bo'lsa — "Aniqlanganlarda ochish" tugmasi (u yerda
- * filtr, qidiruv va sahifalash bor).
+ * 🔴 **MANBA — `GET /events/stats`** (2026-09-15): ilgari xulosa xom
+ * hodisalar ro'yxatidan (`useArrivals({})` — 30+3 so'rov, amalda ~1 kunlik
+ * oyna) hisoblanardi. Endi server BUTUN tarix bo'yicha sanaydi.
+ * ⚠️ Server kamera kesimini va trevogani KATEGORIYA bo'yicha BERMAYDI
+ * (`by_channel`/`alerts` — umumiy), shuning uchun bu oynada ular yo'q —
+ * o'ylab topilmaydi.
+ *
+ * ⚠️ **RO'YXAT ATAYLAB YO'Q** (foydalanuvchi so'rovi): "Begona odam" uchun
+ * 1 610 ta bir xil qator aylantirishdan boshqa hech narsa bermasdi. Bitta
+ * yozuv kerak bo'lsa — "Aniqlanganlarda ochish" (u yerda filtr, qidiruv va
+ * SAHIFALASH bor).
  */
 "use client";
 
@@ -25,28 +29,26 @@ import { ArrowRight, X } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { Pie3D, type PieSlice } from "@/components/common/Pie3D";
-import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import type { DetectionEvent } from "@/lib/detectionEvents";
-
-const HIGH = new Set(["critical", "high"]);
+import type { EventStatsView } from "@/hooks/useEventStats";
+import type { NvrRealCategory } from "@/hooks/useEventCounts";
 
 export function EventTypeModal({
   slices,
   activeId,
   label,
   color,
-  list,
+  stats,
   onOpenAll,
   onClose,
 }: {
   /** Butun diagramma — chapda AYNI shakl chiziladi. */
   slices: PieSlice[];
-  /** Ajratilgan bo'lak (`DetectionId`). */
-  activeId: string;
+  /** Ajratilgan bo'lak — server kategoriyasi. */
+  activeId: NvrRealCategory;
   label: string;
   color: string;
-  /** Shu turdagi hodisalar — XULOSA shundan hisoblanadi (ro'yxat chizilmaydi). */
-  list: DetectionEvent[];
+  /** Server statistikasi (`useEventStats`) — XULOSA shundan. */
+  stats: EventStatsView;
   /** "Aniqlanganlarda ochish". */
   onOpenAll: () => void;
   onClose: () => void;
@@ -56,39 +58,19 @@ export function EventTypeModal({
   /* ◀ "orqaga" avval shu oynani yopadi (`lib/modalHistory.ts`). */
   useModalHistory(onClose);
 
-  const stats = useMemo(() => {
-    const total = slices.reduce((s, x) => s + x.value, 0);
-    const alarms = list.filter((e) => HIGH.has(e.severity)).length;
-
-    /* Kunma-kun va kamera kesimi — bitta o'tishda sanaladi. */
-    const days = new Map<string, number>();
-    const cams = new Map<string, { label: string; n: number }>();
-    let first = Infinity;
-    let last = -Infinity;
-    for (const e of list) {
-      const day = new Date(e.ts).toISOString().slice(0, 10);
-      days.set(day, (days.get(day) ?? 0) + 1);
-      const key = e.channel ?? e.camera;
-      const c = cams.get(key);
-      if (c) c.n += 1;
-      else cams.set(key, { label: cameraPlaceLabel(e.channel ?? "", e.camera), n: 1 });
-      if (e.ts < first) first = e.ts;
-      if (e.ts > last) last = e.ts;
-    }
-
+  const view = useMemo(() => {
+    const count = stats.byCategory[activeId] ?? 0;
+    /* Shu kategoriyada hodisa bo'lgan kunlar, eskidan yangiga. */
+    const days = stats.byDay.filter((d) => d[activeId] > 0).map((d) => [d.day, d[activeId]] as const);
     return {
-      count: list.length,
-      share: total > 0 ? (list.length / total) * 100 : 0,
-      alarms,
-      first: Number.isFinite(first) ? new Date(first) : null,
-      last: Number.isFinite(last) ? new Date(last) : null,
-      days: [...days.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)),
-      cams: [...cams.values()].sort((a, b) => b.n - a.n),
+      count,
+      share: stats.total > 0 ? (count / stats.total) * 100 : 0,
+      first: days[0]?.[0] ?? null,
+      last: days[days.length - 1]?.[0] ?? null,
+      /* Ko'rsatish — yangidan eskiga */
+      days: [...days].reverse(),
     };
-  }, [list, slices]);
-
-  const dt = (d: Date | null) =>
-    d ? d.toLocaleString(t.locale, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+  }, [stats.byCategory, stats.byDay, stats.total, activeId]);
 
   if (typeof document === "undefined") return null;
 
@@ -131,54 +113,30 @@ export function EventTypeModal({
           {/* ── O'NG: UMUMIY XULOSA ── */}
           <div className="flex min-w-0 flex-col gap-3">
             <div className="grid grid-cols-3 gap-2">
-              <Kpi label={u.total} value={String(stats.count)} tone="#8FB8FF" />
-              <Kpi label={u.share} value={`${stats.share.toFixed(1)}%`} tone={color} />
-              <Kpi
-                label={u.alarm}
-                value={String(stats.alarms)}
-                tone={stats.alarms > 0 ? "#FB7185" : "#64748B"}
-              />
+              <Kpi label={u.total} value={view.count.toLocaleString(t.locale)} tone="#8FB8FF" />
+              <Kpi label={u.share} value={`${view.share.toFixed(1)}%`} tone={color} />
+              <Kpi label={u.days} value={u.daysN(view.days.length)} tone="#64748B" />
             </div>
 
             <dl className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px]">
-              <Row label={u.first} value={dt(stats.first)} />
-              <Row label={u.last} value={dt(stats.last)} />
-              <Row label={u.days} value={u.daysN(stats.days.length)} />
-              <Row label={t.common.cameras} value={u.camsN(stats.cams.length)} />
+              <Row label={u.first} value={view.first ?? "—"} />
+              <Row label={u.last} value={view.last ?? "—"} />
             </dl>
 
-            {/* Kunma-kun kesim */}
-            {stats.days.length > 0 && (
+            {/* Kunma-kun kesim — server hisobi */}
+            {view.days.length > 0 && (
               <section>
                 <p className="mb-1 text-[9.5px] uppercase tracking-wider text-slate-500">{u.byDay}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {stats.days.slice(0, 12).map(([day, n]) => (
+                  {view.days.slice(0, 12).map(([day, n]) => (
                     <span
                       key={day}
                       className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-slate-400"
                     >
-                      {day.slice(5)} <b className="neon-num font-mono">{n}</b>
+                      {day.slice(5)} <b className="neon-num font-mono">{n.toLocaleString(t.locale)}</b>
                     </span>
                   ))}
                 </div>
-              </section>
-            )}
-
-            {/* Kamera kesimi — qaysi kamerada nechta */}
-            {stats.cams.length > 0 && (
-              <section>
-                <p className="mb-1 text-[9.5px] uppercase tracking-wider text-slate-500">{u.byCam}</p>
-                <ul className="space-y-1">
-                  {stats.cams.slice(0, 6).map((c) => (
-                    <li key={c.label} className="flex items-center gap-2 text-[10.5px]">
-                      <span className="min-w-0 flex-1 truncate text-slate-300">{c.label}</span>
-                      <span className="neon-bar w-24 flex-none">
-                        <span className="neon-bar-fill" style={{ width: `${(c.n / stats.cams[0].n) * 100}%` }} />
-                      </span>
-                      <b className="neon-num w-10 flex-none text-right font-mono">{c.n}</b>
-                    </li>
-                  ))}
-                </ul>
               </section>
             )}
 

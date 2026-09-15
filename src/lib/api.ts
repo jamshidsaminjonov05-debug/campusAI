@@ -8,11 +8,22 @@
  * yangilashga urinadi, bo'lmasa logout qilib login sahifasiga qaytaradi.
  */
 
-import { API_BASE, MEDIA_BASE } from "@/config/endpoints";
+import { API_BASE, MEDIA_BASE, serviceBase } from "@/config/endpoints";
 
 /** REST ildizi — to'g'ridan-to'g'ri backend origini yoki same-origin proxy
  *  (`.env.local` dagi `NEXT_PUBLIC_API_ORIGIN` bilan almashadi). */
 const BASE = API_BASE;
+/**
+ * API ILDIZI (`/api`, `/v1`siz).
+ *
+ * 🔴 2026-09-14 dan asosiy API — kuzatuv posti serveri (foydalanuvchi
+ * `BACKEND_ORIGIN`ni shu serverga o'zgartirdi). U yerda login/refresh/me/users
+ * `/api/login`, `/api/auth/refresh`, `/api/me`, `/api/users` da — eski
+ * backenddagi `/api/v1/auth/...` EMAS (o'lchandi: eski yo'l `401`, yangisi
+ * `200`). Eski backend bilan ham ishlashi uchun avval yangi yo'l, u yerda
+ * bo'lmasa eskisi so'raladi (`withFallback`).
+ */
+const API_ROOT = serviceBase("api");
 
 /* ---------------------------------- Tiplar ---------------------------------- */
 
@@ -339,6 +350,54 @@ function detailMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Javob JSON'mi — noma'lum yo'lda yangi server `200` + HTML (o'z panel sahifasi) qaytaradi. */
+function isJson(res: Response): boolean {
+  return (res.headers.get("content-type") ?? "").includes("application/json");
+}
+
+/** Bu yo'l shu serverda YO'Qmi — eski/yangi server orasida zaxira yo'lga o'tish uchun. */
+function missingRoute(res: Response): boolean {
+  return res.status === 404 || res.status === 405 || !isJson(res);
+}
+
+/**
+ * Yangi server (kuzatuv posti) foydalanuvchi obyekti — maydonlari eski
+ * backenddan farq qiladi: `/api/me` da `uid` + `user` (login MATNI),
+ * `/api/users` da `id` + `username`. UI eski `UserOut` shaklini kutadi.
+ */
+type RawUser = {
+  id?: number | string;
+  uid?: number | string;
+  username?: string;
+  user?: unknown;
+  full_name?: string | null;
+  role?: string;
+  is_active?: boolean;
+};
+
+function normalizeUser(u: RawUser): UserOut {
+  return {
+    id: String(u.id ?? u.uid ?? ""),
+    username: u.username ?? (typeof u.user === "string" ? u.user : ""),
+    full_name: u.full_name ?? null,
+    role: u.role ?? "",
+    is_active: u.is_active ?? true,
+  };
+}
+
+/**
+ * Avval YANGI server yo'li, u yerda bo'lmasa (`404`/`405`, HTML) — ESKI
+ * backend yo'li. Shunda panel ikkala server bilan ham ishlaydi.
+ */
+async function withFallback<T>(primary: () => Promise<T>, legacy: () => Promise<T>): Promise<T> {
+  try {
+    return await primary();
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return legacy();
+    throw e;
+  }
+}
+
 let refreshing: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
@@ -347,13 +406,17 @@ async function tryRefresh(): Promise<boolean> {
       const tokens = loadTokens();
       if (!tokens?.refresh) return false;
       try {
-        const res = await fetch(`${BASE}/auth/refresh`, {
+        const init: RequestInit = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token: tokens.refresh }),
-        });
-        if (!res.ok) return false;
+        };
+        /* Yangi server — `/api/auth/refresh`; eski backend — `/api/v1/auth/refresh` */
+        let res = await fetch(`${API_ROOT}/auth/refresh`, init);
+        if (missingRoute(res)) res = await fetch(`${BASE}/auth/refresh`, init);
+        if (!res.ok || !isJson(res)) return false;
         const t = (await res.json()) as Token;
+        if (!t.access_token) return false;
         saveTokens({ access: t.access_token, refresh: t.refresh_token });
         return true;
       } catch {
@@ -388,7 +451,9 @@ async function request<T>(
   path: string,
   init: RequestInit = {},
   retry = true,
-  timeoutMs: number = REQUEST_TIMEOUT_MS
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+  /** Yo'l ildizi — odatda `/api/v1`; yangi serverning auth yo'llari uchun `API_ROOT`. */
+  base: string = BASE
 ): Promise<T> {
   const tokens = loadTokens();
   const headers = new Headers(init.headers);
@@ -399,7 +464,7 @@ async function request<T>(
 
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { ...init, headers, signal: init.signal ?? timeoutController.signal });
+    res = await fetch(`${base}${path}`, { ...init, headers, signal: init.signal ?? timeoutController.signal });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {
       throw new ApiError(0, `Server javob bermadi (${Math.round(timeoutMs / 1000)}s) — manzilni tekshiring`);
@@ -410,7 +475,7 @@ async function request<T>(
   }
 
   if (res.status === 401 && retry) {
-    if (await tryRefresh()) return request<T>(path, init, false, timeoutMs);
+    if (await tryRefresh()) return request<T>(path, init, false, timeoutMs, base);
     saveTokens(null);
     onUnauthorized?.();
     throw new ApiError(401, "Sessiya tugadi — qayta kiring");
@@ -428,6 +493,11 @@ async function request<T>(
 
   if (res.status === 204) return undefined as T;
   const ct = res.headers.get("content-type") ?? "";
+  /* ⚠️ Noma'lum yo'lda yangi server (kuzatuv posti) `200` bilan HTML — o'z
+     panel sahifasini — qaytaradi (o'lchandi 2026-09-14: `/persons`,
+     `/statistics/dashboard`, `/admin/status`). Ilgari bu Blob bo'lib
+     chaqiruvchiga ketardi va JSON kutgan kod (`.map`, `.items`) yiqilardi. */
+  if (ct.includes("text/html")) throw new ApiError(404, "Bu imkoniyat joriy serverda yo'q");
   if (!ct.includes("application/json")) return (await res.blob()) as T;
   return (await res.json()) as T;
 }
@@ -451,8 +521,8 @@ export function isFaceEngineError(message: string): boolean {
 }
 
 export const FACE_ENGINE_HINT =
-  "Serverda yuz tanish moduli o'rnatilmagan (onnxruntime) — surat saqlanmadi. " +
-  "Shaxs ro'yxatga qo'shildi; rasmni modul o'rnatilgach biriktirish mumkin.";
+  "Yuz tanish hali jarayonda — ma'lumotlar qo'shilmoqda, surat hozircha saqlanmadi. " +
+  "Shaxs ro'yxatga qo'shildi; rasmni keyinroq biriktirish mumkin.";
 
 function qs(params: Record<string, string | number | boolean | undefined | null>): string {
   const sp = new URLSearchParams();
@@ -497,14 +567,22 @@ const ATTENDANCE_MAX_PAGES = 30;
 export const api = {
   /* Autentifikatsiya */
   async login(username: string, password: string): Promise<Token> {
-    const body = new URLSearchParams({ username, password });
     let res: Response;
     try {
-      res = await fetch(`${BASE}/auth/login`, {
+      /* Yangi server — JSON, `/api/login` */
+      res = await fetch(`${API_ROOT}/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       });
+      /* Eski backend — form, `/api/v1/auth/login` (yangi yo'l bo'lmasa) */
+      if (missingRoute(res)) {
+        res = await fetch(`${BASE}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ username, password }),
+        });
+      }
     } catch {
       throw new ApiError(0, "Server bilan aloqa yo'q");
     }
@@ -518,17 +596,43 @@ export const api = {
       throw new ApiError(res.status, detailMessage(b, "Login xatosi"));
     }
     const t = (await res.json()) as Token;
+    /* `200` bo'lsa ham token bo'lmasligi mumkin (`{ok:false}`) — bo'sh token
+       saqlanib, keyingi har so'rov jim `401` bilan qaytmasin. */
+    if (!t.access_token) throw new ApiError(401, detailMessage(t, "Login yoki parol noto'g'ri"));
     saveTokens({ access: t.access_token, refresh: t.refresh_token });
     return t;
   },
-  me: () => request<UserOut>("/auth/me"),
-  listUsers: () => request<UserOut[]>("/auth/users"),
+  me: () =>
+    withFallback(
+      async () => normalizeUser(await request<RawUser>("/me", {}, true, REQUEST_TIMEOUT_MS, API_ROOT)),
+      () => request<UserOut>("/auth/me")
+    ),
+  listUsers: () =>
+    withFallback(
+      async () =>
+        (await request<{ users?: RawUser[] }>("/users", {}, true, REQUEST_TIMEOUT_MS, API_ROOT)).users?.map(normalizeUser) ?? [],
+      () => request<UserOut[]>("/auth/users")
+    ),
   createUser: (data: { username: string; password: string; full_name?: string; role?: string }) =>
-    request<UserOut>("/auth/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
+    withFallback(
+      async () => {
+        const r = await request<RawUser & { user?: unknown }>(
+          "/users",
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) },
+          true,
+          REQUEST_TIMEOUT_MS,
+          API_ROOT
+        );
+        /* Javob `{user:{...}}` yoki to'g'ridan-to'g'ri foydalanuvchi bo'lishi mumkin */
+        return normalizeUser(r.user && typeof r.user === "object" ? (r.user as RawUser) : r);
+      },
+      () =>
+        request<UserOut>("/auth/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+    ),
 
   /* Shaxslar */
   listPersons: (p: {

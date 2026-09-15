@@ -6,13 +6,9 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { Donut3D } from "@/components/common/Donut3D";
 import { AXIS, ClickableDot, StatPanel, TOOLTIP, fmt, Y_AXIS_W } from "@/components/common/panels";
 import { DataBadge } from "@/components/dashboard/DataBadge";
-import { localDay, useArrivals } from "@/hooks/useTodayArrivals";
-import {
-  NVR_CATEGORIES,
-  useEventCategoryTotals,
-  useEventDailyCounts,
-  type NvrRealCategory,
-} from "@/hooks/useEventCounts";
+import { localDay } from "@/hooks/useTodayArrivals";
+import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
+import { useEventStats } from "@/hooks/useEventStats";
 import { listEvents } from "@/lib/nvrApi";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
 import { useT, type Messages } from "@/i18n";
@@ -40,16 +36,14 @@ import type { StatDetailContent } from "./StatDetailDrawer";
  * oxirgi ~1.5 kun o'qilardi, qolgan kunlar esa NOL bo'lib chizilardi —
  * go'yo o'sha kunlarda hech narsa bo'lmagandek.
  *
- * **Endi sonlar SERVERNING O'Z hisobidan** (`hooks/useEventCounts.ts`):
- *   · chiziq — har kun uchun bitta mitti so'rov (`limit=1`) va javobdagi
- *     `total`; oraliq qancha uzun bo'lsa ham son ANIQ;
- *   · halqa — to'rtta kategoriya (`face`/`gun`/`janjal`/`smoking`)
- *     bo'yicha aniq `total`.
+ * **Endi sonlar SERVERNING O'Z hisobidan — BITTA so'rov** (2026-09-15,
+ * `GET /events/stats`, `hooks/useEventStats.ts`): chiziq `by_day` (yoki
+ * "Bugun"da `by_hour`), halqa `by_category`. 2026-09-13 dan 15 gacha bu
+ * yerda har KUNGA bitta `limit=1` so'rov (oyda 30 ta) + halqa uchun 4 ta +
+ * "Bugun"da xom oqim skani bor edi.
  *
- * ⚠️ **XOM hodisalar endi FAQAT "Bugun" ko'rinishida o'qiladi** (soatlik
- * taqsimot uchun — bir kun chegaraga sig'adi). Uzun oraliqda
- * `useArrivals` UMUMAN chaqirilmaydi (`enabled: false`), ya'ni ortiqcha
- * 30 ta og'ir so'rov ham yo'qoldi.
+ * ⚠️ XOM hodisalar FAQAT nuqta BOSILGANDA, o'sha KUN uchun so'raladi
+ * (`DayBreakdown`/`HourBreakdown`).
  *
  * ⚠️ **Halqa endi SERVER kategoriyalarini ko'rsatadi** (`DETECTION_TYPES`
  * emas): "Begona odam" faqat TANILMAGAN yuz, "Telefon" esa `smoking`
@@ -94,11 +88,18 @@ export function StatPeriodPanel({
 
   /* ⚠️ XOM hodisalar FAQAT "Bugun"da kerak (soatlik taqsimot) — uzun
      oraliqda so'rov UMUMAN yuborilmaydi (yuqoridagi izohga qarang). */
-  const real = useArrivals({ ...range, enabled: isToday });
+  /* 🔴 2026-09-15: BARCHA sonlar BITTA so'rovdan — `GET /events/stats`.
+     Ilgari: "Bugun"da xom oqim sahifalab (o'nlab so'rov), kunlik chiziq uchun
+     HAR KUNGA bitta `limit=1` so'rov (oyda 30 ta), halqa uchun yana 4 ta.
+     Server `by_day`/`by_hour`/`by_category` ni tayyor beradi. */
+  const rs = useEventStats(range);
   /** Kunlik sonlar — SERVER hisobi, chegarasiz aniq. */
-  const daily = useEventDailyCounts(range.from, range.to);
+  const daily = useMemo(
+    () => ({ byDate: new Map(rs.byDay.map((d) => [d.day, d.total])), total: rs.total, isLoading: rs.isLoading }),
+    [rs.byDay, rs.total, rs.isLoading]
+  );
   /** Kategoriya kesimi — SERVER hisobi (halqa uchun). */
-  const cats = useEventCategoryTotals(range.from, range.to);
+  const cats = { totals: rs.byCategory, sum: rs.total, isLoading: rs.isLoading };
 
   /** Oraliqdagi kunlar ro'yxati. */
   const days = useMemo(() => {
@@ -121,7 +122,7 @@ export function StatPeriodPanel({
   const series = useMemo(() => {
     if (isToday) {
       const hours = Array<number>(24).fill(0);
-      for (const ev of real.raw) hours[new Date(ev.time).getHours()]++;
+      rs.hourly.forEach((v, h) => (hours[h] = v));
       return hours.map((v, h) => ({
         day: `${String(h).padStart(2, "0")}:00`,
         [t.chart.count]: v,
@@ -137,10 +138,10 @@ export function StatPeriodPanel({
       };
     });
     /* `t` TO'LIQ dep — `dayMonthLabel()` oy nomlarini lug'atdan oladi. */
-  }, [real.raw, daily.byDate, days, t, isToday]);
+  }, [rs.hourly, daily.byDate, days, t, isToday]);
 
   /** Davr yig'indisi — sarlavha yonida (chiziqni o'qishdan OLDIN javob). */
-  const periodTotal = isToday ? real.events : daily.total;
+  const periodTotal = rs.total;
 
   /** `ClickableDot`ning `dot`/`activeDot` ikkalasi uchun HAM AYNI handler. */
   function onPointPick(payload: unknown) {
@@ -158,7 +159,7 @@ export function StatPeriodPanel({
          umuman o'qilmagan bo'ladi (yuqoridagi izoh). Kichik komponent
          o'sha KUNNING o'zini so'raydi — bitta kun chegaraga sig'adi. */
       body: isToday ? (
-        <HourBreakdown hour={key} events={real.raw} n={n} />
+        <HourBreakdown hour={key} date={range.from} n={n} />
       ) : (
         <DayBreakdown date={key} n={n} />
       ),
@@ -204,7 +205,7 @@ export function StatPeriodPanel({
     });
   }
 
-  const loading = isToday ? real.isLoading : daily.isLoading;
+  const loading = rs.isLoading;
 
   return (
     /* ⚠️ Halqa ustuni KENGROQ: `Donut3D` yorliqlarni chiziqcha bilan
@@ -346,16 +347,20 @@ function groupEvents(events: { category_label: string; channel: string; camera: 
   };
 }
 
-/** "Bugun" ko'rinishida SOAT kesimi — xom hodisalar allaqachon o'qilgan. */
-function HourBreakdown({
-  hour,
-  events,
-  n,
-}: {
-  hour: string;
-  events: { time: string; category_label: string; channel: string; camera: string }[];
-  n: (v: number) => string;
-}) {
+/**
+ * "Bugun" ko'rinishida SOAT kesimi — FAQAT bosilganda o'sha kun so'raladi
+ * (`DayBreakdown` bilan AYNI kalit, ya'ni ikkinchi marta so'ralmaydi).
+ * ⚠️ Bir kunlik oyna `limit=500` — kun undan uzun bo'lsa soat kesimi oxirgi
+ * 500 qayd bo'yicha hisoblanadi (umumiy soatlik son esa server hisobidan).
+ */
+function HourBreakdown({ hour, date, n }: { hour: string; date: string; n: (v: number) => string }) {
+  const q = useQuery({
+    queryKey: ["nvr-day-breakdown", date],
+    queryFn: () => listEvents("all", { limit: 500, date_from: date, date_to: date }),
+    staleTime: 60_000,
+  });
+  if (q.isLoading) return <p className="text-[11px] text-slate-500">Yuklanmoqda…</p>;
+  const events = q.data?.events ?? [];
   const matches = events.filter((ev) => String(new Date(ev.time).getHours()).padStart(2, "0") === hour);
   const g = groupEvents(matches);
   return (

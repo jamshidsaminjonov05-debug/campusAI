@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ImageBroken as ImageOff } from "@phosphor-icons/react";
-import { NVR_BASE } from "@/config/endpoints";
+import { nvrUrl } from "@/config/endpoints";
 import type { NvrBox } from "@/lib/nvrApi";
 import { useT } from "@/i18n";
 
@@ -68,7 +68,7 @@ export function DetectionThumb({
   // Hodisa almashsa oldingi xato holati qolib ketmasin
   useEffect(() => setFailed(false), [id, index]);
 
-  const src = `${NVR_BASE}/events/${id}/image${index ? `?index=${index}` : ""}`;
+  const src = nvrUrl(`/events/${id}/image${index ? `?index=${index}` : ""}`);
   const dead = pictureLost || failed;
 
   return (

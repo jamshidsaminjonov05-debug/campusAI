@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, CaretRight, type Icon, SecurityCamera, ShieldWarning, UserFocus } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { useTodayArrivals } from "@/hooks/useTodayArrivals";
+import { localDay } from "@/hooks/useTodayArrivals";
+import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
 import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
 import { useAppStore } from "@/store/useAppStore";
 import type { CameraOut } from "@/lib/api";
@@ -28,7 +29,12 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
      faqat OXIRGI 100 hodisani so'raydi — panel 56 ta odam ko'rsatardi,
      kun davomida esa 640 ta turli shaxs o'tgan edi (2026-09-02 da
      o'lchandi). Endi kun BUTUNLAY o'qiladi (`useTodayArrivals`). */
-  const arrivals = useTodayArrivals();
+  /* 🔴 2026-09-15: xom skan (`useTodayArrivals` — kun bo'yicha 100 talik sahifalar,
+     daqiqada bir) O'RNIGA server hisobi: odamlar — `/faces` `total`, qaydlar —
+     `/events/stats` `total`. Ikkita mitti so'rov, son ANIQ. */
+  const day = localDay();
+  const dayStats = useEventStats({ from: day, to: day });
+  const dayFaces = useFacesCount({ from: day, to: day });
   const [showArrivals, setShowArrivals] = useState(false);
   const setActivePage = useAppStore((s) => s.setActivePage);
 
@@ -39,7 +45,7 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
     // "Real vaqt xabarlari" — e'tibor talab qiladigan hodisalar (qurol,
     // janjal yoki serverning `alert` bayrog'i). Oddiy yuz qaydi emas.
     const alerts = today.events.filter((e) => e.alert || e.category === "gun" || e.category === "janjal").length;
-    const people = arrivals.people;
+    const people = dayFaces.total;
 
     /* Har bir kartochka O'ZIGA tegishli sahifani ochadi. Kamera sonlari shu
        sahifada qoladi (ular allaqachon shu yerdagi ro'yxat), hodisa sonlari
@@ -71,10 +77,10 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
         value: people,
         label: "Bugun kelganlar",
         tone: "#22C55E",
-        hint: arrivals.isLoading
+        hint: dayFaces.isLoading || dayStats.isLoading
           ? "sanalmoqda…"
           : people > 0
-            ? `${arrivals.events} qayd${arrivals.capped ? " (qisman)" : ""}`
+            ? `${dayStats.total} qayd`
             : "hali hech kim qayd etilmadi",
         modal: true,
         goHint: "Bugun kelganlar ro'yxatini ochish",
@@ -99,7 +105,7 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
       },
     ];
     return rows;
-  }, [cameras, today.events, arrivals]);
+  }, [cameras, today.events, dayFaces.total, dayFaces.isLoading, dayStats.total, dayStats.isLoading]);
 
   return (
     <div className="grid grid-cols-4 gap-2.5">

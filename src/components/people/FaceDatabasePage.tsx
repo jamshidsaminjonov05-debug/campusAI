@@ -529,7 +529,7 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
           /* ── XODIMLAR — manba yo'q, sabab OCHIQ yoziladi ── */
           <MissingBlock
             className="mt-6"
-            reason="Kuzatuv postining yuz bazasida «xodim» toifasi umuman yo'q — kuzatuv posti faqat o'quvchi va o'qituvchini biladi. Shuning uchun bu ro'yxat bo'sh emas, MANBASIZ."
+            reason={t.dashboard.ui.att.staffMissing}
             source="kuzatuv posti /people · role=staff"
           />
         ) : showClassCards ? (

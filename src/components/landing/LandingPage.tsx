@@ -134,8 +134,8 @@ function News() {
 
 const WHY_MEDIA: { img: string; chip: ChipKind; pos: string }[] = [
   { img: "/imges/ai-face-landing.webp", chip: "ok", pos: "left-7 top-8" },
-  { img: "/imges/incident-scene.webp", chip: "alert", pos: "left-7 top-8" },
-  { img: "/imges/control-room.webp", chip: "solid", pos: "left-7 top-[34%]" },
+  { img: "/imges/incident-scene.png", chip: "alert", pos: "left-7 top-8" },
+  { img: "/imges/control-room.png", chip: "solid", pos: "left-7 top-[34%]" },
 ];
 
 function Why() {  

@@ -1,15 +1,17 @@
 /**
  * kuzatuv posti hodisalari klienti — yuz tanish, qurol, janjal, chekish/telefon.
  *
- * Manzil DOIM same-origin `/nvr/...` (`app/nvr/[...path]/route.ts`): u so'rovga
- * `X-API-Key` ni SERVER tomonda qo'shadi, shuning uchun kalit brauzerga
- * chiqmaydi va CORS ham kerak emas. To'g'ridan-to'g'ri rejim ataylab yo'q.
+ * 🔴 2026-09-15 dan PROXYSIZ (foydalanuvchi so'rovi): `NEXT_PUBLIC_NVR_ORIGIN`
+ * to'ldirilgan bo'lsa brauzer serverga TO'G'RIDAN-TO'G'RI boradi, kalit esa
+ * `?api_key=` bilan qo'shiladi (`nvrUrl()`, `config/endpoints.ts`). Bo'sh
+ * bo'lsa — eskicha `/nvr/...` proxy (`app/nvr/[...path]/route.ts`).
+ * Hamma manzil `nvrUrl()` orqali quriladi — `NVR_BASE` ni qo'lda ulamang.
  *
  * Server manzili/kaliti: `config/services.mjs` → `nvr` yozuvi.
  * API tavsifi — YAGONA MANBA: **`FRONTEND.md`** (`API.md` ESKIRGAN).
  * Jonli serverda tekshirilgan (`GET /openapi.json` shu ro'yxatni beradi).
  */
-import { NVR_BASE } from "@/config/endpoints";
+import { nvrUrl } from "@/config/endpoints";
 import { tr } from "@/i18n";
 
 /**
@@ -192,8 +194,46 @@ export async function listEvents(category: NvrQueryCategory, q: NvrQuery = {}): 
   if (q.group) p.set("group", "true");
   if (q.prefetch) p.set("prefetch", String(q.prefetch));
 
-  const res = await fetch(`${NVR_BASE}/${category}/events?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/${category}/events?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti ${category}: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Diagramma sanoqlari — `GET /api/v1/events/stats` (2026-09-15 da ulandi).
+ *
+ * Server hammasini BAZADA sanaydi va bir necha KB qaytaradi (o'lchandi:
+ * butun tarix 1.3 KB / 0.8 s, bir kun 541 B / 0.06 s). Ilgari xuddi shu
+ * sonlar `useArrivals()` bilan xom ro'yxatni 30+3 sahifa qilib o'qib
+ * hisoblanardi — og'ir (~2.4 MB) VA noto'g'ri (3 000 yozuv ~1 kunga yetardi).
+ *
+ * ⚠️ Faqat SERVER kategoriyalari (`face`/`gun`/`janjal`/`smoking`):
+ * "Begona odam" (tanilmagan yuz) va "Telefon" ajratmasi YO'Q, serverda
+ * `recognized`/`known` filtri ham yo'q (o'lchandi). `by_category` va
+ * `by_day` da faqat nolga teng BO'LMAGAN kategoriyalar keladi.
+ */
+export interface NvrEventStats {
+  from: string;
+  to: string;
+  first_event?: string | null;
+  last_event?: string | null;
+  total: number;
+  /** Server `alert` bayrog'i qo'yilganlari. */
+  alerts: number;
+  by_category: Partial<Record<NvrCategory, number>>;
+  by_day: ({ day: string; total: number } & Partial<Record<NvrCategory, number>>)[];
+  by_hour: { hour: number; total: number }[];
+  by_channel: { channel: string; camera: string; total: number }[];
+}
+
+/** `from`/`to` bo'sh — butun tarix. */
+export async function getEventStats(from?: string, to?: string): Promise<NvrEventStats> {
+  const p = new URLSearchParams();
+  if (from) p.set("from", from);
+  if (to) p.set("to", to);
+  const qs = p.toString();
+  const res = await fetch(nvrUrl(`/events/stats${qs ? `?${qs}` : ""}`), { cache: "no-store" });
+  if (!res.ok) throw new Error(`kuzatuv posti events/stats: ${res.status}`);
   return res.json();
 }
 
@@ -205,7 +245,7 @@ export async function listEvents(category: NvrQueryCategory, q: NvrQuery = {}): 
  * so'rov bilan olinadi, aks holda tafsilot oynasi umuman ochilmasdi.
  */
 export async function getEvent(id: number): Promise<NvrEvent> {
-  const res = await fetch(`${NVR_BASE}/events/${id}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/events/${id}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti event ${id}: ${res.status}`);
   return res.json();
 }
@@ -213,7 +253,7 @@ export async function getEvent(id: number): Promise<NvrEvent> {
 /** Yig'ilgan o'tishning QOLGAN kadrlari (`FRONTEND.md` 4-A).
  *  `group=true` ma'lumotni yashirmaydi — kartochka bosilganda shu ro'yxat olinadi. */
 export async function listVisit(id: number): Promise<{ events: NvrEvent[]; total: number }> {
-  const res = await fetch(`${NVR_BASE}/events/${id}/visit`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/events/${id}/visit`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti visit ${id}: ${res.status}`);
   return res.json();
 }
@@ -281,13 +321,13 @@ export interface NvrFace {
  * edi. Bu yerda esa ANIQ FK — `NvrPerson.id`, taxmin yo'q.
  */
 export async function getPersonHistory(personId: number, limit = 200): Promise<NvrFace> {
-  const res = await fetch(`${NVR_BASE}/people/${personId}?limit=${Math.min(limit, 500)}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/people/${personId}?limit=${Math.min(limit, 500)}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti person ${personId}: ${res.status}`);
   return res.json();
 }
 
 export async function getFace(faceId: number, limit = 200): Promise<NvrFace> {
-  const res = await fetch(`${NVR_BASE}/faces/${faceId}?limit=${Math.min(limit, 500)}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/faces/${faceId}?limit=${Math.min(limit, 500)}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti face ${faceId}: ${res.status}`);
   return res.json();
 }
@@ -303,14 +343,17 @@ export async function getFace(faceId: number, limit = 200): Promise<NvrFace> {
  */
 function toProxyPath(url: string): string {
   if (!url.startsWith("/api/v1")) return url;
-  return `${NVR_BASE}${url.replace(/^\/api\/v1/, "")}`;
+  return nvrUrl(url.replace(/^\/api\/v1/, ""));
 }
 
 /** Rasm manzili — `<img src>` ga to'g'ridan-to'g'ri qo'yiladi.
- *  `index`: 0 — kesilgan yuz, 1 — butun kadr (`image_count` dan kichik bo'lsin). */
+ *  `index`: 0 — kesilgan yuz, 1 — butun kadr (`image_count` dan kichik bo'lsin).
+ *  ⚠️ `index` `?`/`&` bilan qo'shiladi — to'g'ridan-to'g'ri rejimda manzilda
+ *  `?api_key=` allaqachon bor. */
 export function nvrImageUrl(ev: NvrEvent, index = 0): string | null {
   if (!ev.image_url) return null;
-  return `${toProxyPath(ev.image_url)}${index ? `?index=${index}` : ""}`;
+  const url = toProxyPath(ev.image_url);
+  return index ? `${url}${url.includes("?") ? "&" : "?"}index=${index}` : url;
 }
 
 /**
@@ -331,7 +374,7 @@ export function subscribeNvr(
 
   const open = () => {
     if (stopped) return;
-    es = new EventSource(`${NVR_BASE}/${category}/sse`);
+    es = new EventSource(nvrUrl(`/${category}/sse`));
     es.onopen = () => onState?.(true);
     es.onmessage = (m) => {
       try {
@@ -420,8 +463,8 @@ export interface NvrVideoInfo {
 /** `<video src>` uchun MP4 manzili — OCHIQ API (`/api/v1/events/{id}/video`).
  *  Hodisada `video_url` bo'lsa o'sha olinadi (yo'lni server o'zi beradi). */
 export function nvrEventVideoUrl(ev: NvrEvent | number): string {
-  if (typeof ev === "number") return `${NVR_BASE}/events/${ev}/video`;
-  return ev.video_url ? toProxyPath(ev.video_url) : `${NVR_BASE}/events/${ev.id}/video`;
+  if (typeof ev === "number") return nvrUrl(`/events/${ev}/video`);
+  return ev.video_url ? toProxyPath(ev.video_url) : nvrUrl(`/events/${ev.id}/video`);
 }
 
 /** Video tayyorligi. */
@@ -438,7 +481,7 @@ export type NvrVideoState = "ready" | "preparing" | "none";
  * `200` — tayyor, `202` — aylantirilmoqda, qolgani (`404`/`503`) — video yo'q.
  */
 export async function probeVideo(id: number): Promise<NvrVideoState> {
-  const res = await fetch(`${NVR_BASE}/events/${id}/video?wait=0`, { method: "HEAD", cache: "no-store" });
+  const res = await fetch(nvrUrl(`/events/${id}/video?wait=0`), { method: "HEAD", cache: "no-store" });
   if (res.status === 200) return "ready";
   if (res.status === 202) return "preparing";
   return "none";
@@ -451,7 +494,7 @@ export async function probeVideo(id: number): Promise<NvrVideoState> {
 
 /** Panel API yo'lini (`/api/...`) proxy manziliga aylantiradi. */
 function panelUrl(path: string): string {
-  return `${NVR_BASE}/panel${path.replace(/^\/api/, "")}`;
+  return nvrUrl(`/panel${path.replace(/^\/api/, "")}`);
 }
 
 /**
@@ -470,7 +513,7 @@ export interface NvrChannel {
 }
 
 export async function listChannels(): Promise<NvrChannel[]> {
-  const res = await fetch(`${NVR_BASE}/panel/channels`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/panel/channels`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti channels: ${res.status}`);
   const j = (await res.json()) as { channels?: NvrChannel[] };
   return j.channels ?? [];
@@ -480,7 +523,7 @@ export async function listChannels(): Promise<NvrChannel[]> {
  *  DIQQAT: bu UZLUKSIZ ulanish. Bir vaqtda o'nlab kanalni ochmang —
  *  panjarada `nvrChannelSnapshotUrl()` (bitta kadr) ishlatiladi. */
 export function nvrChannelStreamUrl(channel: number, fps = 1): string {
-  return `${NVR_BASE}/panel/channels/${channel}/stream?fps=${fps}`;
+  return nvrUrl(`/panel/channels/${channel}/stream?fps=${fps}`);
 }
 
 /**
@@ -492,13 +535,13 @@ export function nvrChannelStreamUrl(channel: number, fps = 1): string {
  */
 export function nvrChannelSnapshotUrl(channel: number, bust?: number): string {
   const q = bust ? `?t=${bust}` : "";
-  return `${NVR_BASE}/panel/channels/${channel}/snapshot${q}`;
+  return nvrUrl(`/panel/channels/${channel}/snapshot${q}`);
 }
 
 /** Kodek / jonli oqim / asl lavha — FAQAT qo'shimcha ma'lumot.
  *  Yiqilsa videoni ko'rsatishga xalaqit bermaydi. */
 export async function getVideoInfo(eventId: number): Promise<NvrVideoInfo> {
-  const res = await fetch(`${NVR_BASE}/panel/events/${eventId}/video`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/panel/events/${eventId}/video`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti video info: ${res.status}`);
   return res.json();
 }
@@ -576,7 +619,7 @@ export async function listPeople(
   p.set("limit", String(q.limit ?? 100));
   if (q.offset) p.set("offset", String(q.offset));
 
-  const res = await fetch(`${NVR_BASE}/people?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/people?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti people: ${res.status}`);
   return res.json() as Promise<NvrPeoplePage>;
 }
@@ -595,7 +638,7 @@ export interface NvrClassInfo {
 }
 
 export async function listClasses(): Promise<{ classes: NvrClassInfo[]; total: number }> {
-  const res = await fetch(`${NVR_BASE}/classes`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/classes`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti classes: ${res.status}`);
   return res.json();
 }
@@ -629,7 +672,7 @@ export async function createNvrPerson(data: NvrPersonPayload, image?: File | nul
   // `Content-Type` QO'YILMAYDI — brauzer FormData chegarasini o'zi qo'shadi
   if (image) fd.set("image", image);
 
-  const res = await fetch(`${NVR_BASE}/people`, { method: "POST", body: fd });
+  const res = await fetch(nvrUrl(`/people`), { method: "POST", body: fd });
   if (!res.ok) throw new Error(`kuzatuv posti people yaratish: ${res.status}`);
   return res.json();
 }
@@ -655,7 +698,7 @@ export interface NvrPersonUpdateResult extends NvrPerson {
  * qaytadan qo'shiladi (`FRONTEND.md`ning o'z tavsiyasi).
  */
 export async function updateNvrPerson(id: number, data: Partial<NvrPersonPayload>): Promise<NvrPersonUpdateResult> {
-  const res = await fetch(`${NVR_BASE}/people/${id}`, {
+  const res = await fetch(nvrUrl(`/people/${id}`), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -675,7 +718,7 @@ export async function updateNvrPerson(id: number, data: Partial<NvrPersonPayload
  * bo'lib chiqadi).
  */
 export async function deleteNvrPerson(id: number): Promise<{ ok: boolean; removed_from_nvr: boolean; warning?: string }> {
-  const res = await fetch(`${NVR_BASE}/people/${id}`, { method: "DELETE" });
+  const res = await fetch(nvrUrl(`/people/${id}`), { method: "DELETE" });
   if (!res.ok) throw new Error(`kuzatuv posti people o'chirish: ${res.status}`);
   return res.json();
 }
@@ -717,7 +760,7 @@ export async function enrollFaceFromEvent(
   eventId: number,
   data: { first_name: string; last_name?: string; role?: NvrPersonRole; note?: string; index?: 0 | 1 }
 ): Promise<NvrPerson> {
-  const res = await fetch(`${NVR_BASE}/events/${eventId}/enroll`, {
+  const res = await fetch(nvrUrl(`/events/${eventId}/enroll`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -753,7 +796,7 @@ export async function assignFace(
   personId: number | null,
   opts: { group?: boolean } = {}
 ): Promise<{ ok: boolean; events: number; face_ids: number[]; person: { id: number; full_name: string; role: string } | null }> {
-  const res = await fetch(`${NVR_BASE}/faces/${faceId}/assign`, {
+  const res = await fetch(nvrUrl(`/faces/${faceId}/assign`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ person_id: personId, ...(opts.group === false ? { group: false } : {}) }),
@@ -783,7 +826,7 @@ export interface NvrVerifyResult {
  * urinib ko'ring" deb ko'rsatishi kerak.
  */
 export async function verifyEvent(eventId: number, correct: boolean): Promise<NvrVerifyResult> {
-  const res = await fetch(`${NVR_BASE}/events/${eventId}/verify`, {
+  const res = await fetch(nvrUrl(`/events/${eventId}/verify`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ correct }),
@@ -824,7 +867,7 @@ export async function verifyEvent(eventId: number, correct: boolean): Promise<Nv
  *  qo'yiladi. Surati yo'q odamda server `404` beradi (`pid` bo'sh) —
  *  chaqiruvchi `onError` bilan bosh harflarga qaytishi kerak. */
 export function nvrPersonPhotoUrl(personId: number): string {
-  return `${NVR_BASE}/people/${personId}/photo`;
+  return nvrUrl(`/people/${personId}/photo`);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -924,7 +967,7 @@ export async function getAttendance(
   if (q.role) p.set("role", q.role);
   if (q.status) p.set("status", q.status);
   if (q.search) p.set("search", normalizeSearch(q.search));
-  const res = await fetch(`${NVR_BASE}/attendance?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/attendance?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti attendance: ${res.status}`);
   return res.json();
 }
@@ -966,7 +1009,7 @@ export interface NvrAttendancePeriod {
 }
 
 export async function getAttendancePeriod(from: string, to: string): Promise<NvrAttendancePeriod> {
-  const res = await fetch(`${NVR_BASE}/attendance/period?date_from=${from}&date_to=${to}`, {
+  const res = await fetch(nvrUrl(`/attendance/period?date_from=${from}&date_to=${to}`), {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`kuzatuv posti attendance/period: ${res.status}`);
@@ -979,7 +1022,7 @@ export async function getAttendancePeriod(from: string, to: string): Promise<Nvr
  * = 45 KB, to'liq ro'yxat bilan esa 4.8 MB bo'lardi.
  */
 export async function getAttendanceClasses(date: string): Promise<NvrAttendanceClasses> {
-  const res = await fetch(`${NVR_BASE}/attendance/classes?date=${date}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/attendance/classes?date=${date}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti attendance/classes: ${res.status}`);
   return res.json();
 }
@@ -1002,7 +1045,7 @@ export async function getAttendanceClasses(date: string): Promise<NvrAttendanceC
  * TASODIFAN aynan dushanbani "dam olish kuni" qilib qo'yardi.
  */
 export async function getAttendanceSettings(): Promise<NvrAttendanceSettings> {
-  const res = await fetch(`${NVR_BASE}/attendance/settings`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/attendance/settings`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti attendance/settings: ${res.status}`);
   const data = await res.json();
   return (data?.settings ?? data) as NvrAttendanceSettings;
@@ -1012,7 +1055,7 @@ export async function getAttendanceSettings(): Promise<NvrAttendanceSettings> {
 export async function saveAttendanceSettings(
   data: Partial<NvrAttendanceSettings>
 ): Promise<NvrAttendanceSettings> {
-  const res = await fetch(`${NVR_BASE}/attendance/settings`, {
+  const res = await fetch(nvrUrl(`/attendance/settings`), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -1125,7 +1168,7 @@ export async function listFaces(q: NvrFacesQuery = {}): Promise<NvrFacePage> {
   if (q.date_from) p.set("date_from", q.date_from);
   if (q.date_to) p.set("date_to", q.date_to);
 
-  const res = await fetch(`${NVR_BASE}/faces?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/faces?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti faces: ${res.status}`);
   return res.json();
 }
@@ -1203,7 +1246,7 @@ export async function getCountingStats(q: CountingQuery = {}): Promise<CountingS
   if (q.date_to) p.set("date_to", q.date_to);
   if (q.camera) p.set("camera", q.camera);
 
-  const res = await fetch(`${NVR_BASE}/counting/stats?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/counting/stats?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti counting/stats: ${res.status}`);
   return res.json();
 }
@@ -1245,7 +1288,7 @@ export async function listCountingEvents(
   if (q.date_from) p.set("date_from", q.date_from);
   if (q.date_to) p.set("date_to", q.date_to);
 
-  const res = await fetch(`${NVR_BASE}/counting/events?${p}`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/counting/events?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti counting/events: ${res.status}`);
   return res.json();
 }
@@ -1260,7 +1303,7 @@ export interface CountingCamera {
 /** Sanoq yoqilgan kameralar — ro'yxat HISOBOTLAR TARIXIDAN olinadi
  *  (qurilmada bu sozlamani o'qiydigan ishonchli manzil yo'q). */
 export async function listCountingCameras(): Promise<CountingCamera[]> {
-  const res = await fetch(`${NVR_BASE}/counting/cameras`, { cache: "no-store" });
+  const res = await fetch(nvrUrl(`/counting/cameras`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti counting/cameras: ${res.status}`);
   const j = (await res.json()) as { cameras?: CountingCamera[] };
   return j.cameras ?? [];

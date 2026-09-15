@@ -59,8 +59,12 @@ async function send(report: ClientErrorReport): Promise<boolean> {
       // Sahifa yopilayotgan bo'lsa ham yetib borsin
       keepalive: true,
     });
-    // 404 — endpoint hali yo'q. Bu KUTILGAN: navbatda saqlamaymiz, jim tashlaymiz.
-    if (res.status === 404) return true;
+    /* Endpoint yo'q yoki qabul qilmaydi — KUTILGAN: navbatda saqlamaymiz, jim tashlaymiz.
+       ⚠️ Faqat 404 EMAS (2026-09-15): kuzatuv posti serverida bu yo'l umuman yo'q
+       va u tokensiz `401`, kalit bilan `405` qaytaradi (o'lchandi). Ilgari
+       `401` navbatga qaytarilib, HAR yangi xatoda qayta yuborilardi —
+       konsol `POST …/client-errors 401` bilan to'lardi. */
+    if ([401, 403, 404, 405].includes(res.status)) return true;
     return res.ok;
   } catch {
     return false; // tarmoq yo'q — navbatda qoladi

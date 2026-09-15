@@ -33,16 +33,13 @@
  * Hisob formulalari komponentda EMAS — `src/lib/statistics.ts` da (sof
  * funksiyalar), shuning uchun tekshirish oson va takrorlanmaydi.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Briefcase, ChalkboardTeacher, CheckCircle, DoorOpen, Gauge, type Icon, MagnifyingGlass, Printer, Siren, Student, X } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
 import type { PersonType } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useDetectionFeed } from "@/hooks/useDetectionFeed";
-import { buildAiSummary } from "@/lib/aiSummary";
-import { buildEventStats } from "@/lib/statistics";
 import { TabPill } from "@/components/common/panels";
 import { StatCounting } from "./StatCounting";
 import { StatAttendance } from "./StatAttendance";
@@ -58,7 +55,6 @@ export function StatisticsPage() {
   /* "O'quvchi" ↔ "Talaba" — muassasa turiga qarab (`useStudentLabel`). */
   const student = useStudentLabel();
   const dash = useDashboardData();
-  const feed = useDetectionFeed();
 
   const [tab, setTab] = useState<Tab>("overview");
   const [query, setQuery] = useState("");
@@ -86,8 +82,11 @@ export function StatisticsPage() {
      o'zgarishdan keyin ham DOIM bugungi kunni ko'rsataveradi. */
   const period = useStatPeriod("week");
 
-  const stats = useMemo(() => buildEventStats(feed.events), [feed.events]);
-  const summary = useMemo(() => buildAiSummary(feed.events), [feed.events]);
+  /* ⚠️ 2026-09-15: `useDetectionFeed()` (bugungi XOM skan) va undan
+     `buildEventStats`/`buildAiSummary` OLIB TASHLANDI — ular faqat
+     "Hodisalar" tabiga ZAXIRA sifatida uzatilardi, sahifa esa qaysi tab
+     ochiq bo'lishidan qat'i nazar kunni sahifalab o'qirdi. Tab endi o'z
+     sonlarini `GET /events/stats` dan oladi. */
 
   /* Ikonka ma'noga qarab: umumiy — ko'rsatkich strelkasi, uch toifa — o'z
      belgisi (o'qituvchi/talaba/xodim), hodisalar — sirena. */
@@ -207,7 +206,7 @@ export function StatisticsPage() {
         {tab === "attendance" && <StatAttendance from={period.from} to={period.to} />}
         {tab === "counting" && <StatCounting />}
         {tab === "events" && (
-          <StatEvents events={feed.events} stats={stats} summary={summary} period={period} />
+          <StatEvents period={period} />
         )}
       </div>
     </div>

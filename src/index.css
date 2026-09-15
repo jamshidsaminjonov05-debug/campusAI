@@ -987,13 +987,6 @@ body { @apply bg-ink font-sans antialiased; }
    ESLATMA: ilgari xarita "qotgan"ida sababi CSS filtr EMAS, 34MB viloyat
    geojson'i edi (692K nuqta → 10K'ga soddalashtirildi). Yengil geometriya
    bilan bu filtr silliq ishlaydi. */
-/* ⚠️ FAQAT qorong'i mavzuda (`.ymap-dark` — `map/yandex/YandexMap.tsx`).
-   Ilgari qoida GLOBAL edi — Yandex olib tashlangan davrda zararsiz, lekin
-   2026-09-14 da global sayt (`campusai.uz`) uchun Yandex qaytgach yorug'
-   mavzuda ham xarita teskari (qop-qora) bo'lib qolardi. */
-.ymap-dark [class*="-ground-pane"] {
-  filter: invert(1) hue-rotate(185deg) brightness(0.92) contrast(0.9) saturate(0.85);
-}
 
 /* Yandex custom marker (templateLayoutFactory) — nuqta + pulsatsiya.
    --ymk CSS o'zgaruvchisi placemark rangini beradi. */

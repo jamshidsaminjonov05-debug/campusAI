@@ -6,6 +6,7 @@ import { Broadcast, Clock, SignIn, UsersThree } from "@phosphor-icons/react";
 import { AXIS, StatPanel, TOOLTIP, TabPill, fmt } from "@/components/common/panels";
 import { DataBadge } from "@/components/dashboard/DataBadge";
 import { useArrivals } from "@/hooks/useTodayArrivals";
+import { useEventStats } from "@/hooks/useEventStats";
 import { useNvrAttendanceRows } from "@/hooks/useNvrAttendance";
 import { useCountingStats } from "@/hooks/useCounting";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
@@ -92,7 +93,12 @@ export function StatDensity({
   /* Uchala manba ham SHARTSIZ so'raladi — hooklar soni qat'iy bo'lishi
      kerak. Ikkitasi baribir sahifada allaqachon olingan (React Query
      bir xil kalitni takror so'ramaydi): `useArrivals` — StatPeriodPanel. */
-  const arrivals = useArrivals(range);
+  /* 🔴 2026-09-15: "Hodisalar" o'lchovi SERVER hisobidan (`/events/stats` `by_hour`,
+     bitta so'rov). XOM oqim faqat "Odamlar" o'lchovi TANLANGANDA o'qiladi —
+     kunlik takrorsiz `face_id` ni server sanamaydi. Ilgari xom oqim HAR DOIM
+     sahifalab tortilardi (bir necha o'nlab so'rov, daqiqada bir). */
+  const evStats = useEventStats(range);
+  const arrivals = useArrivals({ ...range, enabled: measure === "people" });
   /**
    * 🔴 **"DAVOMAT" O'LCHOVI TOPILDI VA TUZATILDI** (2026-09-10,
    * foydalanuvchi xabar qildi: "nega davomat bosilganda ishlamayabdi").
@@ -120,7 +126,7 @@ export function StatDensity({
 
     if (measure === "events") {
       /* XOM hodisalar — kamera nechta qayd bergani. */
-      for (const e of arrivals.raw) hours[new Date(e.time).getHours()]++;
+      evStats.hourly.forEach((v, h) => (hours[h] = v));
     } else if (measure === "people") {
       /* ⚠️ KUNLIK takrorsizlik (yuqoridagi izoh): kalit = kun + face_id,
          soat esa o'sha KUNI birinchi ko'ringan payt. */
@@ -144,7 +150,7 @@ export function StatDensity({
     }
 
     return hours;
-  }, [measure, arrivals.raw, nvrAttendance.byHour, counting.data]);
+  }, [measure, evStats.hourly, arrivals.raw, nvrAttendance.byHour, counting.data]);
 
   const stats = useMemo(() => {
     const total = series.reduce((s, v) => s + v, 0);
@@ -192,7 +198,8 @@ export function StatDensity({
    */
   function openHourDetail(hour: string, value: number) {
     let channels: { channel: string; camera: string; count: number }[] = [];
-    if (measure === "events" || measure === "people") {
+    if (measure === "people") {
+      /* Soatlik KAMERA kesimini server bermaydi — faqat xom oqim bor o'lchovda. */
       const h = Number(hour);
       const matches = arrivals.raw.filter((ev) => new Date(ev.time).getHours() === h);
       const byChan = new Map<string, { camera: string; count: number }>();
@@ -242,7 +249,8 @@ export function StatDensity({
   }
 
   const loading =
-    (measure === "events" || measure === "people") ? arrivals.isLoading
+    measure === "events" ? evStats.isLoading
+    : measure === "people" ? arrivals.isLoading
     : measure === "attendance" ? nvrAttendance.isLoading
     : counting.isLoading;
 

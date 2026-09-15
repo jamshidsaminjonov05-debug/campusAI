@@ -1,5 +1,6 @@
 /**
- * kuzatuv posti proxy — `/nvr/...` → `${NVR_ORIGIN}/api/v1/...`
+ * kuzatuv posti proxy — `/nvr/...` → `${BACKEND_ORIGIN}/api/v1/...`,
+ * kameralar (`/nvr/panel/channels...`) → `${NVR_ORIGIN}/api/channels...`
  *
  * NEGA oddiy rewrite emas: kuzatuv posti API har so'rovda `X-API-Key` sarlavhasini
  * talab qiladi. Next rewrites sarlavha qo'sha olmaydi, kalitni klientga
@@ -27,16 +28,32 @@
  * brauzer videoni oldinga-orqaga surа olmaydi.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { SERVICES, keyOf, originOf } from "../../../config/services.mjs";
+import { keyOf, originOf } from "../../../config/services.mjs";
 import { SESSION_COOKIE } from "@/lib/nvrSession";
 
 // Har so'rov jonli bo'lsin — Next javobni keshlab qo'ymasin
 export const dynamic = "force-dynamic";
 
-const ORIGIN = originOf("nvr");
-const UPSTREAM = `${ORIGIN}${SERVICES.nvr.upstreamPath}`;
-/** Panel API — kanallar, jonli oqim va asl lavha shu yerda (`/api`, `/api/v1` EMAS). */
-const PANEL_UPSTREAM = `${ORIGIN}/api`;
+/**
+ * 🔴 IKKI MANBA (2026-09-14, foydalanuvchi so'rovi: "so'rov BACKEND_ORIGIN
+ * bilan borsin, kameralarni NVR'dan olib kelaver").
+ *
+ *   · hodisalar, yuz bazasi, davomat, video, hodisani o'chirish, server
+ *     holati — ASOSIY server (`BACKEND_ORIGIN`);
+ *   · KAMERALAR (`panel/channels…` — ro'yxat, jonli MJPEG, stop-kadr) —
+ *     `NVR_ORIGIN`. O'lchandi: asosiy server kamera qurilmasiga ulana olmaydi
+ *     (`/api/channels` → `502` "NVR bilan bog'lanib bo'lmadi"), NVR serveri
+ *     esa kanallarni `200` bilan beradi.
+ *
+ * Kalit ikkala serverda ham AYNI (`NVR_API_KEY` — o'lchandi, ikkalasi `200`).
+ */
+const DATA_ORIGIN = originOf("api");
+const UPSTREAM = `${DATA_ORIGIN}/api/v1`;
+/** Panel API — video ma'lumoti, o'chirish, server holati (`/api`, `/api/v1` EMAS). */
+const PANEL_UPSTREAM = `${DATA_ORIGIN}/api`;
+/** Kameralar — `NVR_ORIGIN` panel API'si (`/api`). Bu fayl faqat proxy rejimida
+ *  ishlaydi (`NEXT_PUBLIC_NVR_ORIGIN` bo'sh bo'lsa). */
+const CAMERA_UPSTREAM = `${originOf("nvr")}/api`;
 const KEY = keyOf("nvr") ?? "";
 
 /** Videoni surish (seek) uchun brauzer shu sarlavhalarni yuboradi/kutadi.
@@ -71,9 +88,16 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
 
   const parts = params.path ?? [];
   const panel = parts[0] === "panel";
+  /* NVR serveriga boradigan yo'llar:
+       · kameralar — `panel/channels`, `panel/channels/{id}/stream|snapshot`;
+       · `panel/status` — server vaqti (davomatdagi "bugun"). Qiymat ikkala
+         serverda AYNI (`Asia/Tashkent`), lekin asosiy server uni kamera
+         qurilmasini kutib 16 soniyada beradi, NVR esa 0.04 soniyada
+         (o'lchandi 2026-09-14) — davomat paneli shuncha kutib qolmasin. */
+  const camera = panel && (parts[1] === "channels" || parts[1] === "status");
   const path = (panel ? parts.slice(1) : parts).join("/");
   const qs = req.nextUrl.search;
-  const target = `${panel ? PANEL_UPSTREAM : UPSTREAM}/${path}${qs}`;
+  const target = `${camera ? CAMERA_UPSTREAM : panel ? PANEL_UPSTREAM : UPSTREAM}/${path}${qs}`;
 
   try {
     const headers = new Headers({ "X-API-Key": KEY });
