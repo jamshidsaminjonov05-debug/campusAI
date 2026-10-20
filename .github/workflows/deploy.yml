@@ -69,6 +69,9 @@ name: Deploy (self-hosted)
 #     WEAPON2_ORIGIN=http://<weapon2-ip>:<port>
 #     WEAPON2_USERNAME=<haqiqiy-user>
 #     WEAPON2_PASSWORD=<haqiqiy-parol>
+#     JANJAL2_ORIGIN=http://<janjal2-ip>:<port>
+#     JANJAL2_USERNAME=<haqiqiy-user>
+#     JANJAL2_PASSWORD=<haqiqiy-parol>
 #     # Quyidagilarni bo'sh qoldirish TAVSIYA qilinadi (proxy rejimi):
 #     NEXT_PUBLIC_API_ORIGIN=
 #     NEXT_PUBLIC_TILES_ORIGIN=

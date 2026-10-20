@@ -27,6 +27,11 @@ jobs:
       WEAPON2_ORIGIN: http://127.0.0.1:4
       WEAPON2_USERNAME: ci-placeholder-user
       WEAPON2_PASSWORD: ci-placeholder-pass
+      # `janjal2` (Janjal aniqlash — 2-versiya) ham shu ro'yxatda: u ham
+      # origin + login/parol talab qiladi (qiymatlar SOXTA).
+      JANJAL2_ORIGIN: http://127.0.0.1:5
+      JANJAL2_USERNAME: ci-placeholder-user
+      JANJAL2_PASSWORD: ci-placeholder-pass
     steps:
       - uses: actions/checkout@v4
 
