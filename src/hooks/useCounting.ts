@@ -17,14 +17,14 @@ import {
   listCountingEvents,
   type CountingQuery,
   type CountingStats,
-} from "@/lib/nvrApi";
+} from "@/lib/nvr/nvrApi";
 
 export function useCountingStats(q: CountingQuery = {}) {
   return useQuery({
     queryKey: ["nvr-counting-stats", q],
     queryFn: () => getCountingStats(q),
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
   });
 }
 
@@ -32,8 +32,8 @@ export function useCountingEvents(q: CountingQuery & { limit?: number; offset?: 
   return useQuery({
     queryKey: ["nvr-counting-events", q],
     queryFn: () => listCountingEvents(q),
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
   });
 }
 

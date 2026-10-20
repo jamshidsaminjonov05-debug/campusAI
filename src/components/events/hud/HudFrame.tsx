@@ -51,7 +51,7 @@ function FrameCorner({ className }: { className: string }) {
  */
 export function HudFrame({ title, subtitle, badge, children }: HudFrameProps) {
   return (
-    <div className="hud-frame">
+    <div className="hud-frame map-flat">
       {/* Ekran — kontent shu yerda qirqiladi */}
       <div className="hud-screen">
         {children}

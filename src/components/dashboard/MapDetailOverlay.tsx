@@ -108,7 +108,7 @@ export function MapDetailOverlay({
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
         title={open ? t.common.close : t.dashboard.ui.detailBtn}
-        className={`absolute top-3 left-16 z-20 flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold backdrop-blur-xl transition-colors ${
+        className={`absolute top-3 left-16 z-20 flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
           open
             ? "border-ice/50 bg-ice/20 text-ice-bright"
             : "border-white/10 bg-[#0C1020]/80 text-slate-200 hover:text-white"

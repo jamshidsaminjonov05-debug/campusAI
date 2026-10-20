@@ -20,8 +20,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useDashboard, useEmotionsDaily, useRecentAttendance } from "@/hooks/useApi";
-import type { Metric } from "@/lib/institutionRows";
+import { useDashboard, useEmotionsDaily } from "@/hooks/useApi";
+import type { Metric } from "@/lib/nvr/institutionRows";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -46,14 +46,6 @@ export interface DashboardView {
    * chizilmaydi, panel sababini yozadi).
    */
   trend: { label: string; value: number; dayIndex: number | null }[];
-  recent: {
-    id: string;
-    name: string;
-    group: string;
-    time: string;
-    emotion: string | null;
-    role: "student" | "teacher";
-  }[];
   /** Kamida bitta ko'rsatkich haqiqiy manbadan keldimi. */
   live: boolean;
   /** Tanlangan muassasa (bo'lsa). `null` = umumiy (ulangan muassasalar yig'indisi). */
@@ -71,7 +63,6 @@ const nz = (v: number | null | undefined): Metric => (typeof v === "number" && v
 export function useDashboardData(): DashboardView {
   const { data: dash } = useDashboard();
   const { data: daily } = useEmotionsDaily(7);
-  const { data: recent } = useRecentAttendance(8);
   const selectedTeknikum = useAppStore((s) => s.selectedTeknikum);
   const rows = useLiveInstitutions();
 
@@ -152,17 +143,6 @@ export function useDashboardData(): DashboardView {
           }))
         : [];
 
-    /* Oxirgi kirishlar — FAQAT backend yozuvlari. Mock to'ldiruvchi
-       OLIB TASHLANDI: ro'yxatda haqiqiy bo'lmagan ismlar turardi. */
-    const recentList = (Array.isArray(recent) ? recent : []).map((r, i) => ({
-      id: `${r.person_id}-${i}`,
-      name: r.full_name,
-      group: r.group_name ?? r.person_type,
-      time: new Date(r.timestamp).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" }),
-      emotion: r.emotion_group,
-      role: (r.person_type === "teacher" ? "teacher" : "student") as "student" | "teacher",
-    }));
-
     return {
       students: {
         total: studentsTotal,
@@ -181,9 +161,8 @@ export function useDashboardData(): DashboardView {
       institutes: inst ? 1 : rows.institutions.length,
       emotions: emo,
       trend,
-      recent: recentList,
-      live: rows.live || recentList.length > 0 || !!dash,
+      live: rows.live || !!dash,
       scope: inst ? { id: inst.id, name: inst.name } : null,
     };
-  }, [dash, daily, recent, rows, selectedTeknikum]);
+  }, [dash, daily, rows, selectedTeknikum]);
 }

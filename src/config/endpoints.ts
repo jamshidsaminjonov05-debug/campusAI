@@ -39,6 +39,8 @@ const PUBLIC_ORIGIN: Record<string, string> = {
   // qator har doim bo'sh qoladi va `isDirect("weapon2")` doim `false`
   // bo'ladi — kuzatuv posti qatori bilan AYNI himoya naqshi.
   weapon2: process.env.NEXT_PUBLIC_WEAPON2_ORIGIN ?? "",
+  // Janjal — 2-versiya (lokal). weapon2 bilan AYNI himoya naqshi.
+  janjal2: process.env.NEXT_PUBLIC_JANJAL2_ORIGIN ?? "",
 };
 
 /** Shu xizmat to'g'ridan-to'g'ri chaqiriladimi (aks holda — proxy). */
@@ -103,8 +105,11 @@ export function nvrUrl(path: string): string {
   return NVR_PUBLIC_KEY ? `${url}${url.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(NVR_PUBLIC_KEY)}` : url;
 }
 
-/** Qurol/janjal — 2-versiya (lokal): `${WEAPON2_BASE}/api/alert/alert-list/`. */
+/** Qurol — 2-versiya (lokal): `${WEAPON2_BASE}/api/alert/alert-list/`. */
 export const WEAPON2_BASE = serviceBase("weapon2");
+
+/** Janjal — 2-versiya (lokal): `${JANJAL2_BASE}/api/alert/alert-list/`. */
+export const JANJAL2_BASE = serviceBase("janjal2");
 
 /* ─────────────────────────── Mock rejimi ─────────────────────────── */
 

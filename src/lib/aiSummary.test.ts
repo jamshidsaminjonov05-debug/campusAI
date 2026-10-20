@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAiSummary, EMPTY_SUMMARY } from "./aiSummary";
-import type { DetectionEvent } from "@/lib/detectionEvents";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
 
 /**
  * ⚠️ **HALI ISHGA TUSHIRILMAGAN** — `vitest.config.ts` izohiga qarang.

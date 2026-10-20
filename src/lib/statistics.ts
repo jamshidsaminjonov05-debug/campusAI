@@ -16,10 +16,10 @@
  * KO'RSATILMAYDI, chunki "0 talaba" bilan "talabalar soni noma'lum"
  * boshqa-boshqa javob.
  */
-import type { DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
-import type { AlertSeverity } from "@/lib/alertTypes";
-import { sumMetric, weightedAvg, type InstitutionRow, type Metric, type RegionRow } from "@/lib/institutionRows";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
+import { DETECTION_TYPES, type DetectionId } from "@/lib/nvr/detectionTypes";
+import type { AlertSeverity } from "@/lib/nvr/alertTypes";
+import { sumMetric, weightedAvg, type InstitutionRow, type Metric, type RegionRow } from "@/lib/nvr/institutionRows";
 
 /* ────────────────────────────── Hududlar ────────────────────────────── */
 

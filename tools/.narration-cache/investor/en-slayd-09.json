@@ -1,13 +1,17 @@
 {
  "texts": [
-  "And the parent sees all of it on a phone.",
-  "Arrival and departure times, the attendance rate, today's lessons, and if something happens, an alert with the frame.",
-  "This is the first reliable channel between the school and the family."
+  "Next, an abandoned object.",
+  "If a bag is separated from its owner and stays still for more than sixty seconds in a classroom, an alert is raised.",
+  "The system then searches for the owner: the frame of the last person seen with the bag is matched across the other cameras.",
+  "That person is found in the classroom, the corridor, at the exit and in the school yard, and their path is shown frame by frame.",
+  "An evacuation decision is made quickly."
  ],
- "duration": 12.93,
+ "duration": 24.19,
  "offsets": [
   0.25,
-  2.83,
-  8.78
+  2.34,
+  8.64,
+  14.77,
+  21.29
  ]
 }

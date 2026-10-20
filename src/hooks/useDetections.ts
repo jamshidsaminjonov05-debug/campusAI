@@ -3,10 +3,11 @@
  *
  * Nega alohida hook: `Campus3D`/`BuildingInterior` hodisalarni FILTR bilan
  * (kategoriya, kanal, faqat xavfli) so'raydi va SSE oqimiga muhtoj emas —
- * ular qisqa, jonli bo'lmagan kesimlar. `useNvrEvents` esa har chaqiruvda
- * to'rtta SSE ochadi; bino ichida 5 ta qavat komponenti bo'lsa bu 20 ta
- * ulanish demakdir. Shuning uchun bu yerda faqat React Query ishlatiladi
- * (`refetchInterval` bilan jonli), SSE esa "Aniqlanganlar" sahifasida qoladi.
+ * ular qisqa, jonli bo'lmagan kesimlar. Bu yerda faqat React Query
+ * ishlatiladi; jonli yangilanishni BITTA umumiy SSE (`useLiveSync`, `App`da)
+ * `["detections"]` kalitini bekor qilib keltiradi — komponent boshiga alohida
+ * ulanish ochilmaydi. SSE uzilsa `liveInterval` avvalgi 15 soniyalik
+ * pollingga qaytadi.
  *
  * `all` — serverdagi HAQIQIY kategoriya (to'rttasining birlashmasi), ya'ni
  * BITTA so'rov. Ilgari bunday kategoriya yo'q edi va to'rttasi parallel
@@ -18,10 +19,12 @@
  */
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { isAlarm, listEvents, type NvrCategory, type NvrEvent, type NvrQuery } from "@/lib/nvrApi";
+import { isAlarm, listEvents, liveInterval, type NvrCategory, type NvrEvent, type NvrQuery } from "@/lib/nvr/nvrApi";
 
-/** Jonli ro'yxat shu oraliqda yangilanadi (SSE o'rniga oddiy polling). */
-const LIVE_MS = 15_000;
+/** SSE UZILGAN bo'lsa ro'yxat shu oraliqda yangilanadi (polling zaxirasi). */
+const LIVE_MS = 30_000;
+/** SSE ulangan bo'lsa yangilanishni `useLiveSync` keltiradi — polling faqat zaxira. */
+const LIVE_SLOW_MS = 5 * 60_000;
 
 export const DETECT_CATEGORIES: NvrCategory[] = ["face", "gun", "janjal", "smoking"];
 
@@ -75,7 +78,7 @@ export function useDetections(f: DetectionFilters) {
   const query = useQuery({
     queryKey: ["detections", cat, q],
     queryFn: () => listEvents(cat, q),
-    refetchInterval: LIVE_MS,
+    refetchInterval: liveInterval(LIVE_MS, LIVE_SLOW_MS),
     placeholderData: keepPreviousData,
   });
 

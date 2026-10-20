@@ -125,40 +125,6 @@ body { @apply bg-ink font-sans antialiased; }
   @apply grid h-8 w-8 flex-none place-items-center rounded-full bg-white/10 text-white transition-[background-color,box-shadow] hover:bg-ice/25 hover:shadow-[0_0_16px_-4px_rgba(143,184,255,0.6)];
 }
 
-/* ---------- Data-viz panellari (Figma dashboard dizayni) ----------
-   Burchak qavslari + sianli sarlavha — "katta ekran" monitoring uslubi. */
-/* Sirt SHAFFOF (`/45`) — ortidagi blueprint setkasi ko'rinib tursin.
-   Ilgari `/70` edi va setka panel ostida yo'qolardi. */
-.dv-panel {
-  @apply relative rounded-lg border border-ice-cyan/20 bg-[#0A1526]/45 backdrop-blur-md;
-  box-shadow: inset 0 0 30px -12px rgba(133, 224, 255, 0.25), 0 8px 28px -18px rgba(0, 0, 0, 0.8);
-  /* Panel ichidagi o'zgarish (raqam yangilanishi, hover) tashqariga layout/style
-     qayta hisobini tarqatmasin — dashboard'da 12+ panel bor.
-     DIQQAT: `paint` ATAYLAB yo'q — burchak qavslari (::before/::after) qutidan
-     1px tashqarida turadi, `contain: paint` ularni qirqib tashlaydi. */
-  contain: layout style;
-}
-/* Burchak qavslari — ::before yuqori-chap, ::after pastki-o'ng */
-.dv-panel::before,
-.dv-panel::after {
-  content: "";
-  @apply pointer-events-none absolute h-3 w-3 border-ice-cyan/70;
-}
-.dv-panel::before {
-  @apply left-[-1px] top-[-1px] rounded-tl-lg border-l-2 border-t-2;
-}
-.dv-panel::after {
-  @apply bottom-[-1px] right-[-1px] rounded-br-lg border-b-2 border-r-2;
-}
-.dv-title {
-  @apply flex items-baseline gap-2 border-b border-ice-cyan/15 px-3 py-2;
-}
-.dv-title b {
-  @apply text-[13px] font-bold tracking-wide text-white;
-}
-.dv-title span {
-  @apply truncate text-[9.5px] uppercase tracking-[0.14em] text-ice-cyan/50;
-}
 /**
  * KO'RSATKICH RAQAMI — statistika kartochkalari va jadval qiymatlari uchun.
  *
@@ -174,11 +140,7 @@ body { @apply bg-ink font-sans antialiased; }
   letter-spacing: -0.015em;
 }
 
-/* Panel ichidagi raqamli ko'rsatkich uyasi */
-/* Shisha kafel — `dv-slot` (kichik uya) va `glass-tile` (davomat taxtasi)
-   bitta ko'rinishda. Bosiladigan bo'lsa `.glass-tile-btn` qo'shiladi —
-   hover'da ko'tariladi. */
-.glass-tile,
+/* Panel ichidagi raqamli ko'rsatkich uyasi — kichik shisha kafel. */
 .dv-slot {
   @apply relative rounded-xl border border-white/[0.07] px-2.5 py-2;
   backdrop-filter: blur(8px);
@@ -189,20 +151,6 @@ body { @apply bg-ink font-sans antialiased; }
     border-color 0.3s ease,
     background-color 0.3s ease,
     box-shadow 0.3s ease;
-}
-.glass-tile-btn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(143, 184, 255, 0.35);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 14px 26px -18px rgba(0, 0, 0, 0.8),
-    0 0 26px -14px rgba(143, 184, 255, 0.55);
-}
-.glass-tile-btn:active { transform: translateY(0); }
-/* Tanlangan kafel — "Shaxslar" bo'limida qaysi toifa ochiqligini bildiradi */
-.glass-tile.is-active {
-  border-color: rgba(143, 184, 255, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(143, 184, 255, 0.25), 0 0 24px -14px rgba(143, 184, 255, 0.7);
 }
 
 /* ═════════ Dashboard HUD — "katta ekran" ramkasi ═════════
@@ -2029,7 +1977,6 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-scheme="light"] .nb-shot { background: var(--lm-surface-2) !important; }
 
 /* Kameralar KPI qatori va kartochka yorliqlari */
-:root[data-scheme="light"] .glass-tile,
 :root[data-scheme="light"] .dv-slot {
   backdrop-filter: blur(8px) !important;
   background: rgba(255, 255, 255, 0.66) !important;
@@ -2075,9 +2022,10 @@ body { @apply bg-ink font-sans antialiased; }
     color-mix(in srgb, var(--lm-bg) 88%, var(--lm-line)) 100%
   ) !important;
 }
-/* Tumanlik dog'lari — mavzu urg'usida, oq fonda sezilishi uchun sal to'qroq */
+/* Tumanlik dog'lari — mavzu urg'usida, oq fonda sezilishi uchun sal to'qroq.
+   Dog' — blur'siz radial-gradient (`SpaceBackground`), rang `--neb` dan. */
 :root[data-scheme="light"] .space-neb {
-  background-color: var(--lm-accent) !important;
+  --neb: var(--lm-accent);
   opacity: 0.09 !important;
 }
 /* Kursor setkasi oq fonda xiraroq ko'rinadi — kuchaytiriladi */
@@ -2090,8 +2038,6 @@ body { @apply bg-ink font-sans antialiased; }
     transparent 60%
   ) !important;
 }
-/* Noise `mix-blend-overlay` bilan oq fonda dog' bo'lib chiqardi */
-:root[data-scheme="light"] .space-noise { opacity: 0.02 !important; mix-blend-mode: multiply !important; }
 
 /* ── Matn ranglari (chastota: 400→165, 500→108, 300→89, white→78 …) ── */
 :root[data-scheme="light"] .text-white { color: var(--lm-text) !important; }
@@ -2155,7 +2101,6 @@ body { @apply bg-ink font-sans antialiased; }
    ostida butunlay yo'qolardi. */
 :root[data-scheme="light"] .hik-glass-blue,
 :root[data-scheme="light"] .nexa-card,
-:root[data-scheme="light"] .dv-panel,
 :root[data-scheme="light"] .hik-popup,
 :root[data-scheme="light"] .c3d-card {
   backdrop-filter: blur(14px) !important;
@@ -2174,8 +2119,6 @@ body { @apply bg-ink font-sans antialiased; }
   color: var(--lm-text) !important;
   box-shadow: inset 0 1px 2px rgba(15, 27, 46, 0.06) !important;
 }
-:root[data-scheme="light"] .dv-title b { color: var(--lm-text) !important; }
-:root[data-scheme="light"] .dv-title span { color: var(--lm-text-mute) !important; }
 
 /* Aniqlanganlar / HUD kartochkalari */
 :root[data-scheme="light"] .nvr-card,
@@ -2245,6 +2188,23 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-scheme="light"] .geo-strip-card .bg-slate-950\/60 {
   background-color: var(--lm-surface-2) !important;
 }
+
+/* ── XARITA USTIDAGI SAHIFALAR — `backdrop-filter` O'CHIRILGAN (2026-09-25) ──
+   Xarita (WebGL) sekin aylanganda/surilganda har kadr o'zgaradi, ustidagi
+   HAR BIR `backdrop-filter` paneli esa ostidagi rasmni har kadr qayta blur
+   qiladi: 10–20 panel = qotish. `.map-flat` ichida blur yo'q; o'rniga
+   sirt deyarli-noshaffof, matn o'qilishi shu bilan saqlanadi.
+   ⚠️ Yangi xarita sahifasi qo'shsangiz ildiziga `map-flat` bering. */
+.map-flat,
+.map-flat * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root:not([data-scheme="light"]) .map-flat :is(.nexa-card, .hik-glass-blue, .hik-chip, .hik-input) {
+  background-color: rgba(11, 18, 32, 0.82);
+}
+:root:not([data-scheme="light"]) .map-flat .map-glass-card { background: rgba(9, 15, 28, 0.88); }
+:root[data-scheme="light"] .map-flat .map-glass-card { background: rgba(255, 255, 255, 0.92); }
 
 /* Boshqaruv paneli xaritasi ustidagi suzuvchi kartalar (2026-09-07,
    foydalanuvchi so'rovi: "cardlarni ochroq... bluring bilan qil, orqa
@@ -3383,7 +3343,6 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-theme="light"] .app-grid { background-image: none !important; }
 :root[data-theme="light"] .hik-glass-blue,
 :root[data-theme="light"] .nexa-card,
-:root[data-theme="light"] .dv-panel,
 :root[data-theme="light"] .c3d-card {
   backdrop-filter: none !important;
   background: #ffffff !important;

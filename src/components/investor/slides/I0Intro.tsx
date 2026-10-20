@@ -2,8 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useCopy } from "../copy";
-import { useCurrency } from "../currency";
-import { TAM_YEAR, num, totalInst, totalStudents } from "../model";
+import { num, totalInst, totalStudents } from "../model";
 import { EASE, Typed } from "@/components/deck/ui";
 import type { SlideProps } from "@/components/deck/types";
 
@@ -12,22 +11,19 @@ import type { SlideProps } from "@/components/deck/types";
  *
  * Investor birinchi o'n soniyada ikki narsani bilishi kerak: bu nima
  * haqida va kattaligi qanday. Shuning uchun sarlavha qisqa, ostida esa
- * darhol to'rtta raqam — bozor, auditoriya, hajm va so'rov.
+ * darhol uchta raqam — muassasalar, auditoriya va ishlab turgan tizim.
  *
  * Raqamlar `model.ts` dan keladi, matnda qotib yozilmagan.
  */
 export default function I0Intro({ active, t, fresh, at }: SlideProps) {
   const c = useCopy().intro;
-  const { m } = useCurrency();
   const show = (time: number) => !fresh || t >= time;
 
-  const tam = m(TAM_YEAR);
   /* Oxirgi raqam ATAYLAB "1": taqdimotning butun og'irligi shu yerda —
      tizim hozir HAQIQATAN bitta maktabda ishlab turibdi. */
   const stats = [
     { value: num(totalInst()), unit: "" },
     { value: (totalStudents() / 1_000_000).toFixed(2).replace(".", ","), unit: "mln" },
-    { value: tam.value, unit: tam.unit },
     { value: "1", unit: "" },
   ];
 
@@ -66,7 +62,7 @@ export default function I0Intro({ active, t, fresh, at }: SlideProps) {
         transition={{ duration: 1.1 }}
         className="mt-[clamp(26px,4.5vh,58px)] w-full max-w-[1020px] border-t border-white/10 pt-7"
       >
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
           {c.stats.map((label, i) => (
             <motion.div
               key={label}

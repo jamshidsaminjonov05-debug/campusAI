@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Checks, ImageBroken, X } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { detectSubject, nvrImageUrl, nvrTime, type NvrEvent } from "@/lib/nvrApi";
-import { LEVEL_TONE, detectionLevel } from "@/lib/detectionLevel";
-import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/detectionSeen";
-import { playDetectionSound, stopSound } from "@/lib/detectionSound";
-import { announceDetection, stopSpeech } from "@/lib/detectionSpeech";
+import { detectSubject, nvrImageUrl, nvrTime, subscribeNvr, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { LEVEL_TONE, detectionLevel } from "@/lib/nvr/detectionLevel";
+import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/nvr/detectionSeen";
+import { playDetectionSound, stopSound } from "@/lib/nvr/detectionSound";
+import { announceDetection, stopSpeech } from "@/lib/nvr/detectionSpeech";
+import { isNotifyMuted, subscribeNotifyMuted } from "@/lib/nvr/notifyMute";
 import { useAppStore } from "@/store/useAppStore";
 
 /** Bir vaqtda ekranda ushlab turiladigan maksimal xabar. */
 const MAX_TOASTS = 3;
 /** Oddiy xabar shuncha turib so'nadi; TREVOGA — o'zi so'nmaydi. */
 const AUTO_HIDE_MS = 8_000;
+/** SSE'dagi bir xil o'tishning takroriy kadrlari shuncha vaqt yangi xabar bermaydi. */
+const LIVE_REPEAT_MS = 30_000;
+/** SSE ko'rsatgan o'tish polling ro'yxatida qayta chiqmasligi uchun oyna (server `group` mezoni bilan bir xil). */
+const LIVE_DEDUP_MS = 180_000;
+
+/** Bitta o'tish/hodisa kaliti — kamera + odam (yoki hodisa nomi). */
+const visitKey = (e: NvrEvent) => `${e.category}|${e.channel}|${e.face_id ?? e.label}`;
 
 /**
  * Yangi aniqlash — EKRAN USTIDA chiqadigan xabar + OVOZ.
@@ -35,31 +43,35 @@ const AUTO_HIDE_MS = 8_000;
 export function DetectionToast() {
   const setActivePage = useAppStore((s) => s.setActivePage);
   const setFocusedDetectionId = useAppStore((s) => s.setFocusedDetectionId);
-  // "Aniqlanganlar" bo'limi bilan AYNI kesh — qo'shimcha so'rov ketmaydi
-  const { events } = useDetections({ category: "all", limit: 60, last24h: true });
+  /* Qo'ng'iroq/radar/ogohlantirishlar bilan AYNI kalit (`all`, 100) — ilgari
+     `limit:60, last24h` alohida kalit edi va har yangilanishda QO'SHIMCHA
+     so'rov ketardi. 24 soatlik kesim shu yerda, klientda. */
+  const { events: all } = useDetections({ category: "all", limit: 100 });
+  const events = useMemo(() => {
+    const cut = Date.now() - 24 * 3600_000;
+    return all.filter((e) => new Date(e.time).getTime() >= cut);
+  }, [all]);
   useSyncExternalStore(subscribeSeen, seenVersion, () => 0);
+  /** Jim rejimi — `NotificationBell.tsx`dagi tugma bilan AYNI global holat. */
+  const muted = useSyncExternalStore(subscribeNotifyMuted, isNotifyMuted, () => false);
 
   const [shown, setShown] = useState<NvrEvent[]>([]);
   /** Birinchi javob "yangi" emas — faqat undan KEYINGILARI. */
   const primed = useRef(false);
   const knownIds = useRef<Set<string>>(new Set());
+  /** Jim rejimi ref'da — jonli oqim obunasi har o'zgarishda qayta ulanmasin. */
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  /** SSE ko'rsatgan o'tishlar (`visitKey` → vaqt): keyin polling ro'yxatida
+   *  o'sha o'tish boshqa `id` bilan kelsa, ikkinchi xabar chiqmasin. */
+  const liveKeys = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => {
-    if (events.length === 0) return;
-
-    if (!primed.current) {
-      primed.current = true;
-      for (const e of events) knownIds.current.add(String(e.id));
-      return;
-    }
-
-    const fresh = events.filter((e) => {
-      const id = String(e.id);
-      if (knownIds.current.has(id)) return false;
-      knownIds.current.add(id);
-      return !isSeen(id);
-    });
-    if (fresh.length === 0) return;
+  const present = useCallback((fresh: NvrEvent[]) => {
+    // 🔵 JIM REJIMI (2026-09-18, `NotificationBell.tsx`dagi tugma bilan
+    // ulanadi) — hodisa hamon "ko'rilmagan" deb hisoblanadi va tarixda
+    // (Aniqlanganlar) to'liq turadi, faqat EKRAN USTIDAGI karta va
+    // ovoz/nutq UMUMAN ishga tushmaydi.
+    if (mutedRef.current || fresh.length === 0) return;
 
     /* Eng jiddiy hodisa ovozlanadi — uchtasi birdan kelsa uch xil signal
        ustma-ust tushmasin. Tartib: AVVAL "… aniqlandi" degan GAP, KEYIN
@@ -72,7 +84,53 @@ export function DetectionToast() {
     void announceDetection(top).then(() => playDetectionSound(worst));
 
     setShown((prev) => [...fresh, ...prev].slice(0, MAX_TOASTS));
-  }, [events]);
+  }, []);
+
+  useEffect(() => {
+    if (events.length === 0) return;
+
+    if (!primed.current) {
+      primed.current = true;
+      for (const e of events) knownIds.current.add(String(e.id));
+      return;
+    }
+
+    const now = Date.now();
+    const fresh = events.filter((e) => {
+      const id = String(e.id);
+      // ⚠️ `knownIds` JIM rejimida ham TO'LDIRILADI — aks holda jim
+      // rejim o'chirilganda muddat davomida to'plangan hodisalar bitta
+      // paytda "yangi" bo'lib, hammasi birdan qalqib chiqib ketardi.
+      if (knownIds.current.has(id)) return false;
+      knownIds.current.add(id);
+      // SSE shu o'tishni allaqachon ko'rsatgan bo'lsa — takror chiqmaydi
+      const shownAt = liveKeys.current.get(visitKey(e));
+      if (shownAt !== undefined && now - shownAt < LIVE_DEDUP_MS) return false;
+      return !isSeen(id);
+    });
+    present(fresh);
+  }, [events, present]);
+
+  /* 🔴 JONLI OQIM (2026-09-21): XAVFLI/DIQQAT talab hodisa `useDetections`
+     pollingini (15 s) kutmasdan, SSE bilan DARHOL chiqadi. Oddiy yuz oqimi
+     (`info`) bu yerga KIRMAYDI: SSE yig'ilmagan holda keladi (odam kadrda
+     turgan har soniyada yozuv) — har biriga xabar chiqsa bitta odam uchun
+     spam bo'lardi; ular avvalgidek yig'ilgan ro'yxatdan chiqadi. */
+  useEffect(() => {
+    return subscribeNvr("all", (ev) => {
+      if (detectionLevel(ev) === "info") return;
+      const id = String(ev.id);
+      if (knownIds.current.has(id) || isSeen(id)) return;
+      knownIds.current.add(id);
+      const key = visitKey(ev);
+      const now = Date.now();
+      const last = liveKeys.current.get(key);
+      // Shu o'tishning keyingi kadrlari (server har soniyada yuboradi) — takror emas
+      if (last !== undefined && now - last < LIVE_REPEAT_MS) return;
+      liveKeys.current.set(key, now);
+      present([ev]);
+    });
+  }, [present]);
 
   /* Oddiy xabarlar o'zi so'nadi. TREVOGA qoladi — operator uni ko'rib,
      o'zi yopishi kerak. */

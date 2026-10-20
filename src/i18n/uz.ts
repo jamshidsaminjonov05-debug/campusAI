@@ -199,6 +199,12 @@ export const uz = {
     /* Hover'dagi to'liq izoh */
     arrivedAt: (time: string, rel: string) => `Kelgan vaqti: ${time} (${rel})`,
     unseen: "Ko'rilmagan",
+    /* Jim rejimi — 2026-09-18, foydalanuvchi so'rovi: yangi hodisa
+       aniqlanganda ekran ustida karta chiqmasin/ovoz chalinmasin. */
+    mute: "Bildirishnomalarni jimitish",
+    unmute: "Bildirishnomalarni yoqish",
+    muted: "Jim",
+    mutedHint: "Yangi hodisalar ekranda ko'rinmaydi va ovoz chalinmaydi",
   },
 
   detect: {
@@ -427,7 +433,7 @@ export const uz = {
     connecting: "Ulanmoqda…",
     connectError: (e: string) => `kuzatuv posti serveriga ulanib bo'lmadi: ${e}`,
     notFound: "Hodisa topilmadi",
-    weapon2Unsupported: "2-versiya (lokal model) faqat qurol signalini beradi — bu turkumda ma'lumot yo'q",
+    weapon2Unsupported: "2-versiya (lokal model) faqat qurol va janjal signalini beradi — bu turkumda ma'lumot yo'q",
     noImageForType: "Bu turdagi hodisada rasm bo'lmaydi",
     pictureLost: "Rasm saqlanmagan — qurilmada bu surat allaqachon almashtirilgan",
     channelOf: (channel: string) => `(kanal ${channel})`,
@@ -720,7 +726,7 @@ export const uz = {
     floorShort: (floor: number) => `${floor}-qavat`,
     blockShort: (block: string) => `${block}-blok`,
     hintOverview: "Qavatga bosing — ichkariga kirish",
-    hintFloor: "Surish — aylantirish · g'ildirak — masshtab",
+    hintFloor: "Surish — siljitish · g'ildirak — masshtab",
     camShort: "kam",
     planNote: "Xonalar rejasi taxminiy — indoor ma'lumoti manbada yo'q. Kameralar haqiqiy.",
     corridor: "Yo'lak",
@@ -732,6 +738,42 @@ export const uz = {
       gate: "Darvoza",
       room: "Xona",
     },
+    /** Xona turi — chizmada NOM yozilmagan, shuning uchun turi bo'yicha ataladi. */
+    kind: {
+      class: "Sinf xonasi",
+      lab: "Laboratoriya",
+      office: "Kabinet",
+      wc: "Sanuzel",
+      stairs: "Zinapoya",
+      hall: "Dahliz",
+      corridor: "Yo'lak",
+    },
+    /** Evakuatsiya rejasi — maktabning O'Z chizmasidan. */
+    evac: {
+      title: "Evakuatsiya rejasi",
+      sub: (year: number) => `${year}-yil, maktab chizmasi`,
+      approved: (director: string) => `Tasdiqladi: ${director}`,
+      legend: {
+        exit: "Evakuatsiya chiqishi",
+        extinguisher: "Yong'in o'chirgich",
+        hydrant: "Ichki yong'in krani",
+        alarm: "Xabar berish tugmasi",
+        shield: "Elektrshit",
+      },
+      stepsTitle: "Yong'in sodir bo'lganda",
+      steps: [
+        "Insonlarni evakuatsiya qilish va tovar-moddiy boyliklarni asrash;",
+        "Zudlik bilan «101» yoki «1050» telefoniga xabar berish;",
+        "Yong'in haqidagi xabarni e'lon qilish;",
+        "Elektr tokini elektr taqsimlagichdan o'chirish;",
+        "Birlamchi vositalar bilan yong'inni o'chirishga kirishish;",
+        "YOXX bo'linmasini kutib olib, qayerda va nima yonayotganini aytish.",
+      ],
+      marks: "Belgilar",
+    },
+    furniture: "Jihoz",
+    planSource:
+      "Reja topologiyasi maktabning evakuatsiya chizmasidan, o'lchamlar bino konturidan. Xona nomlari chizmada yo'q — turi bo'yicha ataladi.",
   },
 
   /** Geo Analitika — muassasalar ro'yxati paneli. */

@@ -1,13 +1,17 @@
 {
  "texts": [
-  "Now the most important part. This system is running right now.",
-  "At school number one seventy nine in Tashkent, the fight, weapon, smoking and attendance detectors are live.",
-  "Every frame you have just seen came from that school."
+  "Attendance is one of the strongest parts of the system.",
+  "First, the entrance camera recognises each student by face: of twenty-eight students, twenty-five passed the face check and three did not — they did not come to school.",
+  "Then the classroom camera counts the room: in the first lesson, twenty-five students are seated.",
+  "By the end of the last lesson, only seventeen of twenty-eight remain.",
+  "Eleven students are missing from class in total, and the system counts it automatically."
  ],
- "duration": 12.91,
+ "duration": 25.43,
  "offsets": [
   0.25,
-  3.8,
-  9.74
+  3.17,
+  11.79,
+  16.76,
+  20.69
  ]
 }

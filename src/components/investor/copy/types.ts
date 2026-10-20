@@ -8,7 +8,7 @@ import type { DeckCopyBase } from "@/components/deck/types";
  *   2. MUAMMO  — ta'limdagi haqiqiy og'riq; investorni qiziqtiradigan joy
  *   3. YECHIM  — AI qanday hal qiladi va qanday natija beradi
  *   4. NATIJA  — 179-maktabda HOZIR ishlab turgan tizim
- *   5. BOZOR   — hajm, raqobat va qamrovga qarab foyda
+ *   5. YAKUN
  *
  * ⚠️ BU TAQDIMOTDA PUL SO'RALMAYDI. Investitsiya summasi, baholash va
  * ulush haqida bo'lim YO'Q — biznes ko'rsatiladi, xulosani investor o'zi
@@ -23,6 +23,44 @@ import type { DeckCopyBase } from "@/components/deck/types";
  */
 
 export type TitleText = { title: string; text: string };
+
+/**
+ * Bitta xavf turi uchun to'liq slayd: real kadr + "qanday ishlaydi" +
+ * natija. Pichoq va qoldirilgan buyum slaydlari shu shaklda
+ * (`slides/ThreatCase.tsx`).
+ */
+export type ThreatCaseCopy = {
+  kicker: string;
+  title: string;
+  /** Sarlavha ostidagi bir qatorli izoh */
+  sub: string;
+  /** Kadr ustidagi belgi ("Jonli") */
+  live: string;
+  /** Kadr ustidagi kamera va vaqt */
+  cam: string;
+  when: string;
+  /** Kadr ostidagi trevoga sarlavhasi va izohi */
+  alertTitle: string;
+  alertText: string;
+  /** O'ng ustundagi bloklar: qanday ishlaydi · natija · ustuvorlik/joy */
+  sections: TitleText[];
+  /** Egasini qidirish (qoldirilgan buyum slaydi) */
+  search?: {
+    title: string;
+    queryLabel: string;
+    scanning: string;
+    found: string;
+    /** Arxiv kadri modali: yorliq va "shaxs topildi" belgisi */
+    archiveLabel: string;
+    ownerFound: string;
+    steps: { place: string; text: string }[];
+    result: string;
+  };
+  /** Ikkinchi kadr (masalan pichoqdan keyin qurol) — ixtiyoriy */
+  extra?: { cam: string; when: string; alertTitle: string; alertText: string };
+  /** Eng pastdagi tamg'a */
+  footer: string;
+};
 
 export type InvestorCopy = DeckCopyBase & {
   /** "model bo'yicha hisob" — taxminiy raqam yonidagi belgi */
@@ -121,9 +159,35 @@ export type InvestorCopy = DeckCopyBase & {
     title: string;
     /** Real hodisa kartalari: nima aniqlangan, qaysi kamerada, qachon */
     cases: { name: string; cam: string; when: string; conf: string }[];
+    /** Barcha aniqlanadigan holatlar — kartalar ostida to'liq ro'yxat */
+    allTitle: string;
+    all: string[];
     /** Qolgan detektorlar ro'yxati */
     more: string[];
     moreTitle: string;
+    note: string;
+  };
+
+  /** Pichoq va qurolni aniqlash — real kadr bilan */
+  knife: ThreatCaseCopy;
+
+  /** Qoldirilgan buyumni aniqlash — real kadr bilan */
+  abandoned: ThreatCaseCopy;
+
+  /** Davomat: kirishdagi yuz + birinchi va oxirgi darsdagi xona sanog'i */
+  attendance: {
+    kicker: string;
+    title: string;
+    sub: string;
+    /** Uchta real kadr: [kirish, birinchi dars, oxirgi dars] */
+    flow: { title: string; text: string; tag: string }[];
+    /** Yakuniy son ostidagi yorliq: "darsdan yo'qolgan" */
+    resultLabel: string;
+    /** Ogohlantirish xabari: sarlavha va matn */
+    alertTitle: string;
+    alertText: string;
+    points: string[];
+    /** Hisob izohi: 11 qanday chiqqani */
     note: string;
   };
 
@@ -141,6 +205,24 @@ export type InvestorCopy = DeckCopyBase & {
     /** Sinf kadri ostidagi yorliq — aniqlangan holat */
     frameNote: string;
     note: string;
+    /** Kamera tahlili: sarlavha va aniqlangan belgilar */
+    /** O'qituvchilar reytingi (namunaviy) */
+    rank: { title: string; rows: { name: string; value: number }[] };
+    /** Baholangan o'qituvchi kartasi (namunaviy) */
+    card: { role: string; name: string; subject: string; scoreLabel: string };
+    camTitle: string;
+    camChips: string[];
+    /** Ovoz tahlili */
+    voice: {
+      title: string;
+      status: string;
+      lines: { who: string; text: string; onTopic: boolean }[];
+      onLabel: string;
+      offLabel: string;
+      scoreTitle: string;
+      scores: { label: string; value: number }[];
+      verdict: string;
+    };
   };
 
   /** Ota-onalar ilovasi — real ekran rasmlari */
@@ -180,42 +262,14 @@ export type InvestorCopy = DeckCopyBase & {
     note: string;
   };
 
-  /* ────────────────────── 5-BO'LIM · BOZOR ───────────────────── */
-
-  market: {
+  /** "Biz nima beramiz" — uchta asosiy qiymat */
+  offer: {
     kicker: string;
     title: string;
-    tamLabel: string;
-    tamNote: string;
-    segNames: string[];
-    segCols: { inst: string; students: string; price: string; monthly: string };
-    source: string;
-  };
-
-  /** Raqobatchilar va bizning ustunligimiz */
-  rivals: {
-    kicker: string;
-    title: string;
-    us: string;
-    list: { name: string; note: string }[];
-    rows: string[];
-    legend: { yes: string; partial: string; no: string };
-    /** Uchta asosiy ustunlik — matritsa ostida */
-    edgeTitle: string;
-    edges: string[];
-    note: string;
-  };
-
-  /** Daromad va foyda — qamrovga qarab */
-  profit: {
-    kicker: string;
-    title: string;
-    cols: { share: string; inst: string; revenue: string; profit: string; margin: string };
-    /** 1% qatorini ajratib ko'rsatadigan izoh */
-    highlight: string;
-    breakevenLabel: string;
-    unitTitle: string;
-    unitLabels: { arpu: string; margin: string; payback: string; ltv: string };
+    items: { title: string; points: string[] }[];
+    /** Reyting kartasi: o'qituvchilar (rasm `oqituvchi-N.webp`, bo'lmasa bosh harflar) */
+    stats: { start: string; end: string; gone: string };
+    rank: { caption: string; rows: { name: string; subject: string; value: number }[] };
     note: string;
   };
 

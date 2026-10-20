@@ -3,7 +3,7 @@ import { Search, GraduationCap, Users, Camera as CameraIcon, Building2, AlertTri
 import { usePersons, useCameras } from "@/hooks/useApi";
 import { useAppStore } from "@/store/useAppStore";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
-import { EVENT_TYPE_LABELS } from "@/lib/eventLabels";
+import { EVENT_TYPE_LABELS } from "@/lib/nvr/eventLabels";
 import type { EventTypeCode } from "@/services/voice/VoiceCommands";
 import { useInstitutions } from "@/hooks/useInstitutions";
 import { useT } from "@/i18n";

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImageBroken as ImageOff } from "@phosphor-icons/react";
 import { nvrUrl } from "@/config/endpoints";
-import type { NvrBox } from "@/lib/nvrApi";
+import type { NvrBox } from "@/lib/nvr/nvrApi";
 import { useT } from "@/i18n";
 
 /**

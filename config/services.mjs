@@ -123,6 +123,26 @@ export const SERVICES = {
     envUser: "WEAPON2_USERNAME",
     envPass: "WEAPON2_PASSWORD",
   },
+  janjal2: {
+    // 2026-09-17: "Aniqlanganlar" → 2-versiya → JANJAL tabining manbasi.
+    // `weapon2` (qurol) bilan AYNI shakldagi ALOHIDA server — login/parol →
+    // JWT, `AlertModel`, `GET /api/alert/alert-list/`. Proxy mantiqi
+    // `weapon2` bilan umumiy (`src/lib/tokenProxy.ts` → `makeTokenProxy`).
+    label: "Janjal aniqlash — 2-versiya (lokal)",
+    envOrigin: "JANJAL2_ORIGIN",
+    proxyPath: "/janjal2",
+    // JSON API ham (`/api/...`), rasm/video ham (`/alert_images/...`) origin
+    // ILDIZIDA — yo'l shundoq o'tkaziladi (`weapon2` bilan AYNI).
+    upstreamPath: "",
+    // To'g'ridan-to'g'ri rejim YO'Q — login/parol brauzerga chiqmasin.
+    publicEnv: null,
+    probe: "/api/alert/alert-list/?page=1&page_size=1",
+    expect: [200, 401], // 401 ham "tirik" — sessiya cookie'siz shu qaytadi
+    handler: true,
+    /** Login/parol — FAQAT serverda o'qiladi. Default YO'Q — majburiy .env. */
+    envUser: "JANJAL2_USERNAME",
+    envPass: "JANJAL2_PASSWORD",
+  },
 };
 
 /** Oxiridagi `/` larni olib tashlaydi. */

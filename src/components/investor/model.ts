@@ -212,7 +212,7 @@ export const LIVE_SCHOOL = {
   name: "179-maktab",
   city: "Toshkent",
   /** Aniqlangan hodisa turlari — real ishlayotgan detektorlar */
-  detectors: ["Janjal", "Qurol", "Chekish", "Kechikish", "Davomat"],
+  detectors: ["Janjal", "Chekish", "Kechikish", "Davomat"],
 };
 
 /* ──────────────────────── formatlash ─────────────────────────── */

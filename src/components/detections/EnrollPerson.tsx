@@ -6,7 +6,7 @@ import { useModalHistory } from "@/hooks/useModalHistory";
 import { UnsavedExitDialog } from "@/components/common/UnsavedExitDialog";
 import { createPortal } from "react-dom";
 import { CheckCircle, UserPlus, X } from "@phosphor-icons/react";
-import { enrollFaceFromEvent, type NvrEvent, type NvrPersonRole } from "@/lib/nvrApi";
+import { enrollFaceFromEvent, type NvrEvent, type NvrPersonRole } from "@/lib/nvr/nvrApi";
 import { useT } from "@/i18n";
 
 /**

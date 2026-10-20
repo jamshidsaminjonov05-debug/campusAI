@@ -1,54 +1,86 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, Building2, ChevronRight, DoorOpen, Layers3, RotateCcw, Ruler, Square, Video, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Layers3,
+  RotateCcw,
+  Ruler,
+  ShieldAlert,
+  Sofa,
+  Square,
+  Video,
+  X,
+} from "lucide-react";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { EmptyState, LoadingState, Pill } from "@/components/common/Panel";
 import { useDetections } from "@/hooks/useDetections";
-import { detectSubject, isAlarm, shortTime, type NvrEvent } from "@/lib/nvrApi";
-import { isOutdoor, parseCameraName } from "@/lib/cameraNaming";
+import { detectSubject, shortTime } from "@/lib/nvr/nvrApi";
+import { isOutdoor, parseCameraName } from "@/lib/nvr/cameraNaming";
+import { floorProgram, isSchool179, SCHOOL_179_PLAN } from "@/config/schoolPlan";
+import {
+  buildFloorPlan,
+  CUT_H,
+  FLOOR_H,
+  orient,
+  polyArea,
+  WALL_H,
+  type MarkerKind,
+  type PlanRoom,
+  type Pt,
+  type Tone,
+} from "@/lib/floorPlan";
 import { useT } from "@/i18n";
 import { useScheme } from "@/theme";
 import { useModalHistory } from "@/hooks/useModalHistory";
 
 /**
- * Bino ICHKI ko'rinishi — kampus binosining tomiga bosilganda ochiladi.
+ * Bino ICHKI ko'rinishi — kampus binosiga bosilganda ochiladi.
  *
- * Chizish Campus3D bilan BIR XIL izometrik proyeksiyada: qavat plitasi +
- * ko'tarilgan devorlar (kesib ko'rsatilgan — shift yo'q, tepadan qaraladi),
- * yo'lakka qaragan eshik tirqishlari, xona yorliqlari. Toza SVG, 3D
- * kutubxona yo'q.
+ * 🔴 **2026-09-23 da QAYTA QURILDI** (foydalanuvchi so'rovi, namuna render
+ * bilan): ilgari qavat kesimi bo'sh to'rtburchaklar va ingichka chiziqlar edi
+ * — xonalar ichi ko'rinmasdi. Endi to'liq HAJMLI kesim: qalin tashqi devor
+ * (kameraga qaragani "qo'g'irchoq uy" usulida KESILADI), derazalar, eshik
+ * qanotlari, ichki devorlar va xona turiga mos JIHOZ (parta qatorlari, doska,
+ * shkaf, zina marshlari, sanuzel kabinalari). Geometriya — `lib/floorPlan.ts`,
+ * bu fayl FAQAT chizadi.
  *
- * DIQQAT: OSM'da ham, aniqlash API'sida ham indoor (xona/qavat) geometriyasi
- * YO'Q — reja binoning HAQIQIY konturidan generatsiya qilinadi
- * (`orient()` konturni asosiy o'qi bo'yicha to'g'rilaydi → markazda yo'lak →
- * ikki yonda xonalar). Real reja (DWG/SVG yoki OSM `indoor=*`) paydo bo'lsa
- * faqat `buildFloor()` almashtiriladi, qolgan UI tegmaydi.
+ * 🔴 **Yon ustunlar OLIB TASHLANDI** (o'sha kuni, foydalanuvchi so'rovi —
+ * ikkala ustun skrinshoti bilan): chapda "Bino / Aniqlanishlar / So'nggi
+ * hodisalar", o'ngda "Kameralar / Camera 01 / Trevogalar" panellari bor edi
+ * va 3D ko'rinishga ekranning atigi yarmi qolardi. Endi 3D BUTUN enni
+ * oladi; bino ma'lumoti ixcham suzuvchi kartada, kamera kadri esa FAQAT
+ * kamera nuqtasi bosilganda chiqadigan kichik oynada.
  *
- * KAMERALAR esa haqiqiy: aniqlash API kanallari nomidan qavat va joy turi
- * o'qiladi (`src/lib/cameraNaming.ts`) va shu qavatga qo'yiladi.
+ * DIQQAT: OSM'da ham, aniqlash API'sida ham indoor geometriya YO'Q. Reja
+ * TOPOLOGIYASI maktabning o'z evakuatsiya chizmasidan (`config/schoolPlan.ts`),
+ * MASSHTAB esa binoning haqiqiy konturidan olinadi. KAMERALAR haqiqiy:
+ * kanal nomidan qavat va joy o'qiladi (`lib/nvr/cameraNaming.ts`).
  */
 
-type Pt = [number, number];
+/* ---------- Kamera — QAT'IY IZOMETRIK BURCHAK -------------------------------
+   🔴 **2026-09-23: aylantirish OLIB TASHLANDI** (foydalanuvchi so'rovi,
+   izometrik maktab illyustratsiyalari namunasi bilan): "to'liq 3d holatda
+   qilishimiz kerak emas, shunchaki BIR TOMONDAN tasviri chiqib berishi
+   kerak". Ilgari sichqoncha bilan burchak ham, qiyalik ham o'zgarardi —
+   foydalanuvchi binoni tasodifan "yotqizib" yuborishi va hech narsa
+   ko'rinmay qolishi mumkin edi.
 
-const FLOOR_H = 3.3; // bir qavat balandligi, metr
-const WALL_H = 2.9; // ichki devor balandligi (kesim — shift chizilmaydi)
-const CORRIDOR_W = 3.2;
-const ROOM_D = 7.0;
-const ROOM_W = 6.5;
-const DOOR_W = 1.2; // eshik tirqishi kengligi, metr
+   Burchak SHU YERDA qotirilgan va hech qayerdan o'zgarmaydi.
 
-/* ---------- Kamera (izometrik proyeksiya — Campus3D bilan bir xil formula) ---------- */
-const DEFAULT_ROT = 30;
-const DEFAULT_TILT = 0.56;
-const MIN_TILT = 0.16;
-const MAX_TILT = 0.95;
-const H_SCALE = 1.15;
-const ROT_STEP = 2;
-const TILT_STEP = 0.02;
+   ⚠️ **Qiyalik (`0.78`) va `H_SCALE` (1.0) TASODIFIY TANLANMAGAN** —
+   ular devor xona ichini qanchalik to'sishini belgilaydi. Nisbat:
+   `devor·H_SCALE / (xona chuqurligi·tilt)`. Dastlab 0.62 va 1.15 edi —
+   matn-rastrga chizib tekshirilganda ichki devorlar xona yuzasining
+   ~64% ini yopib, jihoz ko'rinmay qolgani aniqlandi. Hozirgi qiymatda
+   2.3 m devor 7.5 m chuqur xonaning ~39% ini yopadi, ya'ni partalar
+   va doska ko'rinadi (namunadagi izometrik chizmalardagi kabi).
+   Surish endi SILJITADI (pan), aylantirmaydi. */
+const ISO_ROT = 30;
+const ISO_TILT = 0.78;
+const H_SCALE = 1.0;
 
-/** Kamera shu vaqt ichida hodisa yuborgan bo'lsa "onlayn" hisoblanadi.
- *  Server holat maydonini bermaydi — oxirgi hodisa vaqtidan xulosa qilamiz. */
+/** Kamera shu vaqt ichida hodisa yuborgan bo'lsa "onlayn" hisoblanadi. */
 const ONLINE_WINDOW_MS = 30 * 60_000;
 
 interface Cam {
@@ -64,296 +96,119 @@ const project = (x: number, y: number, z: number, c: Cam): Pt => [
 
 const path = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join("L")}Z`;
 
-interface Room {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  label: string;
-  kind: RoomKind;
-  /** Shu xona qaysi yo'lakka qaraydi (eshik shu tomonga qo'yiladi). */
-  corridorY?: number;
-}
-
-type RoomKind = "auditoriya" | "laboratoriya" | "kafedra" | "yo'lak";
-
-interface Seg {
-  a: Pt;
-  b: Pt;
-}
-
 interface PlacedCam {
   channel: string;
   name: string;
   place: ReturnType<typeof parseCameraName>;
-  at: Pt; // reja koordinatasi (metr)
+  at: Pt;
   count: number;
   floor: number;
   online: boolean;
+  last: string;
 }
 
-/* ---------- Geometriya ---------- */
-
-/** Poligon yuzasi (shoelace), m². */
-function polyArea(p: Pt[]): number {
-  let s = 0;
-  for (let i = 0; i < p.length; i++) {
-    const a = p[i];
-    const b = p[(i + 1) % p.length];
-    s += a[0] * b[1] - b[0] * a[1];
-  }
-  return Math.abs(s / 2);
-}
-
-function inside(pt: Pt, poly: Pt[]): boolean {
-  const [x, y] = pt;
-  let ok = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i];
-    const [xj, yj] = poly[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-9) + xi) ok = !ok;
-  }
-  return ok;
-}
-
-/** Konturni asosiy o'qi bo'yicha to'g'rilaydi (eng uzun qirra yo'nalishi). */
-function orient(p: Pt[]): { poly: Pt[]; w: number; h: number } {
-  let best = 0;
-  let ang = 0;
-  for (let i = 0; i < p.length; i++) {
-    const a = p[i];
-    const b = p[(i + 1) % p.length];
-    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (d > best) {
-      best = d;
-      ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-    }
-  }
-  const c = Math.cos(-ang);
-  const s = Math.sin(-ang);
-  const r: Pt[] = p.map(([x, y]) => [x * c - y * s, x * s + y * c]);
-  const xs = r.map((q) => q[0]);
-  const ys = r.map((q) => q[1]);
-  const x0 = Math.min(...xs);
-  const y0 = Math.min(...ys);
-  return {
-    poly: r.map(([x, y]) => [x - x0, y - y0] as Pt),
-    w: Math.max(...xs) - x0,
-    h: Math.max(...ys) - y0,
-  };
-}
-
-const KINDS: RoomKind[] = ["auditoriya", "laboratoriya", "kafedra"];
-
-/**
- * `RoomKind` — reja generatorining ICHKI kaliti (rang tanlash uchun), ekranga
- * chiqmaydi: xona yorlig'i raqam ("101"), yo'lak esa lug'atdan olinadi.
- */
-
-/**
- * Qavat rejasi — konturdan generatsiya.
- *
- * Bino konturi to'g'ri to'rtburchak EMAS (E/H/L shakllari odatiy), shuning
- * uchun bitta markaziy yo'lak yaramaydi: u faqat o'rtadagi qanotni kesib
- * o'tadi va qolgan qanotlar bo'sh qoladi. Buning o'rniga kontur gorizontal
- * TASMALARGA bo'linadi; har tasmada konturga tushgan uzluksiz kesmalar
- * topilib, har biriga alohida yo'lak va ikki yon xonalar qo'yiladi.
- */
-function buildFloor(poly: Pt[], w: number, h: number, floor: number) {
-  const rooms: Room[] = [];
-  const corridors: { y: number; x0: number; x1: number }[] = [];
-
-  const bandH = 2 * ROOM_D + CORRIDOR_W;
-  const bands = Math.max(1, Math.round(h / bandH));
-  const step = h / bands;
-  let n = 1;
-
-  for (let b = 0; b < bands; b++) {
-    const yc = (b + 0.5) * step;
-
-    // Tasma o'rtasidagi chiziq kontur bilan qayerda kesishadi
-    const runs: [number, number][] = [];
-    let start: number | null = null;
-    const dx = 0.5;
-    for (let x = 0; x <= w + dx; x += dx) {
-      const on = x <= w && inside([x, yc], poly);
-      if (on && start === null) start = x;
-      if (!on && start !== null) {
-        if (x - start >= 2 * ROOM_W) runs.push([start, x - dx]);
-        start = null;
-      }
-    }
-
-    for (const [x0, x1] of runs) {
-      corridors.push({ y: yc, x0, x1 });
-      rooms.push({
-        id: `cor-${floor}-${b}-${x0.toFixed(0)}`,
-        x: x0,
-        y: yc - CORRIDOR_W / 2,
-        w: x1 - x0,
-        h: CORRIDOR_W,
-        label: "Yo'lak",
-        kind: "yo'lak",
-      });
-
-      const runW = x1 - x0;
-      const cols = Math.max(1, Math.round(runW / ROOM_W));
-      const stepX = runW / cols;
-      for (let i = 0; i < cols; i++) {
-        for (const side of [-1, 1] as const) {
-          const rx = x0 + i * stepX + 0.4;
-          const rw = stepX - 0.8;
-          const ry = side < 0 ? yc - CORRIDOR_W / 2 - ROOM_D : yc + CORRIDOR_W / 2;
-          if (ry < 0 || ry + ROOM_D > h) continue;
-          // Xonaning TO'RT burchagi ham kontur ichida bo'lsin — aks holda
-          // xona tashqi devordan chiqib ketadi va kesim yolg'on ko'rinadi
-          const corners: Pt[] = [
-            [rx, ry],
-            [rx + rw, ry],
-            [rx + rw, ry + ROOM_D],
-            [rx, ry + ROOM_D],
-          ];
-          if (!corners.every((c) => inside(c, poly))) continue;
-          rooms.push({
-            id: `r-${floor}-${b}-${i}-${side}`,
-            x: rx,
-            y: ry,
-            w: rw,
-            h: ROOM_D,
-            label: `${floor}${String(n).padStart(2, "0")}`,
-            kind: KINDS[(i + (side > 0 ? 1 : 0) + floor + b) % KINDS.length],
-            corridorY: yc,
-          });
-          n++;
-        }
-      }
-    }
-  }
-
-  return { rooms, corridors };
-}
-
-/**
- * Devor segmentlari: tashqi kontur + xona qirralari.
- *
- * Yo'lakka qaragan qirrada ESHIK tirqishi qoldiriladi — aks holda reja
- * berk qutilar to'plamiga o'xshaydi va kesim o'qilmaydi.
- */
-function buildWalls(poly: Pt[], rooms: Room[]): Seg[] {
-  const segs: Seg[] = [];
-  const seen = new Set<string>();
-
-  const key = (a: Pt, b: Pt) => {
-    const k1 = `${a[0].toFixed(1)},${a[1].toFixed(1)}`;
-    const k2 = `${b[0].toFixed(1)},${b[1].toFixed(1)}`;
-    return k1 < k2 ? `${k1}|${k2}` : `${k2}|${k1}`;
-  };
-  const push = (a: Pt, b: Pt) => {
-    const k = key(a, b);
-    if (seen.has(k)) return;
-    seen.add(k);
-    segs.push({ a, b });
-  };
-
-  // Tashqi kontur
-  for (let i = 0; i < poly.length; i++) push(poly[i], poly[(i + 1) % poly.length]);
-
-  for (const r of rooms) {
-    if (r.kind === "yo'lak") continue;
-    const x0 = r.x;
-    const x1 = r.x + r.w;
-    const y0 = r.y;
-    const y1 = r.y + r.h;
-    // Yo'lakka qaragan qirra: xona o'z yo'lagining qaysi tomonida
-    // (`corridorY` — shu xona uchun eng yaqin yo'lak markazi)
-    const doorY = r.corridorY !== undefined && r.y < r.corridorY ? y1 : y0;
-
-    push([x0, y0], [x1, y0]);
-    push([x0, y1], [x1, y1]);
-    push([x0, y0], [x0, y1]);
-    push([x1, y0], [x1, y1]);
-
-    // Eshik: yo'lak tomonidagi qirrani markazdan kesamiz (segment almashtiriladi)
-    const midX = (x0 + x1) / 2;
-    const k = key([x0, doorY], [x1, doorY]);
-    const idx = segs.findIndex((s) => key(s.a, s.b) === k);
-    if (idx >= 0) {
-      segs.splice(idx, 1, { a: [x0, doorY], b: [midX - DOOR_W / 2, doorY] }, { a: [midX + DOOR_W / 2, doorY], b: [x1, doorY] });
-    }
-  }
-  return segs;
-}
-
-/* ---------- Ranglar — MAVZUGA qarab ikki palitra ---------------------------
-   Reja o'zi SVG bo'lgani uchun yorug' rejimda ham qorong'i qolib ketardi:
-   oq panel ichida qora chizma. Endi mavzu palitrasi tanlanadi.
-
-   Xona ranglari IKKALA rejimda ham bir xil MA'NOni bildiradi (auditoriya —
-   ko'k, laboratoriya — yashil, kafedra — sariq), faqat to'yinganligi
-   fon yorqinligiga moslanadi. */
+/* ---------- Ranglar ----------------------------------------------------------
+   Reja — SVG "sahna", shuning uchun mavzuga qarab IKKI palitra: yorug'da
+   me'moriy maket ranglari (kulrang plitka, krem devor, yog'och mebel),
+   qorong'ida o'sha materiallarning to'q varianti. Material NOMI bir xil
+   qoladi — `lib/floorPlan.ts` faqat `Tone` beradi, rangni shu yer tanlaydi. */
 interface PlanPalette {
-  roomFill: Record<RoomKind, string>;
-  roomEdge: Record<RoomKind, string>;
-  /** Qavat plitasi. */
+  bg: string;
   slab: string;
-  /** Tanlangan xona (kamera bosilganda). */
-  slabOn: string;
-  wallTop: string;
-  wallA: string;
-  wallB: string;
-  /** Kamera nuqtasi: faol/oflayn va halqa rangi. */
+  slabEdge: string;
+  room: Record<PlanRoom["kind"], string>;
+  tone: Record<Tone, string>;
+  label: string;
   camOn: string;
   camOff: string;
   camRing: string;
 }
 
+const MARK_COLOR: Record<MarkerKind, string> = {
+  exit: "#16a34a",
+  extinguisher: "#dc2626",
+  hydrant: "#b91c1c",
+  alarm: "#ef4444",
+  shield: "#eab308",
+};
+
 const PLAN_PALETTE: Record<"dark" | "light", PlanPalette> = {
   dark: {
-    roomFill: {
-      auditoriya: "rgba(34,211,238,0.16)",
-      laboratoriya: "rgba(52,211,153,0.16)",
-      kafedra: "rgba(250,204,21,0.14)",
-      "yo'lak": "rgba(255,255,255,0.06)",
+    bg: "#0B1220",
+    slab: "#18243A",
+    slabEdge: "rgba(148,163,184,0.35)",
+    room: {
+      class: "#1E3050",
+      lab: "#183A34",
+      office: "#332C1B",
+      wc: "#16323A",
+      stairs: "#26303F",
+      hall: "#2A2438",
+      corridor: "#1B2740",
     },
-    roomEdge: {
-      auditoriya: "#22d3ee",
-      laboratoriya: "#34d399",
-      kafedra: "#facc15",
-      "yo'lak": "#94a3b8",
+    tone: {
+      wallOut: "#3A4B64",
+      wallIn: "#2C3B52",
+      door: "#8A5F3A",
+      glass: "#4C7E9C",
+      desk: "#9A6B3F",
+      chair: "#49556A",
+      board: "#1F5E44",
+      cabinet: "#7E5A34",
+      bench: "#77563A",
+      step: "#3C4C63",
+      fixture: "#4A5E77",
+      plant: "#2F7D4F",
     },
-    slab: "#1B2941", // fondan (#0B1220) ajralib tursin
-    slabOn: "rgba(34,211,238,0.22)",
-    wallTop: "#5A7796",
-    wallA: "#26374C",
-    wallB: "#33485F",
+    label: "rgba(226,246,255,0.82)",
     camOn: "#22d3ee",
     camOff: "#64748b",
     camRing: "#04121E",
   },
   light: {
-    roomFill: {
-      auditoriya: "rgba(8,145,178,0.14)",
-      laboratoriya: "rgba(5,150,105,0.14)",
-      kafedra: "rgba(202,138,4,0.16)",
-      "yo'lak": "rgba(15,27,46,0.05)",
+    bg: "#EDEFF2",
+    slab: "#DCE0E6",
+    slabEdge: "rgba(71,85,105,0.35)",
+    room: {
+      class: "#E9EDF3",
+      lab: "#E4F0E8",
+      office: "#F3ECDF",
+      wc: "#E3EFF2",
+      stairs: "#E2E6EC",
+      hall: "#EFEAF2",
+      corridor: "#E6E9EE",
     },
-    roomEdge: {
-      auditoriya: "#0891b2",
-      laboratoriya: "#059669",
-      kafedra: "#ca8a04",
-      "yo'lak": "#64748b",
+    tone: {
+      wallOut: "#DCD2BC",
+      wallIn: "#F1EEE8",
+      door: "#B07B4A",
+      glass: "#AFCFE4",
+      desk: "#D9A566",
+      chair: "#69737F",
+      board: "#2F6F52",
+      cabinet: "#C2935F",
+      bench: "#BE9264",
+      step: "#CCD1D8",
+      fixture: "#DCE6EE",
+      plant: "#4E9A5B",
     },
-    slab: "#DCE5F1",
-    slabOn: "rgba(8,145,178,0.20)",
-    wallTop: "#93A8C2",
-    wallA: "#B9C6D8",
-    wallB: "#CBD7E6",
+    label: "rgba(15,27,46,0.78)",
     camOn: "#0891b2",
     camOff: "#94a3b8",
     camRing: "#ffffff",
   },
 };
+
+/** Hex rangni qoraytiradi/yoritadi (`k < 1` — to'qroq). Yon yuzalar uchun. */
+function shade(hex: string, k: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const v = parseInt(m[1], 16);
+  const ch = [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((c) =>
+    Math.max(0, Math.min(255, Math.round(k <= 1 ? c * k : c + (255 - c) * (k - 1))))
+  );
+  return `#${ch.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
 
 export function BuildingInterior({
   building,
@@ -365,45 +220,45 @@ export function BuildingInterior({
   onClose: () => void;
 }) {
   const t = useT();
-  /* ◀ "orqaga" avval bino ichki ko'rinishini yopadi — 3D kampus ochiq
-     qoladi (`lib/modalHistory.ts`). */
+  /* ◀ "orqaga" avval bino ichki ko'rinishini yopadi — xarita ochiq qoladi. */
   useModalHistory(onClose);
-  /* Reja palitrasi — yorug rejimda chizma ham oqaradi. */
   const theme = useScheme();
-  const light = theme === "light";
   const pal = PLAN_PALETTE[theme];
   const floors = Math.max(1, Math.round(building.h / FLOOR_H));
-  /** `overview` — binoning yaxlit 3D modeli, aks holda tanlangan qavat kesimi. */
+  /** `overview` — binoning yaxlit modeli, aks holda tanlangan qavat kesimi. */
   const [view, setView] = useState<"overview" | number>("overview");
   const floor = typeof view === "number" ? view : 1;
   const [camChannel, setCamChannel] = useState<string | null>(null);
+  const [showInfo, setShowInfo] = useState(true);
+  const [showMarks, setShowMarks] = useState(true);
+  const [showFurniture, setShowFurniture] = useState(true);
 
-  // Kamera (ko'rish burchagi) — sichqoncha bilan
-  const [rotDeg, setRotDeg] = useState(DEFAULT_ROT);
-  const [tilt, setTilt] = useState(DEFAULT_TILT);
+  /* Ko'rish burchagi QOTIRILGAN — faqat masshtab va siljish o'zgaradi. */
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
-  const drag = useRef({ x: 0, y: 0, rot: 0, tilt: 0 });
+  const drag = useRef({ x: 0, y: 0, px: 0, py: 0 });
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const cam: Cam = useMemo(
-    () => ({ cos: Math.cos((rotDeg * Math.PI) / 180), sin: Math.sin((rotDeg * Math.PI) / 180), tilt }),
-    [rotDeg, tilt]
+    () => ({ cos: Math.cos((ISO_ROT * Math.PI) / 180), sin: Math.sin((ISO_ROT * Math.PI) / 180), tilt: ISO_TILT }),
+    []
   );
 
   const shape = useMemo(() => orient(building.p), [building]);
-  const plan = useMemo(() => buildFloor(shape.poly, shape.w, shape.h, floor), [shape, floor]);
-  const walls = useMemo(() => buildWalls(shape.poly, plan.rooms), [shape, plan]);
+  const school = isSchool179(building.n);
+  const plan = useMemo(
+    () => buildFloorPlan(shape.poly, shape.w, shape.h, floor, floorProgram(building.n, floor)),
+    [shape, floor, building.n]
+  );
   const footprint = useMemo(() => Math.round(polyArea(building.p)), [building]);
 
-  /* ---------- Haqiqiy kameralar va hodisalar ---------- */
-  const { events, isLoading } = useDetections({ category: "all", limit: 100 });
+  /* ---------- Haqiqiy kameralar ---------- */
+  const { events } = useDetections({ category: "all", limit: 100 });
 
   /**
    * DIQQAT: aniqlash API kamerani BINOGA bog'lamaydi — faqat kanal nomini
-   * beradi. Nomdan qavat va joy turi o'qiladi (`cameraNaming.ts`), lekin
-   * "qaysi bino" ma'lumoti manbada yo'q. Shuning uchun bu yerda kuzatuv posti ning
-   * barcha ichki kanallari ko'rsatiladi.
+   * beradi. Nomdan qavat va joy turi o'qiladi, "qaysi bino" manbada yo'q.
    */
   const allCams = useMemo(() => {
     const byChannel = new Map<string, { name: string; count: number; last: string }>();
@@ -423,8 +278,7 @@ export function BuildingInterior({
           count: v.count,
           last: v.last,
           place,
-          floor: place.floor ?? 1, // qavat ko'rsatilmagan ichki kamera → 1-qavat
-          // Server holat maydonini bermaydi — oxirgi hodisa vaqtidan xulosa
+          floor: place.floor ?? 1,
           online: Date.now() - new Date(v.last).getTime() < ONLINE_WINDOW_MS,
         };
       })
@@ -445,39 +299,22 @@ export function BuildingInterior({
     const onFloor = allCams.filter((c) => c.floor === floor);
     const spine = [...plan.corridors].sort((a, b) => b.x1 - b.x0 - (a.x1 - a.x0))[0];
     return onFloor.map((c, i) => {
-      const t = onFloor.length === 1 ? 0.5 : (i + 0.5) / onFloor.length;
-      const x = spine ? spine.x0 + t * (spine.x1 - spine.x0) : t * shape.w;
+      const k = onFloor.length === 1 ? 0.5 : (i + 0.5) / onFloor.length;
+      const x = spine ? spine.x0 + k * (spine.x1 - spine.x0) : k * shape.w;
       const y = spine ? spine.y : shape.h / 2;
       return { ...c, at: [x, y] as Pt };
     });
   }, [allCams, floor, shape.w, shape.h, plan.corridors]);
 
-  const activeCam = allCams.find((c) => c.channel === camChannel) ?? cameras[0] ?? allCams[0] ?? null;
-  const camEvents = useMemo(
-    () => (activeCam ? events.filter((e) => e.channel === activeCam.channel).slice(0, 8) : []),
+  const activeCam = allCams.find((c) => c.channel === camChannel) ?? null;
+  const camEvent = useMemo(
+    () => (activeCam ? events.find((e) => e.channel === activeCam.channel) ?? null : null),
     [events, activeCam]
   );
-  const alarmEvents = useMemo(() => events.filter(isAlarm).slice(0, 12), [events]);
-
-  /** Soatlik taqsimot (24 soat) — chapdagi grafik uchun. */
-  const hourly = useMemo(() => {
-    const now = Date.now();
-    const buckets = Array.from({ length: 12 }, (_, i) => {
-      const from = now - (12 - i) * 2 * 3600_000;
-      return { label: new Date(from).getHours().toString().padStart(2, "0"), from, to: from + 2 * 3600_000, n: 0 };
-    });
-    for (const e of events) {
-      const t = new Date(e.time).getTime();
-      const b = buckets.find((x) => t >= x.from && t < x.to);
-      if (b) b.n++;
-    }
-    // Grafik `dataKey` ekranga chiqadi (tooltip) — shuning uchun tarjima qilinadi
-    return buckets.map((b) => ({ [t.chart.hour]: b.label, [t.chart.count]: b.n }));
-  }, [events, t]);
 
   /* ---------- Ko'rinish o'lchamlari ---------- */
-  const VB = 620;
-  const VBH = VB * 0.7;
+  const VB = 1180;
+  const VBH = VB * 0.56;
 
   const geom = useMemo(() => {
     const cx = shape.w / 2;
@@ -485,7 +322,7 @@ export function BuildingInterior({
     const topZ = view === "overview" ? floors * FLOOR_H : WALL_H;
     const pr = (x: number, y: number, z: number) => project(x - cx, y - cy, z, cam);
 
-    // PROYEKSIYA qilingan bbox bo'yicha markazlashtiramiz — reja markazi
+    // Markazlashtirish PROYEKSIYA qilingan bbox bo'yicha — reja markazi
     // yetarli emas, burilishda proyeksiya bboxi siljiydi.
     const corners: Pt[] = [];
     for (const [x, y] of shape.poly) corners.push(pr(x, y, 0), pr(x, y, topZ));
@@ -495,40 +332,83 @@ export function BuildingInterior({
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
-    const pad = 18;
-    const scale = (Math.min(VB / (maxX - minX + pad), VBH / (maxY - minY + pad)) || 1) * zoom;
+    const pad = 22;
+    const scale = Math.min(VB / (maxX - minX + pad), VBH / (maxY - minY + pad)) || 1;
     const ox = VB / 2 - ((minX + maxX) / 2) * scale;
     const oy = VBH / 2 - ((minY + maxY) / 2) * scale;
     const S = (x: number, y: number, z: number): Pt => {
       const [px, py] = pr(x, y, z);
       return [ox + px * scale, oy + py * scale];
     };
-    return { S };
-  }, [shape, cam, zoom, view, floors, VBH]);
+    return { S, scale };
+  }, [shape, cam, view, floors, VBH]);
 
-  /** Qavat kesimi: devorlar orqadan oldinga (painter). */
-  const wallQuads = useMemo(() => {
+  /**
+   * HAJMLAR → chizish tartibi (painter): orqadagi hajm AVVAL chiziladi.
+   *
+   * ⚠️ Chuqurlik kaliti — `x·sin + y·cos`: proyeksiyada aynan shu ifoda
+   * ekran `y` ini beradi, ya'ni kattasi kameraga YAQIN. Tepa yuza doim
+   * ko'rinadi, yon yuza esa FAQAT normali kameraga qaragan bo'lsa
+   * (back-face culling) — aks holda har hajm uchun 4 ta ortiqcha
+   * `<path>` chizilardi.
+   *
+   * ⚠️ Surish (drag) paytida jihoz va belgilar CHIZILMAYDI: to'liq sahna
+   * ~3000 `<path>`, har kadrda qayta chizilsa aylantirish sakraydi.
+   */
+  const solidPaths = useMemo(() => {
     if (view === "overview") return [];
     const { S } = geom;
-    return walls
-      .map((sg) => {
-        const a0 = S(sg.a[0], sg.a[1], 0);
-        const b0 = S(sg.b[0], sg.b[1], 0);
-        const a1 = S(sg.a[0], sg.a[1], WALL_H);
-        const b1 = S(sg.b[0], sg.b[1], WALL_H);
-        const dx = Math.abs(b0[0] - a0[0]);
-        const dy = Math.abs(b0[1] - a0[1]);
-        return {
-          face: path([a0, b0, b1, a1]),
-          top: path([a1, b1, [b1[0], b1[1] - 1.6], [a1[0], a1[1] - 1.6]]),
-          fill: dx > dy ? pal.wallB : pal.wallA,
-          depth: Math.max(a0[1], b0[1]),
-        };
-      })
-      .sort((q1, q2) => q1.depth - q2.depth);
-  }, [walls, geom, view, pal.wallA, pal.wallB]);
+    const { sin, cos } = { sin: cam.sin, cos: cam.cos };
+    const FURNITURE: Tone[] = ["desk", "chair", "board", "cabinet", "bench", "step", "fixture", "plant"];
+    const src = showFurniture ? plan.solids : plan.solids.filter((s) => !FURNITURE.includes(s.tone));
 
-  /** Umumiy ko'rinish: qavatlar ustuni, pastdan yuqoriga (yuqori quyini yopadi). */
+    const items: { d: string; fill: string; depth: number; z: number }[] = [];
+    for (const s of src) {
+      // Kesim: kameraga qaragan tashqi devor pastga qirqiladi
+      const z1 = s.cut && s.cut[0] * sin + s.cut[1] * cos > 0 ? Math.min(s.z1, CUT_H) : s.z1;
+      if (z1 <= s.z0 + 0.02) continue;
+
+      const n = s.base.length;
+      let cx = 0;
+      let cy = 0;
+      for (const [x, y] of s.base) {
+        cx += x / n;
+        cy += y / n;
+      }
+      const depth = cx * sin + cy * cos;
+      const base = pal.tone[s.tone];
+
+      for (let i = 0; i < n; i++) {
+        const p0 = s.base[i];
+        const p1 = s.base[(i + 1) % n];
+        let nx = p1[1] - p0[1];
+        let ny = -(p1[0] - p0[0]);
+        const mx = (p0[0] + p1[0]) / 2;
+        const my = (p0[1] + p1[1]) / 2;
+        if ((mx - cx) * nx + (my - cy) * ny < 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        if (nx * sin + ny * cos <= 0) continue; // orqa yuza
+        const horiz = Math.abs(p1[0] - p0[0]) > Math.abs(p1[1] - p0[1]);
+        items.push({
+          d: path([S(p0[0], p0[1], s.z0), S(p1[0], p1[1], s.z0), S(p1[0], p1[1], z1), S(p0[0], p0[1], z1)]),
+          fill: shade(base, horiz ? 0.82 : 0.68),
+          depth,
+          z: s.z0,
+        });
+      }
+      items.push({
+        d: path(s.base.map(([x, y]) => S(x, y, z1))),
+        fill: shade(base, 1.06),
+        depth: depth + 0.001,
+        z: z1,
+      });
+    }
+    return items.sort((a, b) => a.depth - b.depth || a.z - b.z);
+  }, [plan.solids, geom, cam.sin, cam.cos, pal.tone, view, showFurniture]);
+
+  /** Umumiy ko'rinish: qavatlar ustuni, pastdan yuqoriga. */
   const stack = useMemo(() => {
     if (view !== "overview") return [];
     const { S } = geom;
@@ -560,20 +440,27 @@ export function BuildingInterior({
     });
   }, [view, geom, floors, shape.poly, allCams]);
 
+  /** Rejadagi belgilar sanog'i — "Shartli belgilar" ro'yxati uchun. */
+  const markCounts = useMemo(() => {
+    const c: Record<MarkerKind, number> = { exit: 0, extinguisher: 0, hydrant: 0, alarm: 0, shield: 0 };
+    for (const m of plan.markers) c[m.kind]++;
+    return c;
+  }, [plan.markers]);
+
+  const rooms = plan.rooms.filter((r) => r.kind !== "corridor");
+
   /* ---------- Sichqoncha ---------- */
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     setDragging(true);
-    drag.current = { x: e.clientX, y: e.clientY, rot: rotDeg, tilt };
+    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
     const dx = e.clientX - drag.current.x;
     const dy = e.clientY - drag.current.y;
-    setRotDeg(Math.round((drag.current.rot + dx * 0.35) / ROT_STEP) * ROT_STEP);
-    const t = drag.current.tilt + dy * 0.0035;
-    setTilt(Math.round(Math.min(MAX_TILT, Math.max(MIN_TILT, t)) / TILT_STEP) * TILT_STEP);
+    setPan({ x: drag.current.px + dx, y: drag.current.py + dy });
   };
   const endDrag = (e: React.PointerEvent) => {
     if (!dragging) return;
@@ -591,12 +478,8 @@ export function BuildingInterior({
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  const rooms = plan.rooms.filter((r) => r.kind !== "yo'lak");
+  const roomName = (r: PlanRoom) => (r.no ? r.no : t.interior.kind[r.kind]);
 
-  /* DIQQAT — `fixed`, `absolute` EMAS. Ilgari ichki ko'rinish Campus3D
-     konteyneri ichida qolib, xarita va qo'shni panellar ortiga tushib ketardi.
-     Endi butun ekran ustidan chiqadigan haqiqiy modal. z-80: xarita/HUD'dan
-     yuqori, `DetectionsPage` lightbox'i (z-70) ustida. */
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -612,10 +495,9 @@ export function BuildingInterior({
         exit={{ opacity: 0, y: 10 }}
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        /* 🔵 NEON QAYTA DIZAYN (2026-09-10) — ilgari qattiq `bg-[#080E1A]` edi. */
         className="neon-modal neon-modal--cyan flex h-[94vh] w-[97vw] max-w-[1500px] flex-col overflow-hidden"
       >
-        {/* ── Yuqori qator: yo'l (breadcrumb) + kamera sanoqlari ── */}
+        {/* ── Sarlavha: yo'l (breadcrumb) + kamera sanoqlari ── */}
         <header className="flex flex-none items-center gap-2 border-b border-white/10 px-4 py-2.5">
           <Building2 size={15} className="flex-none text-cyan-300" />
           <nav className="flex min-w-0 items-center gap-1.5 text-[12px]">
@@ -646,11 +528,28 @@ export function BuildingInterior({
             <Counter label={t.common.online} value={stats.online} tone="#34d399" />
             <Counter label={t.common.offline} value={stats.offline} tone="#f87171" />
             <span className="h-4 w-px bg-white/10" />
+            {view !== "overview" && (
+              <>
+                <button
+                  onClick={() => setShowFurniture((v) => !v)}
+                  title={t.interior.furniture}
+                  className={`neon-icon-btn ${showFurniture ? "text-cyan-300" : "text-slate-500"}`}
+                >
+                  <Sofa size={13} />
+                </button>
+                <button
+                  onClick={() => setShowMarks((v) => !v)}
+                  title={t.interior.evac.marks}
+                  className={`neon-icon-btn ${showMarks ? "text-cyan-300" : "text-slate-500"}`}
+                >
+                  <ShieldAlert size={13} />
+                </button>
+              </>
+            )}
             <button
               onClick={() => {
-                setRotDeg(DEFAULT_ROT);
-                setTilt(DEFAULT_TILT);
                 setZoom(1);
+                setPan({ x: 0, y: 0 });
               }}
               title={t.common.resetView}
               className="neon-icon-btn"
@@ -663,163 +562,89 @@ export function BuildingInterior({
           </div>
         </header>
 
-        {/* ── Asosiy: chap panellar │ 3D │ o'ng panellar ── */}
-        <div className="grid min-h-0 flex-1 grid-cols-[262px_minmax(0,1fr)_286px] gap-2 p-2">
-          {/* Chap ustun */}
-          <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-            <Card title={t.interior.building}>
-              <div className="space-y-1 px-2.5 py-2 text-[10.5px]">
-                <Stat Icon={Layers3} label={t.interior.floors} value={String(floors)} />
-                <Stat Icon={Ruler} label={t.interior.height} value={`${Math.round(building.h)} m`} />
-                <Stat
-                  Icon={Square}
-                  label={t.interior.footprint}
-                  value={`${footprint.toLocaleString(t.locale)} m²`}
-                />
-                <Stat Icon={DoorOpen} label={t.interior.roomsThisFloor} value={String(rooms.length)} />
-                <Stat Icon={Video} label={t.common.cameras} value={String(stats.total)} />
-              </div>
-              {building.ml === 1 && (
-                <p className="border-t border-white/10 px-2.5 py-1.5 text-[9.5px] leading-relaxed text-amber-400/70">
-                  {t.interior.mlNote}
-                </p>
-              )}
-            </Card>
-
-            <Card title={t.interior.detections} subtitle={t.interior.detectionsSub}>
-              {isLoading ? (
-                <LoadingState />
-              ) : events.length === 0 ? (
-                <EmptyState />
-              ) : (
-                <div className="h-[120px] p-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={hourly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                      <XAxis
-                        dataKey={t.chart.hour}
-                        tick={{ fontSize: 8.5, fill: "#64748b" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis tick={{ fontSize: 8.5, fill: "#64748b" }} axisLine={false} tickLine={false} width={28} />
-                      <Tooltip
-                        /* Inline uslub CSS mavzu qoidalariga tushmaydi —
-                           shuning uchun bu yerda ham palitra ishlatiladi */
-                        cursor={{ fill: light ? "rgba(15,27,46,0.05)" : "rgba(255,255,255,0.04)" }}
-                        contentStyle={{
-                          background: light ? "#ffffff" : "#0B1220",
-                          border: `1px solid ${light ? "#d5dded" : "rgba(255,255,255,0.12)"}`,
-                          borderRadius: 4,
-                          fontSize: 11,
-                          color: light ? "#0f1b2e" : undefined,
-                        }}
-                      />
-                      <Bar dataKey={t.chart.count} fill="#22d3ee" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card>
-
-            <Card title={t.interior.recentEvents} className="min-h-0 flex-1" bodyClassName="overflow-y-auto">
-              {isLoading ? (
-                <LoadingState />
-              ) : events.length === 0 ? (
-                <EmptyState title={t.interior.noEvents} />
-              ) : (
-                <ul className="divide-y divide-white/[0.05]">
-                  {events.slice(0, 20).map((e) => (
-                    <li key={e.id} className="px-2.5 py-1.5">
-                      <p className="flex items-center gap-1 truncate text-[10.5px] text-slate-200">
-                        <span className="truncate">{e.label}</span>
-                        {isAlarm(e) && <Pill tone="red">!</Pill>}
-                      </p>
-                      <p className="flex items-center gap-1.5 truncate text-[9.5px] text-slate-500">
-                        <span className="truncate">{e.camera}</span>
-                        <span className="ml-auto flex-none font-mono">{shortTime(e.time)}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
-
-          {/* Markaz — 3D */}
-          <div
-            ref={wrapRef}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-            className={`relative min-h-0 rounded border border-white/10 bg-[#0B1220] ${
-              dragging ? "cursor-grabbing" : "cursor-grab"
-            }`}
+        {/* ── 3D — BUTUN en (yon ustunlar olib tashlangan) ── */}
+        <div
+          ref={wrapRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          className={`relative min-h-0 flex-1 overflow-hidden rounded border border-white/10 ${
+            dragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
+          style={{ background: pal.bg }}
+        >
+          <svg
+            viewBox={`0 0 ${VB} ${VBH}`}
+            className="h-full w-full touch-none select-none"
+            preserveAspectRatio="xMidYMid meet"
           >
-            <svg viewBox={`0 0 ${VB} ${VBH}`} className="h-full w-full touch-none select-none" preserveAspectRatio="xMidYMid meet">
-              {view === "overview"
-                ? stack.map((fl) => {
-                    const on = fl.camCount > 0;
-                    return (
-                      <g key={fl.floor} onClick={() => setView(fl.floor)} style={{ cursor: "pointer" }}>
-                        {fl.faces.map((f, i) => (
-                          <path
-                            key={i}
-                            d={f.d}
-                            fill={f.bright ? pal.wallB : pal.wallA}
-                            stroke="rgba(148,163,184,0.3)"
-                            strokeWidth={0.5}
-                          />
-                        ))}
-                        <path
-                          d={fl.top}
-                          fill={on ? pal.slabOn : pal.slab}
-                          stroke={on ? "rgba(34,211,238,0.75)" : "rgba(148,163,184,0.4)"}
-                          strokeWidth={0.9}
-                          strokeLinejoin="round"
-                        />
-                        <text
-                          x={fl.labelAt[0]}
-                          y={fl.labelAt[1]}
-                          textAnchor="end"
-                          fill="rgba(226,246,255,0.75)"
-                          style={{ fontSize: 9, fontFamily: "monospace", pointerEvents: "none" }}
-                        >
-                          {fl.floor}F{fl.camCount > 0 ? ` \u00b7 ${fl.camCount} ${t.interior.camShort}` : ""}
-                        </text>
-                      </g>
-                    );
-                  })
-                : (
-                  <>
+            {/* Masshtab va siljish — FAQAT transform: geometriya qayta
+                hisoblanmaydi, ya'ni 2500+ `<path>` qayta qurilmaydi. */}
+            <g
+              transform={`translate(${VB / 2 + pan.x} ${VBH / 2 + pan.y}) scale(${zoom}) translate(${-VB / 2} ${-VBH / 2})`}
+            >
+              {view === "overview" ? (
+                stack.map((fl) => (
+                  <g key={fl.floor} onClick={() => setView(fl.floor)} style={{ cursor: "pointer" }}>
+                    {fl.faces.map((f, i) => (
+                      <path
+                        key={i}
+                        d={f.d}
+                        fill={shade(pal.tone.wallOut, f.bright ? 0.9 : 0.72)}
+                        stroke="rgba(148,163,184,0.3)"
+                        strokeWidth={0.5}
+                      />
+                    ))}
                     <path
-                      d={path(shape.poly.map(([x, y]) => geom.S(x, y, 0)))}
-                      fill={pal.slab}
-                      stroke="rgba(148,163,184,0.35)"
-                      strokeWidth={1}
+                      d={fl.top}
+                      fill={fl.camCount > 0 ? shade(pal.slab, 1.12) : pal.slab}
+                      stroke={fl.camCount > 0 ? "rgba(34,211,238,0.75)" : pal.slabEdge}
+                      strokeWidth={0.9}
                       strokeLinejoin="round"
                     />
-                    {plan.rooms.map((r) => (
-                      <path
-                        key={`f-${r.id}`}
-                        d={path([
-                          geom.S(r.x, r.y, 0),
-                          geom.S(r.x + r.w, r.y, 0),
-                          geom.S(r.x + r.w, r.y + r.h, 0),
-                          geom.S(r.x, r.y + r.h, 0),
-                        ])}
-                        fill={pal.roomFill[r.kind]}
-                        stroke={r.kind === "yo'lak" ? "none" : `${pal.roomEdge[r.kind]}55`}
-                        strokeWidth={0.6}
-                      />
-                    ))}
-                    {wallQuads.map((w, i) => (
-                      <g key={`w${i}`}>
-                        <path d={w.face} fill={w.fill} stroke="rgba(148,163,184,0.28)" strokeWidth={0.5} />
-                        <path d={w.top} fill={pal.wallTop} stroke="none" />
-                      </g>
-                    ))}
-                    {rooms.map((r) => {
+                    <text
+                      x={fl.labelAt[0]}
+                      y={fl.labelAt[1]}
+                      textAnchor="end"
+                      fill={pal.label}
+                      style={{ fontSize: 10, fontFamily: "monospace", pointerEvents: "none" }}
+                    >
+                      {fl.floor}F{fl.camCount > 0 ? ` · ${fl.camCount} ${t.interior.camShort}` : ""}
+                    </text>
+                  </g>
+                ))
+              ) : (
+                <>
+                  {/* Qavat plitasi */}
+                  <path
+                    d={path(shape.poly.map(([x, y]) => geom.S(x, y, 0)))}
+                    fill={pal.slab}
+                    stroke={pal.slabEdge}
+                    strokeWidth={1}
+                    strokeLinejoin="round"
+                  />
+                  {/* Xona pollari — turi bo'yicha ohang */}
+                  {plan.rooms.map((r) => (
+                    <path
+                      key={`f-${r.id}`}
+                      d={path([
+                        geom.S(r.x, r.y, 0.01),
+                        geom.S(r.x + r.w, r.y, 0.01),
+                        geom.S(r.x + r.w, r.y + r.h, 0.01),
+                        geom.S(r.x, r.y + r.h, 0.01),
+                      ])}
+                      fill={pal.room[r.kind]}
+                      stroke={pal.slabEdge}
+                      strokeWidth={0.35}
+                    />
+                  ))}
+                  {/* Hajmlar — devor, eshik, deraza, jihoz */}
+                  {solidPaths.map((s, i) => (
+                    <path key={`s${i}`} d={s.d} fill={s.fill} />
+                  ))}
+                  {/* Xona nomlari */}
+                  {rooms.map((r) => {
                       const [px, py] = geom.S(r.x + r.w / 2, r.y + r.h / 2, 0);
                       return (
                         <text
@@ -827,139 +652,171 @@ export function BuildingInterior({
                           x={px}
                           y={py + 3}
                           textAnchor="middle"
-                          fill="rgba(226,246,255,0.8)"
-                          style={{ fontSize: 8, fontFamily: "monospace", pointerEvents: "none" }}
+                          fill={pal.label}
+                          style={{ fontSize: 9, fontFamily: "monospace", pointerEvents: "none" }}
                         >
-                          {r.label}
+                          {roomName(r)}
                         </text>
                       );
                     })}
-                    {cameras.map((c) => {
-                      const [px, py] = geom.S(c.at[0], c.at[1], WALL_H + 0.4);
-                      const active = activeCam?.channel === c.channel;
-                      const tone = c.online ? pal.camOn : pal.camOff;
+                  {/* Evakuatsiya belgilari — chizmadagi shartli belgilar */}
+                  {showMarks &&
+                    plan.markers.map((m) => {
+                      const [px, py] = geom.S(m.x, m.y, 1.6);
+                      const c = MARK_COLOR[m.kind];
                       return (
-                        <g key={c.channel} onClick={() => setCamChannel(c.channel)} style={{ cursor: "pointer" }}>
-                          <circle cx={px} cy={py} r={active ? 7 : 5} fill={tone} stroke={pal.camRing} strokeWidth={1.5} />
-                          <circle cx={px} cy={py} r={12} fill="none" stroke={`${tone}55`} strokeWidth={1} />
-                          <text
-                            x={px}
-                            y={py - 15}
-                            textAnchor="middle"
-                            fill="rgba(226,246,255,0.9)"
-                            style={{ fontSize: 8, fontFamily: "monospace" }}
-                          >
-                            {t.interior.place[c.place.kind]}
-                          </text>
+                        <g key={m.id} style={{ pointerEvents: "none" }}>
+                          <rect x={px - 4.5} y={py - 4.5} width={9} height={9} rx={1.6} fill={c} opacity={0.92} />
+                          <rect
+                            x={px - 4.5}
+                            y={py - 4.5}
+                            width={9}
+                            height={9}
+                            rx={1.6}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.6)"
+                            strokeWidth={0.7}
+                          />
                         </g>
                       );
                     })}
-                  </>
-                )}
-            </svg>
-
-            <p className="pointer-events-none absolute left-2 top-2 rounded bg-black/40 px-2 py-1 text-[10px] font-semibold text-slate-300">
-              {view === "overview" ? t.interior.overviewView : t.interior.floorCut(floor)}
-            </p>
-            <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded border border-white/10 bg-[#0B1220]/85 px-2 py-1 text-[9px] text-slate-500">
-              {view === "overview" ? t.interior.hintOverview : t.interior.hintFloor}
-              <span className="ml-2 font-mono text-slate-400">
-                {((rotDeg % 360) + 360) % 360}\u00b0 \u00b7 {Math.round(zoom * 100)}%
-              </span>
-            </p>
-          </div>
-
-          {/* O'ng ustun */}
-          <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-            <Card title={t.common.cameras} subtitle={t.interior.channelsSub}>
-              {allCams.length === 0 ? (
-                <EmptyState title={t.interior.noChannels} />
-              ) : (
-                <ul className="divide-y divide-white/[0.05]">
-                  {allCams.map((c) => (
-                    <li key={c.channel}>
-                      <button
-                        onClick={() => {
-                          setCamChannel(c.channel);
-                          setView(c.floor);
-                        }}
-                        className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors ${
-                          activeCam?.channel === c.channel ? "bg-cyan-400/[0.08]" : "hover:bg-white/[0.04]"
-                        }`}
+                  {/* Kameralar — haqiqiy kanallar */}
+                  {cameras.map((c) => {
+                    const [px, py] = geom.S(c.at[0], c.at[1], WALL_H + 0.4);
+                    const active = activeCam?.channel === c.channel;
+                    const tone = c.online ? pal.camOn : pal.camOff;
+                    return (
+                      <g
+                        key={c.channel}
+                        onClick={() => setCamChannel(active ? null : c.channel)}
+                        style={{ cursor: "pointer" }}
                       >
-                        <span
-                          className={`h-1.5 w-1.5 flex-none rounded-full ${
-                            c.online ? "bg-emerald-400" : "bg-slate-600"
-                          }`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11px] text-slate-200">{c.name}</p>
-                          <p className="truncate text-[9.5px] text-slate-500">
-                            {c.floor}F \u00b7 {t.interior.place[c.place.kind]} \u00b7 {shortTime(c.last)}
-                          </p>
-                        </div>
-                        <Pill>{c.count}</Pill>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                        <circle cx={px} cy={py} r={active ? 7 : 5} fill={tone} stroke={pal.camRing} strokeWidth={1.5} />
+                        <circle cx={px} cy={py} r={12} fill="none" stroke={`${tone}55`} strokeWidth={1} />
+                        <text
+                          x={px}
+                          y={py - 15}
+                          textAnchor="middle"
+                          fill={pal.label}
+                          style={{ fontSize: 8.5, fontFamily: "monospace" }}
+                        >
+                          {t.interior.place[c.place.kind]}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </>
               )}
-            </Card>
+            </g>
+          </svg>
 
-            <Card
-              title={activeCam?.name ?? t.common.camera}
-              subtitle={activeCam ? (activeCam.online ? t.common.online : t.common.offline) : undefined}
-            >
-              {camEvents.length > 0 ? (
-                <DetectionThumb
-                  id={camEvents[0].id}
-                  boxes={camEvents[0].boxes}
-                  pictureLost={camEvents[0].picture_lost}
-                  eager
-                  className="aspect-video w-full bg-black/40"
-                  alt={camEvents[0].label}
-                />
-              ) : (
-                <div className="grid aspect-video w-full place-items-center bg-black/30 text-[10.5px] text-slate-600">
-                  {activeCam ? t.cameras.noDetections : t.cameras.notSelected}
-                </div>
-              )}
-              {camEvents[0] && (
-                <p className="truncate px-2.5 py-1.5 text-[10px] text-slate-400">
-                  {camEvents[0].label}
-                  {detectSubject(camEvents[0]) ? ` \u00b7 ${detectSubject(camEvents[0])}` : ""}
-                  <span className="ml-1 font-mono text-slate-600">{shortTime(camEvents[0].time)}</span>
+          {/* Bino + evakuatsiya kartasi — ilgari chap ustun edi */}
+          <InfoCard
+            open={showInfo}
+            onToggle={() => setShowInfo((v) => !v)}
+            title={building.n ?? t.campus3d.building}
+          >
+            <div className="space-y-1 px-2.5 py-2 text-[10.5px]">
+              <Stat Icon={Layers3} label={t.interior.floors} value={String(floors)} />
+              <Stat Icon={Ruler} label={t.interior.height} value={`${Math.round(building.h)} m`} />
+              <Stat Icon={Square} label={t.interior.footprint} value={`${footprint.toLocaleString(t.locale)} m²`} />
+              <Stat Icon={Video} label={t.common.cameras} value={String(stats.total)} />
+            </div>
+
+            {view !== "overview" && (
+              <div className="border-t border-white/10 px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                  {t.interior.evac.title}
                 </p>
-              )}
-            </Card>
-
-            <Card
-              title={t.interior.alarms}
-              subtitle={t.interior.alarmsSub}
-              className="min-h-0 flex-1"
-              bodyClassName="overflow-y-auto"
-            >
-              {alarmEvents.length === 0 ? (
-                <EmptyState title={t.interior.noAlarms} hint={t.interior.noAlarmsHint} />
-              ) : (
-                <ul className="divide-y divide-white/[0.05]">
-                  {alarmEvents.map((e: NvrEvent) => (
-                    <li key={e.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <AlertTriangle size={12} className="flex-none text-red-400" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[10.5px] text-slate-200">{e.label}</p>
-                        <p className="truncate text-[9.5px] text-slate-500">{e.camera}</p>
-                      </div>
-                      <span className="flex-none font-mono text-[9.5px] text-slate-500">{shortTime(e.time)}</span>
+                {school && (
+                  <p className="mt-0.5 text-[9px] leading-relaxed text-slate-500">
+                    {t.interior.evac.sub(SCHOOL_179_PLAN.year)} · {t.interior.evac.approved(SCHOOL_179_PLAN.director)}
+                  </p>
+                )}
+                <ul className="mt-1.5 space-y-1">
+                  {(Object.keys(MARK_COLOR) as MarkerKind[]).map((k) => (
+                    <li key={k} className="flex items-center gap-1.5 text-[10px]">
+                      <span
+                        className="h-2.5 w-2.5 flex-none rounded-[2px]"
+                        style={{ background: MARK_COLOR[k] }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-slate-400">{t.interior.evac.legend[k]}</span>
+                      <span className="flex-none font-mono text-slate-300">{markCounts[k]}</span>
                     </li>
                   ))}
                 </ul>
-              )}
-            </Card>
-          </div>
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                  {t.interior.evac.stepsTitle}
+                </p>
+                <ol className="mt-1 list-decimal space-y-0.5 pl-3.5 text-[9.5px] leading-relaxed text-slate-400">
+                  {t.interior.evac.steps.map((s: string, i: number) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            <p className="border-t border-white/10 px-2.5 py-1.5 text-[9px] leading-relaxed text-slate-500">
+              {building.ml === 1 ? `${t.interior.mlNote} ` : ""}
+              {t.interior.planSource}
+            </p>
+          </InfoCard>
+
+          {/* Kamera kadri — FAQAT nuqta bosilganda (ilgari doimiy o'ng ustun edi) */}
+          <AnimatePresence>
+            {activeCam && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute bottom-3 right-3 w-[260px] overflow-hidden rounded border border-white/12 bg-[#0B1220]/95 shadow-xl"
+              >
+                <header className="flex items-center gap-1.5 border-b border-white/10 px-2.5 py-1.5">
+                  <span
+                    className={`h-1.5 w-1.5 flex-none rounded-full ${
+                      activeCam.online ? "bg-emerald-400" : "bg-slate-600"
+                    }`}
+                  />
+                  <p className="min-w-0 flex-1 truncate text-[11px] text-slate-200">{activeCam.name}</p>
+                  <button onClick={() => setCamChannel(null)} className="neon-icon-btn flex-none">
+                    <X size={12} />
+                  </button>
+                </header>
+                {camEvent ? (
+                  <>
+                    <DetectionThumb
+                      id={camEvent.id}
+                      boxes={camEvent.boxes}
+                      pictureLost={camEvent.picture_lost}
+                      eager
+                      className="aspect-video w-full bg-black/40"
+                      alt={camEvent.label}
+                    />
+                    <p className="truncate px-2.5 py-1.5 text-[10px] text-slate-400">
+                      {camEvent.label}
+                      {detectSubject(camEvent) ? ` · ${detectSubject(camEvent)}` : ""}
+                      <span className="ml-1 font-mono text-slate-600">{shortTime(camEvent.time)}</span>
+                    </p>
+                  </>
+                ) : (
+                  <div className="grid aspect-video w-full place-items-center bg-black/30 text-[10.5px] text-slate-600">
+                    {t.cameras.noDetections}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <p className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded bg-black/40 px-2 py-1 text-[10px] font-semibold text-slate-300">
+            {view === "overview" ? t.interior.overviewView : t.interior.floorCut(floor)}
+          </p>
+          <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded border border-white/10 bg-[#0B1220]/85 px-2 py-1 text-[9px] text-slate-500">
+            {view === "overview" ? t.interior.hintOverview : t.interior.hintFloor}
+            <span className="ml-2 font-mono text-slate-400">{Math.round(zoom * 100)}%</span>
+          </p>
         </div>
 
-        {/* ── Pastki qavat qatori (Envision uslubi: Umumiy | F1 | F2 | ...) ── */}
+        {/* ── Pastki qavat qatori (Umumiy | F1 | F2 | ...) ── */}
         <div className="flex flex-none items-center gap-1.5 overflow-x-auto border-t border-white/10 px-3 py-2">
           <FloorTab active={view === "overview"} onClick={() => setView("overview")}>
             {t.interior.overview}
@@ -981,7 +838,7 @@ export function BuildingInterior({
             );
           })}
           <span className="ml-auto flex-none pl-3 text-[9.5px] text-slate-600">
-            {t.interior.planNote}
+            {rooms.length} · {t.interior.roomsThisFloor}
           </span>
         </div>
       </motion.div>
@@ -989,29 +846,33 @@ export function BuildingInterior({
   );
 }
 
-/** Panel qobig'i — modal ichidagi barcha bloklar uchun. */
-function Card({
+/** Suzuvchi ma'lumot kartasi — yig'iladi (3D ni to'smasin). */
+function InfoCard({
+  open,
+  onToggle,
   title,
-  subtitle,
   children,
-  className = "",
-  bodyClassName = "",
 }: {
+  open: boolean;
+  onToggle: () => void;
   title: string;
-  subtitle?: string;
   children: React.ReactNode;
-  className?: string;
-  bodyClassName?: string;
 }) {
   return (
-    <section className={`flex flex-none flex-col overflow-hidden rounded border border-white/10 bg-[#0B1220] ${className}`}>
-      <header className="flex flex-none items-baseline gap-2 border-b border-white/10 px-2.5 py-1.5">
-        <h3 className="min-w-0 truncate text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-300">
+    <section className="absolute left-3 top-3 w-[238px] overflow-hidden rounded border border-white/12 bg-[#0B1220]/92 shadow-xl">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-1.5 border-b border-white/10 px-2.5 py-1.5 text-left"
+      >
+        <h3 className="min-w-0 flex-1 truncate text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-300">
           {title}
         </h3>
-        {subtitle && <span className="flex-none truncate text-[9.5px] text-slate-600">{subtitle}</span>}
-      </header>
-      <div className={`min-h-0 flex-1 ${bodyClassName}`}>{children}</div>
+        <ChevronDown
+          size={13}
+          className={`flex-none text-slate-500 transition-transform ${open ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {open && <div className="max-h-[62vh] overflow-y-auto">{children}</div>}
     </section>
   );
 }
@@ -1030,9 +891,7 @@ function FloorTab({
     <button
       onClick={onClick}
       className={`flex flex-none items-center rounded border px-3 py-1 text-[11.5px] font-semibold transition-colors ${
-        active
-          ? "border-cyan-400/50 bg-cyan-400/15 text-white"
-          : "border-white/10 text-slate-400 hover:text-slate-100"
+        active ? "border-cyan-400/50 bg-cyan-400/15 text-white" : "border-white/10 text-slate-400 hover:text-slate-100"
       }`}
     >
       {children}

@@ -338,7 +338,26 @@ export function StatOverview({
             o'qiladi). Backend bu sonni BERMAYDI: o'lchandi — `/persons`
             da 3 ta yozuv, `/attendance?date=<bugun>` esa 2026-07-15 dagi
             ikkita eski qatorni qaytaradi (sana filtri ishlamaydi). Shuning
-            uchun kartochka `DataBadge` siz, lekin son REAL. */}
+            uchun kartochka `DataBadge` siz, lekin son REAL.
+
+            🔴 **`/faces` HOZIR BUZILGAN — 2026-09-17, `BACKEND.md` 14-band.**
+            Foydalanuvchi: "Bugun kelganlar nima sababdan 0 turibdi". O'lchandi:
+            `GET /faces` (parametrsiz, SANA FILTRISIZ ham) DOIM `{total:0}`
+            qaytaradi — xom oqimda o'sha kuni minglab yozuv bo'lsa ham
+            (`/events/stats` shuni tasdiqlaydi). Bu — server tomondagi yuz-
+            agregatsiya nosozligi, frontendda TUZATIB BO'LMAYDI (`/faces`
+            2026-09-15 da xom skanning O'RNIGA ATAYLAB qo'yilgan — sabab shu
+            faylning o'zida, tepada).
+
+            Shuning uchun oddiy qora "0" YOZILMAYDI — u "bugun hech kim
+            kelmadi" degan YOLG'ON xulosa bo'lardi, holbuki `dayStats.total`
+            (hodisalar) shu kuni ANIQ musbat. `dayStats.total > 0 &&
+            dayFaces.total === 0` — bu KONTRADIKSIYA (hodisa bor-u odam
+            yo'q bo'lishi mumkin emas), demak `0` "o'lchangan natija" emas,
+            "manba uzilgan" degani — loyihaning `Missing`/`Val` naqshi shu
+            holat uchun ANIQ shu maqsadda yozilgan. Backend tuzatilgan
+            zahoti `dayFaces.total` musbat qaytadi va shart o'zi yolg'on
+            bo'lib qoladi — komponentga QAYTA tegish shart emas. */}
         <button
           type="button"
           onClick={() => setShowArrivals(true)}
@@ -348,7 +367,13 @@ export function StatOverview({
           <KpiTile
             Icon={UserFocus}
             label={t.stats.kpi.arrivalsToday}
-            value={n(dayFaces.total)}
+            value={
+              !dayFaces.isLoading && !dayStats.isLoading && dayStats.total > 0 && dayFaces.total === 0 ? (
+                <Missing source="GET /faces" />
+              ) : (
+                n(dayFaces.total)
+              )
+            }
             hint={
               dayFaces.isLoading || dayStats.isLoading
                 ? "sanalmoqda…"

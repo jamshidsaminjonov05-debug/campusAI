@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { VideoCameraSlash } from "@phosphor-icons/react";
-import { getEvent, type NvrEvent } from "@/lib/nvrApi";
+import { getEvent, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { DetectionModal } from "@/components/detections/DetectionsPage";
 
 /**

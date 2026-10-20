@@ -8,12 +8,12 @@ import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { useFaces } from "@/hooks/useFaces";
 import { ARRIVAL_PERIODS, periodRange } from "@/hooks/useTodayArrivals";
-import { nvrDateTime, nvrTime } from "@/lib/nvrApi";
+import { nvrDateTime, nvrTime } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { TabPill } from "@/components/common/panels";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
-import type { NvrFaceRow } from "@/lib/nvrApi";
+import type { NvrFaceRow } from "@/lib/nvr/nvrApi";
 
 /**
  * KAMERAGA TUSHGAN ODAMLAR — to'liq ro'yxat.

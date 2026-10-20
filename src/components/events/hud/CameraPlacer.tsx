@@ -12,7 +12,7 @@ import {
   resetPlacements,
   setPlacement,
   subscribePlacements,
-} from "@/lib/cameraPlacementStore";
+} from "@/lib/nvr/cameraPlacementStore";
 
 export interface PlacerCamera {
   channel: string;

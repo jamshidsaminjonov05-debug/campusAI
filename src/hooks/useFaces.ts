@@ -17,7 +17,7 @@
  * sanog'i).
  */
 import { useQuery } from "@tanstack/react-query";
-import { listFaces, type NvrFaceRow, type NvrFacesQuery } from "@/lib/nvrApi";
+import { listFaces, liveInterval, type NvrFaceRow, type NvrFacesQuery } from "@/lib/nvr/nvrApi";
 
 /** Bitta so'rovdagi maksimal yozuv — serverning o'z chegarasi. */
 const PAGE = 100;
@@ -52,8 +52,9 @@ export function useFaces(opts: FacesOptions = {}): FacesView {
     queryKey: ["nvr-faces", limit, q],
     queryFn: () => listFaces({ ...q, limit }),
     enabled,
-    refetchInterval: 60_000,
-    staleTime: 45_000,
+    // SSE ulangan bo'lsa `useLiveSync` ["nvr-faces"] ni o'zi yangilaydi
+    refetchInterval: liveInterval(2 * 60_000, 5 * 60_000),
+    staleTime: 90_000,
   });
 
   const faces = query.data?.faces ?? [];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { segmentFor } from "./narration";
 import { voiceBus } from "./voiceBus";
 import type { DeckCopyBase, NarrationManifest } from "./types";
@@ -9,10 +9,8 @@ import type { DeckCopyBase, NarrationManifest } from "./types";
  * Taqdimot ovozini boshqaradi — KO'RINADIGAN QISMI YO'Q.
  *
  * Slayd almashganda o'sha slaydning segmenti boshlanadi, oldingisi
- * to'xtaydi. Har segment sessiyada FAQAT BIR MARTA o'qiladi: orqaga
- * qaytilganda takrorlanmaydi, slayd oxirgi holatida turaveradi.
- *
- * Til almashsa hisob tozalanadi — yangi tildagi ovoz to'liq eshitiladi.
+ * to'xtaydi. Orqaga qaytilganda ham ovoz boshidan o'qiladi (2026-10-20,
+ * foydalanuvchi so'rovi).
  */
 export default function Narrator({
   slide,
@@ -23,19 +21,12 @@ export default function Narrator({
   copy: DeckCopyBase;
   manifest: NarrationManifest;
 }) {
-  const played = useRef<Set<number>>(new Set());
-
-  useEffect(() => {
-    played.current.clear();
-  }, [copy.lang]);
-
   useEffect(() => {
     const seg = segmentFor(copy, slide, manifest);
-    if (!seg || played.current.has(slide)) {
+    if (!seg) {
       voiceBus.stop();
       return;
     }
-    played.current.add(slide);
     voiceBus.play(seg.audio, seg.duration);
     return () => voiceBus.stop();
   }, [slide, copy, manifest]);

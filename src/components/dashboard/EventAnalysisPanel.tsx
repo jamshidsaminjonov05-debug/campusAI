@@ -1,13 +1,13 @@
 "use client";
 
-import { nvrEventLabel } from "@/lib/eventLabels";
+import { nvrEventLabel } from "@/lib/nvr/eventLabels";
 import { useT } from "@/i18n";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowsOutSimple, X } from "@phosphor-icons/react";
-import { getEvent, isAlarm, nvrDateTime } from "@/lib/nvrApi";
-import { detectionLevel, LEVEL_TONE } from "@/lib/detectionLevel";
-import { resolveCampus } from "@/lib/cameraBinding";
+import { getEvent, isAlarm, nvrDateTime } from "@/lib/nvr/nvrApi";
+import { detectionLevel, LEVEL_TONE } from "@/lib/nvr/detectionLevel";
+import { resolveCampus } from "@/lib/nvr/cameraBinding";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventDossier } from "@/components/detections/EventDossier";

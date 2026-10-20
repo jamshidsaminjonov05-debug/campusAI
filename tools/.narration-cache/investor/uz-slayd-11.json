@@ -1,13 +1,17 @@
 {
  "texts": [
-  "Natija nima berdi?",
-  "Hodisa soniyalar ichida aniqlanadi, qo'lda hisobot yozish yo'qoladi, har bir holat kadr bilan hujjatlashtiriladi.",
-  "Eng muhimi — ota-ona birinchi marta real vaqtda xabardor bo'ladi."
+  "Tizim darsni ham tahlil qiladi.",
+  "Kamera o'qituvchining faolligini, o'quvchilarning e'tiborini va telefon bilan chalg'ishini ko'radi.",
+  "Ovoz tahlili o'qituvchining gaplarini eshitadi va aytilgan har gap darsga oidmi yoki yo'qmi, shuni aniqlaydi.",
+  "Kamera va ovoz birga o'qituvchining dars o'tishini baholaydi.",
+  "Natijada o'qituvchining dars o'tish salohiyatiga baho beriladi va o'qituvchilar reytingi shakllanadi."
  ],
- "duration": 11.6,
+ "duration": 24.95,
  "offsets": [
   0.25,
-  1.67,
-  7.81
+  2.65,
+  8.12,
+  15.21,
+  19.07
  ]
 }

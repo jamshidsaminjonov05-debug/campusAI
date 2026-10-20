@@ -45,13 +45,14 @@ export const EN: InvestorCopy = {
       "Parents",
       "How it works",
       "Detectors",
+      "Weapon",
+      "Abandoned object",
+      "Attendance",
       "Lesson analysis",
       "Parent app",
       "School 179",
       "Results",
-      "Market size",
-      "Competition",
-      "Revenue & profit",
+      "What we deliver",
       "Close",
     ],
   },
@@ -88,8 +89,8 @@ export const EN: InvestorCopy = {
     /* 3 — SAFETY */
     [
       { at: 0.0, text: "The first problem is safety." },
-      { at: 2.5, text: "A fight in the yard, an armed person on the grounds, a student smoking, a fire starting." },
-      { at: 11.0, text: "All of it reaches the camera, and nobody sees it in real time." },
+      { at: 2.5, text: "A fight in the yard, an armed person on the grounds, a student smoking, a suspicious bag left in a classroom." },
+      { at: 11.0, text: "All of it reaches the camera, but there is no system that detects it in real time and sends it to the person responsible." },
     ],
 
     /* 4 — TEACHING QUALITY */
@@ -116,64 +117,78 @@ export const EN: InvestorCopy = {
     /* 7 — DETECTORS */
     [
       { at: 0.0, text: "Here are real frames." },
-      { at: 2.0, text: "A weapon detected, confidence ninety one percent. Smoking detected. A fight detected in the school yard." },
+      { at: 2.0, text: "An armed person detected. Smoking detected. A fight detected in the school yard." },
       { at: 12.0, text: "These are not mockups. These are records from a system that is running." },
     ],
 
-    /* 8 — LESSON ANALYSIS */
+    /* 8 — WEAPON */
     [
-      { at: 0.0, text: "The system also analyses the lesson itself." },
-      { at: 3.2, text: "The teacher's activity, the students' attention, and distractions: phones and conversations unrelated to the class." },
-      { at: 13.0, text: "Attendance is logged automatically by face. No paper register is needed." },
+      { at: 0.0, text: "Now the highest-priority alert: a weapon." },
+      { at: 3.0, text: "The model recognises a person entering the grounds with a gun, from shape and context, the moment they appear on camera." },
+      { at: 10.0, text: "The alert goes at once to the duty officer, the principal and, if needed, the police inspector." },
     ],
 
-    /* 9 — PARENT APP */
+    /* 9 — ABANDONED OBJECT */
+    [
+      { at: 0.0, text: "Next, an abandoned object." },
+      { at: 2.5, text: "If a bag is separated from its owner and stays still for more than sixty seconds in a classroom, an alert is raised." },
+      { at: 9.0, text: "The system then searches for the owner: the frame of the last person seen with the bag is matched across the other cameras." },
+      { at: 15.5, text: "That person is found in the classroom, the corridor, at the exit and in the school yard, and their path is shown frame by frame." },
+      { at: 22.0, text: "An evacuation decision is made quickly." },
+    ],
+
+    /* 10 — ATTENDANCE */
+    [
+      { at: 0.0, text: "Attendance is one of the strongest parts of the system." },
+      { at: 3.0, text: "First, the entrance camera recognises each student by face: of twenty-eight students, twenty-five passed the face check and three did not — they did not come to school." },
+      { at: 9.0, text: "Then the classroom camera counts the room: in the first lesson, twenty-five students are seated." },
+      { at: 15.5, text: "By the end of the last lesson, only seventeen of twenty-eight remain." },
+      { at: 20.5, text: "Eleven students are missing from class in total, and the system counts it automatically." },
+    ],
+
+    /* 11 — LESSON ANALYSIS */
+    [
+      { at: 0.0, text: "The system also analyses the lesson itself." },
+      { at: 2.8, text: "The camera sees the teacher's activity, the students' attention, and phone distraction." },
+      { at: 9.5, text: "Voice analysis listens to what the teacher says and decides whether each statement is relevant to the lesson." },
+      { at: 17.0, text: "Camera and voice together rate how the teacher runs the lesson." },
+      { at: 22.5, text: "As a result, each teacher's ability to run a lesson is rated and a teacher ranking is formed." },
+    ],
+
+    /* 12 — PARENT APP */
     [
       { at: 0.0, text: "And the parent sees all of it on a phone." },
       { at: 3.0, text: "Arrival and departure times, the attendance rate, today's lessons, and if something happens, an alert with the frame." },
       { at: 13.5, text: "This is the first reliable channel between the school and the family." },
     ],
 
-    /* 10 — SCHOOL 179 */
+    /* 13 — SCHOOL 179 */
     [
       { at: 0.0, text: "Now the most important part. This system is running right now." },
-      { at: 5.0, text: "At school number one seventy nine in Tashkent, the fight, weapon, smoking and attendance detectors are live." },
+      { at: 5.0, text: "At school number one seventy nine in Tashkent, the fight, smoking and attendance detectors are live." },
       { at: 14.5, text: "Every frame you have just seen came from that school." },
     ],
 
-    /* 11 — RESULTS */
+    /* 14 — RESULTS */
     [
-      { at: 0.0, text: "So what changed?" },
+      { at: 0.0, text: "So what does it deliver?" },
       { at: 1.8, text: "Incidents are detected in seconds, manual reporting disappears, and every case is documented with a frame." },
-      { at: 11.5, text: "And most importantly, parents are informed in real time for the first time." },
+      { at: 11.5, text: "And most importantly, the school principal and responsible staff are informed in real time." },
     ],
 
-    /* 12 — MARKET SIZE */
+    /* 15 — WHAT WE DELIVER */
     [
-      { at: 0.0, text: "Now the market." },
-      { at: 1.6, text: "At full coverage, education in Uzbekistan is a market of seven hundred and twenty five billion soum a year." },
-      { at: 10.5, text: "That is sixty one million dollars, built up from institution and student counts." },
+      { at: 0.0, text: "So what do we deliver to the school?" },
+      { at: 2.5, text: "First, attendance. The roll call runs on face ID, at the start of the lesson and at the end. The system counts the students in the room and automatically lists those who came to school but did not attend the lesson, or left it." },
+      { at: 8.5, text: "Second, the teacher ranking: teachers are rated one after another by how they deliver lessons." },
+      { at: 15.0, text: "Third, safety: weapons, fights, smoking and abandoned objects are detected in real time and sent to the person responsible." },
     ],
 
-    /* 13 — COMPETITION */
+    /* 16 — CLOSE */
     [
-      { at: 0.0, text: "Competitors exist, but they play on a different field." },
-      { at: 4.0, text: "Global platforms cost ten times more and run in the cloud. Hardware vendors have no education scenarios at all." },
-      { at: 13.5, text: "On premise, in Uzbek, built for education — that combination is only ours." },
-    ],
-
-    /* 14 — REVENUE AND PROFIT */
-    [
-      { at: 0.0, text: "And the question that matters: how much profit?" },
-      { at: 3.2, text: "Our break even point is below one percent of the market. That is about ninety institutions." },
-      { at: 11.0, text: "At five percent coverage, annual revenue is forty five billion soum and net profit is over seventeen billion." },
-    ],
-
-    /* 15 — CLOSE */
-    [
-      { at: 0.0, text: "Three things to close on." },
+      { at: 0.0, text: "Two things to close on." },
       { at: 2.0, text: "The state created the demand with a twenty twenty seven deadline. The product is built and running in a school." },
-      { at: 11.5, text: "And the market is empty. We are ready for your questions." },
+      { at: 11.5, text: "We are ready for your questions." },
     ],
   ],
 
@@ -183,7 +198,7 @@ export const EN: InvestorCopy = {
     titleA: "The cameras are there.",
     titleB: "The perception is not.",
     sub: "Campus AI — an artificial intelligence ecosystem for educational institutions",
-    stats: ["institutions in market", "students and pupils", "annual market size", "school running live"],
+    stats: ["institutions in market", "students and pupils", "school running live"],
   },
 
   purpose: {
@@ -244,14 +259,14 @@ export const EN: InvestorCopy = {
 
   threats: {
     kicker: "Problem · safety",
-    title: "Incidents happen — and nobody sees them in real time",
+    title: "Incidents happen — and no system detects them in real time and alerts the responsible person",
     items: [
       { name: "Fights and violence", text: "In the yard, the corridor, at break. Noticed only after it escalates.", cost: "Injury · litigation · reputation" },
       { name: "An armed person", text: "Someone entering the grounds with a weapon. Seconds decide the outcome.", cost: "Risk to life" },
       { name: "Smoking", text: "The far corners of the grounds. Repeats, never documented.", cost: "Health · discipline" },
-      { name: "Fire", text: "Smoke and the first flames. Sensors take time to trigger.", cost: "Property · evacuation" },
+      { name: "Abandoned object", text: "A bag left unattended in a classroom or corridor. Nobody notices it.", cost: "Risk to life · evacuation" },
     ],
-    unwatched: "nobody watching",
+    unwatched: "not sent to anyone",
     verdict: "The resolution requires detecting exactly these events — and no software here does it.",
   },
 
@@ -314,13 +329,115 @@ export const EN: InvestorCopy = {
     kicker: "Solution · detectors",
     title: "Not mockups — records from a running system",
     cases: [
-      { name: "Weapon detected", cam: "Moon gate", when: "15-09-2026 · 11:30", conf: "0.91" },
+      { name: "Armed person", cam: "2-FAYE KUCHA", when: "10-10-2026 · 12:37", conf: "" },
       { name: "Smoking detected", cam: "Camera 01", when: "14-09-2026 · 12:15", conf: "0.52" },
       { name: "Fight detected", cam: "IP PTZ Camera", when: "09-09-2026 · 18:58", conf: "high" },
+      { name: "Phone call detected", cam: "Camera 01", when: "20-10-2026 · 13:05", conf: "" },
+    ],
+    allTitle: "The system detects",
+    all: [
+      "Fights",
+      "Armed persons",
+      "Knives and cold weapons",
+      "Aggressive behaviour",
+      "Smoking",
+      "Phone use",
+      "Abandoned objects",
+      "Student count in the room",
+      "Attendance (face + room)",
+      "Lesson quality and voice analysis",
     ],
     moreTitle: "Other detectors",
-    more: ["Face recognition", "Unknown person", "Fire and smoke", "Phone distraction", "People counting", "Lateness"],
+    more: ["Face recognition", "Unknown person", "Fire and smoke", "People counting", "Lateness"],
     note: "A confidence score is computed on every frame and stored with the incident record.",
+  },
+
+  knife: {
+    kicker: "Technology",
+    title: "Weapon detection",
+    sub: "The highest-priority alert — not a second of delay",
+    live: "Live",
+    cam: "2-FAYE KUCHA",
+    when: "10.10.2026 · 12:37",
+    alertTitle: "Armed person detected — 2-FAYE KUCHA",
+    alertText: "School grounds · priority: HIGH · sent to the duty officer and the principal",
+    sections: [
+      {
+        title: "How it works",
+        text: "An object-detection model (YOLO family) recognises dangerous items held in a hand — a gun, a long metal object — from shape and context. The model is tuned for school settings: corridor, yard, canteen, gym.",
+      },
+      {
+        title: "Result",
+        text: "Action is taken the moment it appears on camera — not after it is used.",
+      },
+      {
+        title: "Priority and accountability",
+        text: "The alert goes at once to the duty officer, the principal and security staff, and to the police inspector if needed. Every alert arrives with a video frame.",
+      },
+    ],
+    footer: "Campus AI safety core",
+  },
+
+  abandoned: {
+    kicker: "Technology",
+    title: "Abandoned object detection",
+    sub: "An international counter-terrorism standard measure",
+    live: "Live",
+    cam: "CAM 08 — Classroom 204",
+    when: "20.10.2026 · 14:15:33",
+    alertTitle: "Abandoned object — CAM 08",
+    alertText: "Classroom 204 · still for over 60 seconds · sent to security staff",
+    search: {
+      title: "Finding the owner",
+      queryLabel: "Search frame",
+      scanning: "Searching the archive cameras…",
+      found: "Found",
+      archiveLabel: "Archive frame · Classroom 204",
+      ownerFound: "Bag owner found",
+      steps: [
+        { place: "Classroom", text: "At the desk with the bag" },
+        { place: "Corridor", text: "Walking through the corridor" },
+        { place: "Exit", text: "Leaving the building" },
+        { place: "School yard", text: "Entering from the yard" },
+      ],
+      result: "The system finds the same person on other cameras and shows their path frame by frame.",
+    },
+    sections: [
+      {
+        title: "How it works",
+        text: "The AI keeps a constant background model and logs any new static object in frame — a bag, a package, a box. If it separates from its owner and stays still for a set time (for example 60 seconds), an alert is raised.",
+      },
+      {
+        title: "Result",
+        text: "The system shows in the archive footage who left the item — so an evacuation decision is made quickly.",
+      },
+      {
+        title: "Where it matters",
+        text: "Main entrance, corridors, assembly hall, canteen, gym, classrooms — anywhere crowds gather. A suspicious item does not stay unnoticed for long.",
+      },
+    ],
+    footer: "Campus AI safety core",
+  },
+
+  attendance: {
+    kicker: "Solution · attendance",
+    title: "Attendance — fully real, two sources cross-checked",
+    sub: "A student in the building but not in the lesson — the system finds them",
+    flow: [
+      { title: "At the entrance, by face", text: "The entrance camera recognises each student by face: 25 of 28 passed the face check, 3 did not — they did not come.", tag: "Camera 01 · entrance" },
+      { title: "First lesson", text: "The classroom camera counts the students in the room: 25 of 28 are seated.", tag: "Classroom camera" },
+      { title: "End of the last lesson", text: "In the same class only 17 of 28 are left.", tag: "Classroom camera" },
+    ],
+    resultLabel: "students missing from class",
+    alertTitle: "Class attendance alert",
+    alertText: "In the first lesson 25 of 28 were seated; by the end of the last lesson 17 remained. In total 11 students are not in the lesson: 3 did not come, 8 left. Counted automatically.",
+    points: [
+      "The number of students in the room is counted in real time",
+      "Face-check entries and lesson headcount are compared automatically",
+      "How many students are not in the lesson is calculated automatically",
+      "No paper register and no manual marking",
+    ],
+    note: "Frames are from a real classroom camera, 20.10.2026. 11 = 28 − 17: 3 did not pass the entrance face check (did not come), 8 left during the day.",
   },
 
   lesson: {
@@ -331,18 +448,48 @@ export const EN: InvestorCopy = {
       "Engagement and movement dynamics through the lesson",
       "Time spent working with the class, and lesson structure",
       "Punctuality and how consistently lessons start on time",
+      "Voice-based analysis of the lesson",
     ],
     studentTitle: "For the student",
     student: [
       "Attention level during the lesson",
       "Phone distraction events",
-      "Conversations unrelated to the class",
+      "Aggressive behaviour and conversations unrelated to the class",
       "Mood and wellbeing dynamics",
     ],
     faceTitle: "Face-based recognition",
     faceText: "Attendance is logged automatically: entry, exit, lateness. No paper register.",
     frameNote: "Phone use detected during class · Camera 01",
-    note: "The attention indicator is a derived value, not a sensor measurement. We state that openly.",
+    note: "The attention indicator and lesson rating are derived values, not sensor measurements. The voice analysis and ranking examples are illustrative. We state that openly.",
+    rank: {
+      title: "Teacher ranking",
+      rows: [
+        { name: "Rahimova N.", value: 91 },
+        { name: "Yusupov A.", value: 84 },
+        { name: "Karimova D.", value: 79 },
+      ],
+    },
+    card: { role: "Teacher", name: "Dilnoza Karimova", subject: "English · Class 5-B", scoreLabel: "Overall score" },
+    camTitle: "Camera analysis",
+    camChips: ["Teacher active", "Class attention", "Phone detected"],
+    voice: {
+      title: "Voice analysis",
+      status: "Lesson audio is being analysed",
+      lines: [
+        { who: "Teacher", text: "Today we will review present-tense adjectives.", onTopic: true },
+        { who: "From the class", text: "Did you watch the football yesterday?", onTopic: false },
+        { who: "Teacher", text: "Let's work through the example together.", onTopic: true },
+      ],
+      onLabel: "On topic",
+      offLabel: "Off topic",
+      scoreTitle: "Lesson delivery rating",
+      scores: [
+        { label: "Relevance to the topic", value: 86 },
+        { label: "Explanation and Q&A", value: 78 },
+        { label: "Class attention", value: 72 },
+      ],
+      verdict: "Lesson delivery rated",
+    },
   },
 
   parentsApp: {
@@ -369,7 +516,6 @@ export const EN: InvestorCopy = {
       { label: "Access control", cam: "Camera 01", when: "14-09 · 14:52" },
     ],
     events: [
-      { type: "Weapon", when: "15 September, 11:30", cam: "Moon gate", conf: "0.91" },
       { type: "Smoking", when: "14 September, 12:15", cam: "Camera 01", conf: "52%" },
       { type: "Fight", when: "9 September, 18:58", cam: "IP PTZ Camera", conf: "high" },
       { type: "Lateness", when: "11 September, 10:44", cam: "Camera 01", conf: "100%" },
@@ -385,72 +531,52 @@ export const EN: InvestorCopy = {
   },
 
   results: {
-    kicker: "Real result",
-    title: "What changed",
+    kicker: "Result",
+    title: "What it delivers",
     gains: [
       { num: "seconds", label: "Time to detect", note: "Previously — reviewing footage afterwards" },
       { num: "automatic", label: "Incident record", note: "Frame, video, time, location" },
-      { num: "real time", label: "Parent awareness", note: "Previously — in the evening, verbally" },
+      { num: "real time", label: "Principal and staff awareness", note: "Previously — late, verbally" },
       { num: "0", label: "New cameras", note: "The existing hardware is used" },
     ],
     verdict: "Equipment the institution had already paid for finally started producing a result.",
-    note: "⚠️ This slide needs expanding: pilot duration, number of detections and accuracy should be filled in from real panel data.",
+    note: "",
   },
 
-  market: {
-    kicker: "Market size",
-    title: "Built bottom-up, from institution and student counts",
-    tamLabel: "The whole education system, at full coverage",
-    tamNote: "Annual recurring revenue",
-    segNames: ["General secondary schools", "Colleges and technicums", "Higher education institutions"],
-    segCols: { inst: "institutions", students: "students", price: "tariff / month", monthly: "at full coverage / mo" },
-    source: "Institution and student counts — Statistics Committee, 2025/2026 academic year. Tariffs and revenue — our model.",
-  },
-
-  rivals: {
-    kicker: "Competition",
-    title: "They play on a different field",
-    us: "Campus AI",
-    list: [
-      { name: "Global platforms", note: "Verkada, Avigilon" },
-      { name: "Hardware vendors", note: "Hikvision, Dahua" },
-      { name: "Local integrators", note: "Access control, CCTV" },
+  offer: {
+    kicker: "What we deliver",
+    title: "Three core values",
+    items: [
+      {
+        title: "Attendance",
+        points: [
+          "Face ID roll call: at the start and at the end of the lesson",
+          "Students in the room are counted every lesson",
+          "Students who came to school but skipped or left the lesson appear automatically",
+          "No paper register",
+        ],
+      },
+      { title: "Ranking", points: [] },
+      {
+        title: "Safety",
+        points: [
+          "Weapons, fights, smoking, abandoned objects",
+          "Real-time detection",
+          "Instant alert to the principal and responsible staff",
+        ],
+      },
     ],
-    rows: [
-      "Runs on the institution's server",
-      "Works without internet",
-      "Uzbek interface and narration",
-      "Detectors specific to education",
-      "Lesson and attention analysis",
-      "Parent application",
-      "Aligned to the 2026 resolution",
-      "Connects to existing cameras",
-      "Priced per student",
-    ],
-    legend: { yes: "yes", partial: "partial", no: "no" },
-    edgeTitle: "Three decisive advantages",
-    edges: [
-      "A price category 10× lower — global platforms license at $199–1,799 per camera per year",
-      "Models trained on local data, and the Uzbek language",
-      "Delivers the report the resolution asks for, ready-made",
-    ],
-    note: "Competitor capabilities assessed from public sources.",
-  },
-
-  profit: {
-    kicker: "Revenue and profit",
-    title: "Even one percent of this market is profitable",
-    cols: { share: "Coverage", inst: "Institutions", revenue: "Annual revenue", profit: "Net profit", margin: "Margin" },
-    highlight: "One percent of the market is roughly a hundred institutions.",
-    breakevenLabel: "Break-even point",
-    unitTitle: "One customer",
-    unitLabels: {
-      arpu: "Average monthly payment",
-      margin: "Gross margin",
-      payback: "Payback",
-      ltv: "LTV / CAC",
+    stats: { start: "In room at lesson start", end: "In room at lesson end", gone: "At school, not in lesson" },
+    rank: {
+      caption: "Teacher ranking",
+      rows: [
+        { name: "N. Rahimova", subject: "Mathematics", value: 91 },
+        { name: "A. Yusupov", subject: "Physics", value: 84 },
+        { name: "D. Karimova", subject: "English", value: 79 },
+        { name: "B. Saidov", subject: "History", value: 73 },
+      ],
     },
-    note: "Costs have three parts: a fixed team, a per-institution service cost, and sales scaling with revenue. Modelled, not measured.",
+    note: "The ranking is an illustrative example. Everything runs on the institution's own server, on top of existing cameras.",
   },
 
   finale: {
@@ -460,11 +586,10 @@ export const EN: InvestorCopy = {
     points: [
       "A legal requirement with a 2027 deadline",
       "The product is built and live at School 179",
-      "No local competitor built for education",
     ],
     ctaTalk: "Get in touch",
     ctaDeck: "Product deck",
     ctaSite: "Website",
-    foot: "Market figures — Statistics Committee · revenue figures — modelled",
+    foot: "Campus AI · artificial intelligence for educational institutions",
   },
 };

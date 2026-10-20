@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { ImageBroken as ImageOff, ShieldWarning as ShieldAlert, UserCheck, UserFocus as ScanFace, UserMinus as UserX } from "@phosphor-icons/react";
-import { nvrImageUrl, nvrTime, type NvrEvent } from "@/lib/nvrApi";
-import { LEVEL_TONE, detectionLevel } from "@/lib/detectionLevel";
-import { resolveCampus } from "@/lib/cameraBinding";
+import { nvrImageUrl, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { LEVEL_TONE, detectionLevel } from "@/lib/nvr/detectionLevel";
+import { resolveCampus } from "@/lib/nvr/cameraBinding";
 import { tr } from "@/i18n";
 
 /** Kategoriya rangi — kartochka chegarasi va yorlig'i uchun. */

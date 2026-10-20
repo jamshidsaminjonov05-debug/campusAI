@@ -31,8 +31,16 @@
  * hisoblanadi — `face_id` doim bir xil shaxsga tegishli
  * (`FRONTEND.md` 5-B), shuning uchun bu ANIQ sanoq.
  */
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { NVR_MAX_LIMIT, isAlarm, listEvents, type NvrEvent, type NvrQueryCategory } from "@/lib/nvrApi";
+import {
+  NVR_MAX_LIMIT,
+  isAlarm,
+  listEvents,
+  liveInterval,
+  type NvrEvent,
+  type NvrQueryCategory,
+} from "@/lib/nvr/nvrApi";
 import { nowAdjusted } from "@/lib/serverClock";
 
 /**
@@ -108,7 +116,7 @@ export interface TodayArrivals {
 
 /**
  * `YYYY-MM-DD` — SERVER zonasidan (`lib/serverClock.ts`), brauzer
- * `new Date()` EMAS. `GUIDE.md`: "bugun"ni brauzer zonasidan olsangiz,
+ * `new Date()` EMAS. `FRONTEND.md`: "bugun"ni brauzer zonasidan olsangiz,
  * panel boshqa mintaqadan (yoki noto'g'ri sozlangan soatdan) ochilganda
  * serverdan bir kun farq qilib, ro'yxat sababsiz bo'sh chiqadi.
  */
@@ -223,95 +231,104 @@ export function useArrivals(opts: ArrivalsOptions = {}): TodayArrivals {
        ⚠️ Oraliqsiz (BUTUN tarix) so'rov esa 5 daqiqada bir: u eng og'iri
        (3 000 yozuv, ~2.4 MB) va bir daqiqada sezilarli o'zgarmaydi —
        yangi hodisa baribir SSE / `useDetections` orqali darhol ko'rinadi. */
-    refetchInterval: from || to ? 60_000 : 5 * 60_000,
-    staleTime: from || to ? 45_000 : 4 * 60_000,
+    // Oraliqli so'rovni SSE ulangan paytda `useLiveSync` (throttle 60 s) yangilaydi
+    refetchInterval: from || to ? liveInterval(2 * 60_000, 10 * 60_000) : 10 * 60_000,
+    staleTime: from || to ? 90_000 : 8 * 60_000,
     enabled,
   });
 
-  const events = q.data?.events ?? [];
+  const stats = useMemo(() => {
+    const events = q.data?.events ?? [];
 
-  /* Takrorsizlik `face_id` bo'yicha. Hisob `useMemo` siz — `events`
-     havolasi faqat so'rov yangilanganda o'zgaradi, ya'ni bu blok kunda
-     bir necha marta ishlaydi. */
-  const byFace = new Map<number, ArrivalRow>();
-  let noFace = 0;
-  for (const e of events) {
-    if (typeof e.face_id !== "number") {
-      noFace++;
-      continue;
+    /* Takrorsizlik `face_id` bo'yicha. ⚠️ `useMemo` SHART (2026-10-19): ilgari
+       izohda "kunda bir necha marta ishlaydi" deyilgan edi, amalda esa bu
+       blok hookni chaqirgan komponentning HAR renderida minglab xom hodisa
+       ustida aylanardi (sana parse, saralash, Set'lar) — UI qotishining
+       sabablaridan biri. */
+    const byFace = new Map<number, ArrivalRow>();
+    let noFace = 0;
+    for (const e of events) {
+      if (typeof e.face_id !== "number") {
+        noFace++;
+        continue;
+      }
+      const row = byFace.get(e.face_id);
+      if (!row) {
+        byFace.set(e.face_id, {
+          faceId: e.face_id,
+          name: e.name ?? null,
+          frames: 1,
+          first: e.time,
+          last: e.time,
+          channel: e.channel,
+          camera: e.camera,
+          eventId: e.id,
+        });
+        continue;
+      }
+      row.frames++;
+      if (e.time < row.first) row.first = e.time;
+      if (e.time > row.last) {
+        row.last = e.time;
+        row.channel = e.channel;
+        row.camera = e.camera;
+        row.eventId = e.id;
+      }
+      if (!row.name && e.name) row.name = e.name;
     }
-    const row = byFace.get(e.face_id);
-    if (!row) {
-      byFace.set(e.face_id, {
-        faceId: e.face_id,
-        name: e.name ?? null,
-        frames: 1,
-        first: e.time,
-        last: e.time,
-        channel: e.channel,
-        camera: e.camera,
-        eventId: e.id,
-      });
-      continue;
+
+    const rows = [...byFace.values()].sort((a, b) => (a.last < b.last ? 1 : -1));
+
+    /* Xavfli qaydlar va kanallar — BUTUN oraliq bo'yicha (xom hodisalardan,
+       chunki bitta odam bir necha xavfli qayd berishi mumkin). */
+    const alarms = events.filter(isAlarm).length;
+    const channels = new Set(events.map((e) => e.channel)).size;
+
+    /* Soatlik taqsimot — odam BIRINCHI marta ko'ringan soatga yoziladi,
+       aks holda bir odam kirgan soatida ham, chiqqan soatida ham sanalardi. */
+    const hours = new Array(24).fill(0) as number[];
+    for (const r of rows) {
+      const h = new Date(r.first).getHours();
+      if (h >= 0 && h < 24) hours[h]++;
     }
-    row.frames++;
-    if (e.time < row.first) row.first = e.time;
-    if (e.time > row.last) {
-      row.last = e.time;
-      row.channel = e.channel;
-      row.camera = e.camera;
-      row.eventId = e.id;
+
+    /* Kanal kesimi: QAYDLAR xom hodisalardan (shaxsga ajratilmaganlari ham
+       kirsin), SHAXSLAR esa kanal bo'yicha takrorsiz `face_id` dan. */
+    const chan = new Map<string, { channel: string; camera: string; people: number; events: number }>();
+    const chanFaces = new Map<string, Set<number>>();
+    for (const e of events) {
+      const c = chan.get(e.channel) ?? { channel: e.channel, camera: e.camera, people: 0, events: 0 };
+      c.events++;
+      chan.set(e.channel, c);
+      if (typeof e.face_id === "number") {
+        const set = chanFaces.get(e.channel) ?? new Set<number>();
+        set.add(e.face_id);
+        chanFaces.set(e.channel, set);
+      }
     }
-    if (!row.name && e.name) row.name = e.name;
-  }
-
-  const rows = [...byFace.values()].sort((a, b) => (a.last < b.last ? 1 : -1));
-
-  /* Xavfli qaydlar va kanallar — BUTUN oraliq bo'yicha (xom hodisalardan,
-     chunki bitta odam bir necha xavfli qayd berishi mumkin). */
-  const alarms = events.filter(isAlarm).length;
-  const channels = new Set(events.map((e) => e.channel)).size;
-
-  /* Soatlik taqsimot — odam BIRINCHI marta ko'ringan soatga yoziladi,
-     aks holda bir odam kirgan soatida ham, chiqqan soatida ham sanalardi. */
-  const hours = new Array(24).fill(0) as number[];
-  for (const r of rows) {
-    const h = new Date(r.first).getHours();
-    if (h >= 0 && h < 24) hours[h]++;
-  }
-
-  /* Kanal kesimi: QAYDLAR xom hodisalardan (shaxsga ajratilmaganlari ham
-     kirsin), SHAXSLAR esa kanal bo'yicha takrorsiz `face_id` dan. */
-  const chan = new Map<string, { channel: string; camera: string; people: number; events: number }>();
-  const chanFaces = new Map<string, Set<number>>();
-  for (const e of events) {
-    const c = chan.get(e.channel) ?? { channel: e.channel, camera: e.camera, people: 0, events: 0 };
-    c.events++;
-    chan.set(e.channel, c);
-    if (typeof e.face_id === "number") {
-      const set = chanFaces.get(e.channel) ?? new Set<number>();
-      set.add(e.face_id);
-      chanFaces.set(e.channel, set);
+    for (const [ch, set] of chanFaces) {
+      const c = chan.get(ch);
+      if (c) c.people = set.size;
     }
-  }
-  for (const [ch, set] of chanFaces) {
-    const c = chan.get(ch);
-    if (c) c.people = set.size;
-  }
+
+    return {
+      people: rows.length,
+      named: rows.filter((r) => r.name).length,
+      events: events.length,
+      noFace,
+      alarms,
+      channels,
+      byHour: hours.map((people, hour) => ({ hour, people })),
+      byChannel: [...chan.values()].sort((a, b) => b.people - a.people),
+      rows,
+      capped: q.data?.capped ?? false,
+      date: from ?? to ?? localDay(),
+      raw: events,
+    };
+  }, [q.data, from, to]);
 
   return {
-    people: rows.length,
-    named: rows.filter((r) => r.name).length,
-    events: events.length,
-    noFace,
-    alarms,
-    channels,
-    byHour: hours.map((people, hour) => ({ hour, people })),
-    byChannel: [...chan.values()].sort((a, b) => b.people - a.people),
-    rows,
-    capped: q.data?.capped ?? false,
-    date: from ?? to ?? localDay(),
-    raw: events,
+    ...stats,
     isLoading: q.isLoading,
     error: q.error,
   };

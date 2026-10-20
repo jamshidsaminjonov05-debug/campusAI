@@ -22,8 +22,8 @@
  * hodisada `channel` ni matn qilib qaytaradi.
  */
 
-import { overrideFor } from "@/lib/cameraPlacementStore";
-import { parseCameraName, placeLabel } from "@/lib/cameraNaming";
+import { overrideFor } from "@/lib/nvr/cameraPlacementStore";
+import { parseCameraName, placeLabel } from "@/lib/nvr/cameraNaming";
 
 export interface CameraPlacement {
   lat: number;

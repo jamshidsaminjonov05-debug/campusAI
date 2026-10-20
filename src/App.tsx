@@ -21,10 +21,11 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { ThemeSwitcher } from "@/theme";
 import { useInstitutions } from "@/hooks/useInstitutions";
-import { useInstitutionScope } from "@/lib/institutionScope";
+import { useInstitutionScope } from "@/lib/nvr/institutionScope";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { DetectionToast } from "@/components/layout/DetectionToast";
+import { LiveSync } from "@/components/layout/LiveSync";
 import { useT } from "@/i18n";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -41,7 +42,7 @@ export default function App() {
   /* Bo'lim almashuvi ↔ brauzer tarixi: ◀ orqaga, ▶ oldinga, F5 da esa
      o'sha bo'lim qayta ochiladi (`hooks/usePageHistory.ts`). */
   usePageHistory();
-  /* "Bugun"ni kuzatuv posti server zonasidan sozlaydi (`GUIDE.md`, "Vaqt zonasi
+  /* "Bugun"ni kuzatuv posti server zonasidan sozlaydi (`FRONTEND.md`, "Vaqt zonasi
      bitta joydan") — brauzer soati noto'g'ri bo'lsa ham davomat/hodisa
      ro'yxatlari sababsiz bo'sh chiqmasin. */
   useSyncServerClock();
@@ -83,7 +84,10 @@ export default function App() {
         <div className="app-grid relative flex min-h-0 flex-1 overflow-hidden">
         {/* Umumiy kosmik fon — butun loyiha uchun */}
         <div className="no-print contents">
-          <SpaceBackground />
+          {/* `animated={false}` — panelda fon STATIK: yulduz/chang sikli va kursor
+              kuzatuvi yo'q. Ilgari har kadrda canvas + 3 ta nebula blur'i
+              ishlab, xarita bilan birga panelni qotirardi (2026-09-25). */}
+          <SpaceBackground animated={false} />
         </div>
 
         {/* Doimiy chap panel — navigatsiya paytida yashirinmaydi, faqat torayadi */}
@@ -223,6 +227,7 @@ export default function App() {
         </div>
 
         {/* Yangi aniqlash — ekran ustidagi xabar + ovoz (butun ilovada) */}
+        <LiveSync />
         <DetectionToast />
 
         {/* Ovozli boshqaruv — suzuvchi mikrofon tugmasi + holat kartochkasi */}

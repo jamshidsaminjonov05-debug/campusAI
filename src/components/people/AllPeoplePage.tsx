@@ -6,13 +6,13 @@ import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { FaceHistoryModal } from "./FaceHistoryModal";
 import { useFaces } from "@/hooks/useFaces";
 import { useNvrPeopleMap } from "@/hooks/useNvrPeople";
-import { nvrDateTime } from "@/lib/nvrApi";
+import { nvrDateTime } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { Pagination } from "@/components/common/Pagination";
 import { TabPill, fmt } from "@/components/common/panels";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
 import { useT } from "@/i18n";
-import type { NvrFaceRow } from "@/lib/nvrApi";
+import type { NvrFaceRow } from "@/lib/nvr/nvrApi";
 
 const PAGE_SIZE = 20;
 

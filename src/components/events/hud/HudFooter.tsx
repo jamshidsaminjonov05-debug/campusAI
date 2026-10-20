@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
+import { DETECTION_TYPES, type DetectionId } from "@/lib/nvr/detectionTypes";
 
 /* ── Yoy geometriyasi ────────────────────────────────────────────────────────
    SVG `preserveAspectRatio="none"` bilan enига cho'ziladi, LEKIN viewBox

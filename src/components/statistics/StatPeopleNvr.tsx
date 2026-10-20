@@ -26,7 +26,7 @@ import {
 import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { EventDossier } from "@/components/detections/EventDossier";
-import type { NvrAttendanceRow, NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvrApi";
+import type { NvrAttendanceRow, NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvr/nvrApi";
 import { AXIS, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
 import { useT } from "@/i18n";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
@@ -560,9 +560,15 @@ export function StatPeopleNvr({
       )}
 
       {openEvent != null && <EventDossier eventId={openEvent} onClose={() => setOpenEvent(null)} />}
-      {/* Sinf ro'yxatidan tanlangan shaxs — to'liq shaxs paneli. */}
+      {/* Sinf ro'yxatidan tanlangan shaxs — to'liq shaxs paneli.
+          ⚠️ `zClass="z-[90]"` SHART (2026-09-17, foydalanuvchi xabar
+          qildi: "shaxs modali orqa fonida qolib ketyabdi") — bu oyna
+          `ClassBreakdown`ning TO'LIQ EKRAN rejimi ICHIDAN ochiladi
+          (`full` → `createPortal`, `z-[88]`), default `z-[85]` esa
+          o'sha portal ORTIDA qolardi (portal alohida stacking context,
+          DOM tartibi emas, z-qiymat hal qiladi). */}
       {personPanelId != null && (
-        <FaceHistoryModal personId={personPanelId} onClose={() => setPersonPanelId(null)} />
+        <FaceHistoryModal personId={personPanelId} onClose={() => setPersonPanelId(null)} zClass="z-[90]" />
       )}
     </div>
   );
@@ -631,6 +637,17 @@ function ClassBreakdown({
   const [rosterSort, setRosterSort] = useState<"status" | "rate">("status");
   const [rosterDesc, setRosterDesc] = useState(true);
   const [open, setOpen] = useState<string | null>(null);
+  /**
+   * 🔴 **O'QITUVCHILARDA "SINF" SO'ZI YO'Q** (2026-09-17, foydalanuvchi
+   * so'rovi). Kuzatuv postida o'qituvchining `note`si bo'sh, ya'ni
+   * `classes` guruhlash kaliti (`r.note || r.role_label`) DOIM bitta
+   * guruhga — "Uqituvchilar" (`role_label`) ga tushadi. "Sinf" atamasi
+   * shu holatda MA'NOSIZ (bitta guruh — saralash HAM kerak emas),
+   * shuning uchun sarlavha va "Sinf"li saralash tugmalari o'qituvchi
+   * rolida BUTUNLAY olib tashlanadi; o'quvchilarda (haqiqiy sinflar
+   * bilan) hammasi avvalgidek qoladi.
+   */
+  const isTeacherRole = role === "teacher";
 
   const sorted = useMemo(() => {
     const list = [...classes];
@@ -687,11 +704,35 @@ function ClassBreakdown({
     return c;
   }, [roster]);
 
+  /**
+   * 🔵 **"KELGAN/KECHIKKAN/KELMAGAN" ENDI FILTR** (2026-09-17,
+   * foydalanuvchi so'rovi: "yashil kelgan kechikkan va kelmagan bosilsa
+   * aynan shunga mosi chiqsin" — o'qituvchi/o'quvchi/xodim UCHALASIDA
+   * ham, chunki bu BITTA umumiy komponent — `ClassBreakdown`).
+   *
+   * ⚠️ **`rosterCounts` `roster`DAN hisoblanadi, `filteredRoster`DAN
+   * EMAS** — badge'lar HAR DOIM guruhning TO'LIQ kesimini ko'rsatishi
+   * kerak (operator "nechta kelmagan bor" savolini filtrni yoqishdan
+   * OLDIN ham ko'ra olishi kerak), pastdagi ro'yxat esa filtrga qarab
+   * qisqaradi.
+   */
+  const [statusFilter, setStatusFilter] = useState<NvrAttendanceStatus | "all">("all");
+  /* Sinf/guruh almashsa filtr tozalanadi — aks holda "6-B"da "kelmagan"
+     tanlab "7-A"ga o'tilsa, o'sha yerda ham eski filtr qolib ketardi. */
+  useEffect(() => setStatusFilter("all"), [open]);
+  const filteredRoster = useMemo(
+    () => (statusFilter === "all" ? roster : roster.filter(({ r }) => r.status === statusFilter)),
+    [roster, statusFilter]
+  );
+  /** Badge bosilganda — qayta bosilsa filtr TOZALANADI (toggle). */
+  const toggleStatusFilter = (s: NvrAttendanceStatus) =>
+    setStatusFilter((cur) => (cur === s ? "all" : s));
+
   const cur = open ? classes.find((c) => c.klass === open) ?? null : null;
 
   const panel = (
     <StatPanel
-      title="Sinflar kesimi"
+      title={isTeacherRole ? "O'qituvchilar kesimi" : "Sinflar kesimi"}
       hint={open ? `${open} · bugungi ro'yxat` : `${n(classes.length)} ta guruh · bugun`}
       right={
         open ? (
@@ -701,19 +742,27 @@ function ClassBreakdown({
               onClick={() => setOpen(null)}
               className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
             >
-              ◀ Sinflar
+              {isTeacherRole ? "◀ Orqaga" : "◀ Sinflar"}
             </button>
             <ViewToggle mode={view} onChange={setView} />
             <FullBtn full={full} onClick={() => setFull((v) => !v)} />
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-1">
-            <SortBtn active={sort === "class-asc"} onClick={() => setSort("class-asc")} title={u.sortAsc}>
-              {u.classUp}
-            </SortBtn>
-            <SortBtn active={sort === "class-desc"} onClick={() => setSort("class-desc")} title={u.sortDesc}>
-              {u.classDown}
-            </SortBtn>
+            {/* ⚠️ "Sinf ↑/↓" — FAQAT o'quvchilarda: o'qituvchi guruhi
+                DOIM bitta ("Uqituvchilar"), saralash ma'nosiz va "sinf"
+                so'zi bu yerda umuman NOTO'G'RI (yuqoridagi izohga
+                qarang). */}
+            {!isTeacherRole && (
+              <>
+                <SortBtn active={sort === "class-asc"} onClick={() => setSort("class-asc")} title={u.sortAsc}>
+                  {u.classUp}
+                </SortBtn>
+                <SortBtn active={sort === "class-desc"} onClick={() => setSort("class-desc")} title={u.sortDesc}>
+                  {u.classDown}
+                </SortBtn>
+              </>
+            )}
             {/* "Davomat" QAYTA bosilsa yo'nalish teskari bo'ladi. */}
             <SortBtn
               active={sort === "rate"}
@@ -748,12 +797,35 @@ function ClassBreakdown({
                 <span className="text-[10px] text-slate-500">{periodLabel.toLowerCase()}</span>
               </>
             )}
-            {/* Uchala son ham — davomat taxtasidagi kabi. */}
-            <span className="ml-auto flex flex-wrap items-center gap-x-2 text-[10px]">
-              <span className="text-emerald-300">{n(rosterCounts.early)} kelgan</span>
-              <span className="text-amber-300">{n(rosterCounts.late)} kechikkan</span>
-              <span className="text-rose-300">{n(rosterCounts.absent)} kelmagan</span>
-              <span className="text-slate-500">{n(cur.total)} ta</span>
+            {/* 🔵 Uchtasi ham BOSILADI — pastdagi ro'yxatni SHU holatga
+                filtrlaydi (2026-09-17, foydalanuvchi so'rovi: "yashil
+                kelgan kechikkan va kelmagan bosilsa aynan shunga mosi
+                chiqsin"). Sonlar — davomat taxtasidagi kabi, guruhning
+                TO'LIQ kesimi (filtrdan mustaqil, `rosterCounts`ga
+                qarang). Qayta bosilsa filtr tozalanadi. */}
+            <span className="ml-auto flex flex-wrap items-center gap-x-1 text-[10px]">
+              <RosterFilterBadge
+                active={statusFilter === "early"}
+                onClick={() => toggleStatusFilter("early")}
+                tone="emerald"
+              >
+                {n(rosterCounts.early)} kelgan
+              </RosterFilterBadge>
+              <RosterFilterBadge
+                active={statusFilter === "late"}
+                onClick={() => toggleStatusFilter("late")}
+                tone="amber"
+              >
+                {n(rosterCounts.late)} kechikkan
+              </RosterFilterBadge>
+              <RosterFilterBadge
+                active={statusFilter === "absent"}
+                onClick={() => toggleStatusFilter("absent")}
+                tone="rose"
+              >
+                {n(rosterCounts.absent)} kelmagan
+              </RosterFilterBadge>
+              <span className="px-1 text-slate-500">{n(cur.total)} ta</span>
             </span>
           </div>
 
@@ -774,14 +846,21 @@ function ClassBreakdown({
             </SortBtn>
           </div>
 
-          {/* KARTOCHKA ko'rinishi — rasm katta, davomat foizi ostida. */}
-          {view === "card" ? (
+          {/* KARTOCHKA ko'rinishi — rasm katta, davomat foizi ostida.
+              ⚠️ Filtr HECH KIMGA mos kelmasa ("kechikkan" bosilib-u
+              guruhda kechikkan yo'q) BO'SH panjara o'rniga SABABI
+              yoziladi — jim bo'sh joy qoldirilmaydi. */}
+          {filteredRoster.length === 0 ? (
+            <p className="py-10 text-center text-[11.5px] text-slate-500">
+              Bu holatda hech kim yo'q.
+            </p>
+          ) : view === "card" ? (
             <div
               className={`grid gap-2 overflow-y-auto pr-0.5 ${
                 full ? "max-h-[calc(100vh-330px)] grid-cols-4 md:grid-cols-6 xl:grid-cols-8" : "max-h-[210px] grid-cols-3 sm:grid-cols-4"
               }`}
             >
-              {roster.map(({ r, period }) => {
+              {filteredRoster.map(({ r, period }) => {
                 const st = STATUS_TEXT[r.status];
                 return (
                   <button
@@ -816,7 +895,7 @@ function ClassBreakdown({
           ) : (
           <div className={`overflow-y-auto pr-0.5 ${full ? "max-h-[calc(100vh-330px)]" : "max-h-[210px]"}`}>
             <ul className="flex flex-col gap-1">
-              {roster.map(({ r, period }) => {
+              {filteredRoster.map(({ r, period }) => {
                 const st = STATUS_TEXT[r.status];
                 return (
                   <li key={r.person_id}>
@@ -905,6 +984,41 @@ function ClassBreakdown({
 }
 
 /** To'liq ekran tugmasi — panelni butun ekranga ochadi/yopadi. */
+/**
+ * "Kelgan/Kechikkan/Kelmagan" — bosiladigan FILTR badge (`ClassBreakdown`
+ * sinf/guruh sarlavhasida, 2026-09-17). Tinch holatda oddiy rangli matn,
+ * aktiv bo'lsa rangli fon + halqa bilan "bosilgan" ko'rinadi.
+ */
+function RosterFilterBadge({
+  active,
+  onClick,
+  tone,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  tone: "emerald" | "amber" | "rose";
+  children: React.ReactNode;
+}) {
+  const TONE = {
+    emerald: { text: "text-emerald-300", active: "bg-emerald-400/15 ring-1 ring-emerald-400/50" },
+    amber: { text: "text-amber-300", active: "bg-amber-400/15 ring-1 ring-amber-400/50" },
+    rose: { text: "text-rose-300", active: "bg-rose-400/15 ring-1 ring-rose-400/50" },
+  }[tone];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={active ? "Filtrni tozalash" : "Shu holatga filtrlash"}
+      className={`rounded-md px-1.5 py-0.5 font-semibold transition-colors ${TONE.text} ${
+        active ? TONE.active : "hover:bg-white/[0.06]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function FullBtn({ full, onClick }: { full: boolean; onClick: () => void }) {
   return (
     <button

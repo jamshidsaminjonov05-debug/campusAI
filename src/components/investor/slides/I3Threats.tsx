@@ -26,7 +26,7 @@ import type { SlideProps } from "@/components/deck/types";
  */
 
 /**
- * Kartalar — `copy.threats.items` tartibida: jang, qurol, chekish, yong'in.
+ * Kartalar — `copy.threats.items` tartibida: jang, qurol, chekish, qoldirilgan buyum.
  *
  * Ikkitasi video (harakat ko'rinadi), ikkitasi statik kadr. Har biri
  * HAQIQIY yozuv, lekin hech birida detektor ramkasi yo'q — bu slaydning
@@ -38,7 +38,7 @@ const MEDIA: Media[] = [
   { video: "/video/investor/janjal.mp4", poster: "/video/investor/janjal-poster.jpg" },
   { image: "/imges/investor/kadr-qurol.webp" },
   { video: "/video/investor/chekish.mp4", poster: "/video/investor/chekish-poster.jpg" },
-  { image: "/imges/investor/kadr-yongin.webp" },
+  { image: "/imges/investor/qoldirilgan/xona-buyum.webp" },
 ];
 
 const COLORS = ["#FF8A8A", "#FF5C5C", "#FFC46B", "#FF9F45"];

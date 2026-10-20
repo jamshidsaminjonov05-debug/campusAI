@@ -12,8 +12,8 @@ import {
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { photoUrl, type PersonOut, type PersonPayload, type PersonType } from "@/lib/api";
 import { isoDate, useStudentDay } from "@/hooks/useStudentDay";
-import { buildPersonDays, type PersonDay } from "@/lib/personDay";
-import { absenceSnapshot, getReason, subscribeAbsence } from "@/lib/absenceReasons";
+import { buildPersonDays, type PersonDay } from "@/lib/nvr/personDay";
+import { absenceSnapshot, getReason, subscribeAbsence } from "@/lib/nvr/absenceReasons";
 import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
 import { Pagination } from "@/components/common/Pagination";
@@ -21,7 +21,7 @@ import { useAttendance, useCameras, useEvents, useMonthlyAttendance, usePersonMu
 import { FACE_ENGINE_HINT, isFaceEngineError } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import { usePermissions } from "@/lib/permissions";
-import { EVENT_TYPE_LABELS } from "@/lib/eventLabels";
+import { EVENT_TYPE_LABELS } from "@/lib/nvr/eventLabels";
 
 const PAGE_SIZE = 10;
 

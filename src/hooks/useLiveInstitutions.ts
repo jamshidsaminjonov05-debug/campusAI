@@ -30,8 +30,8 @@ import { useMemo } from "react";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useDetections } from "@/hooks/useDetections";
 import { useAttendanceBoard } from "@/hooks/useAttendanceBoard";
-import { resolveCampus } from "@/lib/cameraBinding";
-import { isAlarm } from "@/lib/nvrApi";
+import { resolveCampus } from "@/lib/nvr/cameraBinding";
+import { isAlarm } from "@/lib/nvr/nvrApi";
 import { NVR_DEFAULT_CAMPUS_ID } from "@/config/nvrCameras";
 import {
   INSTITUTION_ROWS,
@@ -41,7 +41,7 @@ import {
   weightedAvg,
   type InstitutionRow,
   type RegionRow,
-} from "@/lib/institutionRows";
+} from "@/lib/nvr/institutionRows";
 
 export interface LiveInstitutions {
   institutions: InstitutionRow[];

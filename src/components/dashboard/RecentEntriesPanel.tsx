@@ -4,7 +4,7 @@ import { ArrowRight } from "@phosphor-icons/react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDetections } from "@/hooks/useDetections";
 import { useAppStore } from "@/store/useAppStore";
-import { detectSubject, nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { detectSubject, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";

@@ -35,7 +35,7 @@ import { useDetectionFeed } from "@/hooks/useDetectionFeed";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { CameraQuickView } from "@/components/cameras/CameraQuickView";
 import { EventDossier } from "@/components/detections/EventDossier";
-import { DETECTION_BY_ID } from "@/lib/detectionTypes";
+import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
 
 /* ─────────────────────────── Umumiy qobiq ─────────────────────────── */
 

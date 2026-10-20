@@ -34,7 +34,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { listEvents, type NvrQueryCategory } from "@/lib/nvrApi";
+import { listEvents, type NvrQueryCategory } from "@/lib/nvr/nvrApi";
 import { daysBetween } from "@/hooks/useNvrAttendance";
 
 /** Bir vaqtda yuboriladigan so'rovlar soni. */

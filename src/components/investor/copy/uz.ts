@@ -45,13 +45,14 @@ export const UZ: InvestorCopy = {
       "Ota-onalar",
       "Qanday ishlaydi",
       "Detektorlar",
+      "Qurol",
+      "Qoldirilgan buyum",
+      "Davomat",
       "Dars tahlili",
       "Ota-ona ilovasi",
       "179-maktab",
       "Natijalar",
-      "Bozor hajmi",
-      "Raqobat",
-      "Daromad va foyda",
+      "Biz nima beramiz",
       "Yakun",
     ],
   },
@@ -88,8 +89,8 @@ export const UZ: InvestorCopy = {
     /* 3 — XAVFSIZLIK */
     [
       { at: 0.0, text: "Birinchi muammo — xavfsizlik." },
-      { at: 2.5, text: "Maktab hovlisidagi jang, hududga kirgan qurolli shaxs, o'quvchining chekishi, yong'inning boshlanishi." },
-      { at: 11.5, text: "Bularning hammasi kameraga tushadi, lekin hech kim real vaqtda ko'rmaydi." },
+      { at: 2.5, text: "Maktab hovlisidagi jang, hududga kirgan qurolli shaxs, o'quvchining chekishi, sinfda qoldirilgan shubhali sumka." },
+      { at: 11.5, text: "Bularning hammasi kameraga tushadi, lekin ularni real vaqtda aniqlab, tegishli mas'ulga yuboradigan tizim yo'q." },
     ],
 
     /* 4 — DARS SIFATI */
@@ -116,64 +117,78 @@ export const UZ: InvestorCopy = {
     /* 7 — DETEKTORLAR */
     [
       { at: 0.0, text: "Mana real kadrlar." },
-      { at: 2.0, text: "Qurol aniqlandi — ishonch to'qson bir foiz. Chekish aniqlandi. Maktab hovlisida jang aniqlandi." },
+      { at: 2.0, text: "Qurollangan shaxs aniqlandi. Chekish aniqlandi. Maktab hovlisida jang aniqlandi." },
       { at: 11.5, text: "Bular demo emas. Bular ishlab turgan tizimning haqiqiy qaydlari." },
     ],
 
-    /* 8 — DARS TAHLILI */
+    /* 8 — QUROL */
     [
-      { at: 0.0, text: "Tizim darsni ham tahlil qiladi." },
-      { at: 3.0, text: "O'qituvchining dars o'tish faolligi, o'quvchining e'tibori va chalg'ishi — telefon, begona suhbat." },
-      { at: 12.0, text: "Davomat esa yuz bo'yicha avtomatik yoziladi. Qog'oz jurnal kerak emas." },
+      { at: 0.0, text: "Endi eng yuqori ustuvorlikdagi trevoga — qurol." },
+      { at: 3.0, text: "Model hududga qurol bilan kirgan shaxsni shakli va konteksti bo'yicha kadrga tushishi bilanoq taniydi." },
+      { at: 10.0, text: "Signal bir vaqtda navbatchi, direktor va kerak bo'lsa IIB inspektoriga boradi." },
     ],
 
-    /* 9 — OTA-ONA ILOVASI */
+    /* 9 — QOLDIRILGAN BUYUM */
+    [
+      { at: 0.0, text: "Keyingisi — qoldirilgan buyum." },
+      { at: 2.5, text: "Sinfda sumka egasidan ajralib, oltmish soniyadan ortiq harakatsiz qolsa — trevoga beriladi." },
+      { at: 9.0, text: "Shundan keyin tizim egasini qidiradi: sumka bilan oxirgi ko'ringan shaxsning kadri boshqa kameralardan izlanadi." },
+      { at: 15.5, text: "Shu shaxs xonada, yo'lakda, chiqish eshigida va maktab hovlisida topiladi — uning yo'li kadrma-kadr ko'rinadi." },
+      { at: 22.0, text: "Evakuatsiya qarori tez qabul qilinadi." },
+    ],
+
+    /* 10 — DAVOMAT */
+    [
+      { at: 0.0, text: "Davomat — tizimning eng kuchli tomonlaridan biri." },
+      { at: 3.0, text: "Avval kirishdagi kamera har o'quvchini yuzidan taniydi: yigirma sakkiz o'quvchidan yigirma beshtasi yuz orqali o'tgan, uchtasi o'tmagan — ular maktabga kelmagan." },
+      { at: 9.0, text: "Keyin sinf kamerasi xonadagilarni sanaydi: birinchi darsda yigirma besh o'quvchi o'tirgan." },
+      { at: 15.5, text: "Oxirgi dars tugashida esa yigirma sakkiztadan faqat o'n yettitasi qolgan." },
+      { at: 20.5, text: "Jami o'n bir o'quvchi darsda yo'q — tizim buni avtomatik hisoblab beradi." },
+    ],
+
+    /* 11 — DARS TAHLILI */
+    [
+      { at: 0.0, text: "Tizim darsni ham tahlil qiladi." },
+      { at: 2.8, text: "Kamera o'qituvchining faolligini, o'quvchilarning e'tiborini va telefon bilan chalg'ishini ko'radi." },
+      { at: 9.5, text: "Ovoz tahlili o'qituvchining gaplarini eshitadi va aytilgan har gap darsga oidmi yoki yo'qmi, shuni aniqlaydi." },
+      { at: 17.0, text: "Kamera va ovoz birga o'qituvchining dars o'tishini baholaydi." },
+      { at: 22.5, text: "Natijada o'qituvchining dars o'tish salohiyatiga baho beriladi va o'qituvchilar reytingi shakllanadi." },
+    ],
+
+    /* 12 — OTA-ONA ILOVASI */
     [
       { at: 0.0, text: "Ota-ona esa buni telefonida ko'radi." },
       { at: 3.0, text: "Farzandi kirgan va chiqqan vaqt, davomat foizi, bugungi darslar, va hodisa bo'lsa — kadr bilan bildirishnoma." },
       { at: 13.0, text: "Bu maktab bilan oila o'rtasidagi birinchi ishonchli aloqa." },
     ],
 
-    /* 10 — 179-MAKTAB */
+    /* 13 — 179-MAKTAB */
     [
       { at: 0.0, text: "Endi eng muhimi. Bu tizim hozir ishlab turibdi." },
-      { at: 4.5, text: "Toshkentdagi bir yetmish to'qqizinchi maktabda janjal, qurol, chekish va davomat detektorlari faol." },
+      { at: 4.5, text: "Toshkentdagi bir yetmish to'qqizinchi maktabda janjal, chekish va davomat detektorlari faol." },
       { at: 13.5, text: "Ekranda ko'rgan kadrlaringiz o'sha maktabdan olingan." },
     ],
 
-    /* 11 — NATIJALAR */
+    /* 14 — NATIJALAR */
     [
-      { at: 0.0, text: "Natija nima berdi?" },
+      { at: 0.0, text: "Natija nima beradi?" },
       { at: 2.0, text: "Hodisa soniyalar ichida aniqlanadi, qo'lda hisobot yozish yo'qoladi, har bir holat kadr bilan hujjatlashtiriladi." },
-      { at: 11.5, text: "Eng muhimi — ota-ona birinchi marta real vaqtda xabardor bo'ladi." },
+      { at: 11.5, text: "Eng muhimi — muassasa direktori va mas'ul xodimlar real vaqtda xabardor bo'ladi." },
     ],
 
-    /* 12 — BOZOR HAJMI */
+    /* 15 — BIZ NIMA BERAMIZ */
     [
-      { at: 0.0, text: "Bozorga o'tamiz." },
-      { at: 1.8, text: "To'liq qamrovda O'zbekiston ta'lim tizimi yiliga yetti yuz yigirma besh milliard so'mlik bozor beradi." },
-      { at: 10.5, text: "Bu oltmish bir million dollar. Hisob muassasa va o'quvchi sonidan chiqarilgan." },
+      { at: 0.0, text: "Xo'sh, biz muassasaga nima beramiz?" },
+      { at: 2.5, text: "Birinchi o'rinda — davomat. Yo'qlama face ID orqali, dars boshida ham, dars oxirida ham. Tizim xonadagi o'quvchilarni sanaydi va maktabga kelgan, lekin darsga kirmagan yoki darsdan chiqib ketganlarni avtomatik chiqaradi." },
+      { at: 8.5, text: "Ikkinchi — o'qituvchilar reytingi: dars o'tish sifatiga qarab o'qituvchilar ketma-ket baholanadi." },
+      { at: 15.0, text: "Uchinchi — xavfsizlik: qurol, janjal, chekish va qoldirilgan buyum real vaqtda aniqlanadi va mas'ulga yuboriladi." },
     ],
 
-    /* 13 — RAQOBAT */
+    /* 16 — YAKUN */
     [
-      { at: 0.0, text: "Raqobatchilar bor, lekin ular boshqa maydonda." },
-      { at: 4.0, text: "Global platformalar o'n barobar qimmat va bulutda ishlaydi. Uskuna vendorlarida ta'lim stsenariysi yo'q." },
-      { at: 13.0, text: "Mahalliy serverda, o'zbek tilida, ta'limga ixtisoslashgan yechim faqat bizda." },
-    ],
-
-    /* 14 — DAROMAD VA FOYDA */
-    [
-      { at: 0.0, text: "Endi eng qiziq savol: qancha foyda?" },
-      { at: 3.0, text: "Nolga chiqish nuqtasi bozorning bir foizidan ham past. Bu atigi to'qson muassasa." },
-      { at: 10.5, text: "Besh foiz qamrovda yillik daromad qirq besh milliard, sof foyda esa o'n yetti milliard so'mdan ortiq." },
-    ],
-
-    /* 15 — YAKUN */
-    [
-      { at: 0.0, text: "Xulosa uchta." },
+      { at: 0.0, text: "Xulosa ikkita." },
       { at: 1.8, text: "Talabni davlat yaratdi va muddat ikki ming yigirma yettinchi yil. Mahsulot tayyor va maktabda ishlayapti." },
-      { at: 11.0, text: "Bozor bo'sh. Savollaringizga javob berishga tayyormiz." },
+      { at: 11.0, text: "Savollaringizga javob berishga tayyormiz." },
     ],
   ],
 
@@ -183,7 +198,7 @@ export const UZ: InvestorCopy = {
     titleA: "Kameralar bor.",
     titleB: "Idrok yo'q.",
     sub: "Campus AI — ta'lim muassasalari uchun sun'iy intellekt asosidagi eko tizimi",
-    stats: ["muassasa bozorda", "o'quvchi va talaba", "yillik bozor hajmi", "maktabda ishlab turibdi"],
+    stats: ["muassasa bozorda", "o'quvchi va talaba", "maktabda ishlab turibdi"],
   },
 
   purpose: {
@@ -244,14 +259,14 @@ export const UZ: InvestorCopy = {
 
   threats: {
     kicker: "Muammo · xavfsizlik",
-    title: "Hodisa bo'ladi — lekin uni hech kim real vaqtda ko'rmaydi",
+    title: "Hodisa bo'ladi — lekin uni real vaqtda aniqlab, mas'ulga yetkazadigan tizim yo'q",
     items: [
       { name: "Jang va zo'ravonlik", text: "Hovlida, yo'lakda, tanaffusda. Avj olgandan keyin bilinadi.", cost: "Jarohat · sud · obro'" },
       { name: "Qurolli shaxs", text: "Hududga qurol bilan kirgan odam. Sekundlar hal qiladi.", cost: "Hayot xavfi" },
       { name: "Chekish", text: "Hudud chetidagi burchaklar. Takrorlanadi, hujjatlashtirilmaydi.", cost: "Sog'liq · intizom" },
-      { name: "Yong'in", text: "Tutun va olovning boshlanishi. Datchik ishlaguncha vaqt ketadi.", cost: "Mol-mulk · evakuatsiya" },
+      { name: "Qoldirilgan buyum", text: "Sinfda yoki yo'lakda egasiz qolgan sumka. Uni hech kim payqamaydi.", cost: "Hayot xavfi · evakuatsiya" },
     ],
-    unwatched: "hech kim ko'rmadi",
+    unwatched: "mas'ulga yuborilmadi",
     verdict: "Qaror aynan shu hodisalarni aniqlashni talab qiladi — lekin uni bajaradigan dastur yo'q.",
   },
 
@@ -314,13 +329,115 @@ export const UZ: InvestorCopy = {
     kicker: "Yechim · detektorlar",
     title: "Bular demo emas — ishlab turgan tizimning qaydlari",
     cases: [
-      { name: "Qurol aniqlandi", cam: "Moon darvoza", when: "15-09-2026 · 11:30", conf: "0.91" },
+      { name: "Qurollangan shaxs", cam: "2-FAYE KUCHA", when: "10-10-2026 · 12:37", conf: "" },
       { name: "Chekish aniqlandi", cam: "Camera 01", when: "14-09-2026 · 12:15", conf: "0.52" },
       { name: "Janjal aniqlandi", cam: "IP PTZ Camera", when: "09-09-2026 · 18:58", conf: "yuqori" },
+      { name: "Telefonda gaplashish", cam: "Camera 01", when: "20-10-2026 · 13:05", conf: "" },
+    ],
+    allTitle: "Tizim aniqlaydi",
+    all: [
+      "Janjal",
+      "Qurollangan shaxs",
+      "Pichoq va sovuq qurol",
+      "Agressiv harakat",
+      "Chekish",
+      "Telefon",
+      "Qoldirilgan buyum",
+      "Xonadagi o'quvchilar sanog'i",
+      "Davomat (yuz + xona)",
+      "Dars sifati va ovoz tahlili",
     ],
     moreTitle: "Boshqa detektorlar",
-    more: ["Yuz tanish", "Begona shaxs", "Yong'in va tutun", "Telefon bilan chalg'ish", "Odamlar sanog'i", "Kechikish"],
+    more: ["Yuz tanish", "Begona shaxs", "Yong'in va tutun", "Odamlar sanog'i", "Kechikish"],
     note: "Ishonch darajasi har bir kadrda hisoblanadi va hodisa kartasida saqlanadi.",
+  },
+
+  knife: {
+    kicker: "Texnologiya",
+    title: "Qurolni aniqlash",
+    sub: "Eng yuqori ustuvorlikdagi trevoga — bir soniya ham kechikmaydi",
+    live: "Jonli",
+    cam: "2-FAYE KUCHA",
+    when: "10.10.2026 · 12:37",
+    alertTitle: "Qurollangan shaxs aniqlandi — 2-FAYE KUCHA",
+    alertText: "Muassasa hududi · ustuvorlik: YUQORI · navbatchi va direktorga yuborildi",
+    sections: [
+      {
+        title: "Qanday ishlaydi",
+        text: "Obyekt aniqlash modeli (YOLO oilasi) kadrdagi qo'lda ushlangan xavfli predmetlarni — qurol, uzun metall buyum — shakli va konteksti bo'yicha tanib oladi. Model aynan ta'lim muassasasi sharoiti uchun — yo'lak, hovli, oshxona, sport zali — qayta sozlanadi.",
+      },
+      {
+        title: "Natija",
+        text: "Qurol ishlatilgunicha emas — kadrga tushishi bilanoq choralar ko'riladi.",
+      },
+      {
+        title: "Ustuvorlik va mas'uliyat",
+        text: "Signal bir vaqtda navbatchi, direktor va xavfsizlik xodimiga, kerak bo'lsa IIB inspektoriga yuboriladi. Har bir signal video kadr bilan keladi.",
+      },
+    ],
+    footer: "Campus AI xavfsizlik yadrosi",
+  },
+
+  abandoned: {
+    kicker: "Texnologiya",
+    title: "Qoldirilgan buyumni aniqlash",
+    sub: "Terrorizmga qarshi xalqaro standart chora",
+    live: "Jonli",
+    cam: "CAM 08 — 204-sinf xonasi",
+    when: "20.10.2026 · 14:15:33",
+    alertTitle: "Qoldirilgan buyum — CAM 08",
+    alertText: "204-sinf xonasi · 60 soniyadan ortiq harakatsiz · xavfsizlik xodimiga yuborildi",
+    search: {
+      title: "Egasini qidirish",
+      queryLabel: "Qidiruv kadri",
+      scanning: "Arxiv kameralaridan qidirilmoqda…",
+      found: "Topildi",
+      archiveLabel: "Arxiv kadri · 204-sinf xonasi",
+      ownerFound: "Sumka egasi topildi",
+      steps: [
+        { place: "Sinf xonasi", text: "Sumka bilan partada" },
+        { place: "Yo'lak", text: "Yo'lakdan o'tmoqda" },
+        { place: "Chiqish", text: "Binodan chiqib ketmoqda" },
+        { place: "Maktab hovlisi", text: "Hovlidan kirib kelgan" },
+      ],
+      result: "Tizim shu shaxsni boshqa kameralardan topib, uning yo'lini kadrlar bilan ko'rsatadi.",
+    },
+    sections: [
+      {
+        title: "Qanday ishlaydi",
+        text: "AI doimiy fon modelini yuritadi va kadrda yangi paydo bo'lgan statik obyektni — sumka, paket, quti — qayd qiladi. Agar obyekt egasidan ajralsa va belgilangan vaqt (masalan, 60 soniya) davomida harakatsiz qolsa — trevoga beriladi.",
+      },
+      {
+        title: "Natija",
+        text: "Tizim buyumni kim qoldirganini arxiv kadrida ko'rsatadi — evakuatsiya qarori tez qabul qilinadi.",
+      },
+      {
+        title: "Qayerda muhim",
+        text: "Asosiy kirish, yo'laklar, akt zali, oshxona, sport zali, sinf xonalari — olomon to'planadigan barcha joylar. Shubhali buyum uzoq vaqt e'tibordan chetda qolmaydi.",
+      },
+    ],
+    footer: "Campus AI xavfsizlik yadrosi",
+  },
+
+  attendance: {
+    kicker: "Yechim · davomat",
+    title: "Davomat — to'liq real, ikki manbaning solishtirishi",
+    sub: "Maktabda bor, lekin darsda yo'q o'quvchi — tizim buni o'zi topadi",
+    flow: [
+      { title: "Kirishda yuz orqali", text: "Kirishdagi kamera har o'quvchini yuzidan taniydi: 28 tadan 25 tasi yuz orqali o'tgan, 3 tasi o'tmagan — kelmagan.", tag: "Camera 01 · kirish" },
+      { title: "Birinchi dars", text: "Sinf kamerasi xonadagi o'quvchilarni sanaydi: 28 tadan 25 tasi o'tirgan.", tag: "Sinf kamerasi" },
+      { title: "Oxirgi dars tugashida", text: "Xuddi shu sinfda 28 tadan atigi 17 tasi qolgan.", tag: "Sinf kamerasi" },
+    ],
+    resultLabel: "o'quvchi darsdan yo'qolgan",
+    alertTitle: "Sinf davomati ogohlantirishi",
+    alertText: "Birinchi darsda 28 tadan 25 tasi o'tirgan edi, oxirgi dars tugashida 17 tasi qoldi. Jami 11 o'quvchi darsda yo'q: 3 tasi kelmagan, 8 tasi chiqib ketgan. Tizim buni avtomatik hisoblaydi.",
+    points: [
+      "Xonadagi o'quvchilar soni real vaqtda hisoblanadi",
+      "Yuz orqali o'tganlar bilan darsdagilar avtomatik solishtiriladi",
+      "Necha o'quvchi darsda emasligi avtomatik hisoblanadi",
+      "Qog'oz jurnal va qo'lda belgilash kerak emas",
+    ],
+    note: "Kadrlar real sinf kamerasidan, 20.10.2026. 11 = 28 − 17: 3 tasi kirishda yuz orqali o'tmagan (kelmagan), 8 tasi kun davomida chiqib ketgan.",
   },
 
   lesson: {
@@ -331,18 +448,48 @@ export const UZ: InvestorCopy = {
       "Dars davomidagi faollik va harakat dinamikasi",
       "Sinf bilan ishlash vaqti va darsning tuzilishi",
       "Davomiylik va dars boshlanish intizomi",
+      "Dars jarayonini ovoz bo'yicha tahlil qilish",
     ],
     studentTitle: "O'quvchi kesimida",
     student: [
       "Darsdagi e'tibor darajasi",
       "Telefon bilan chalg'ish holatlari",
-      "Darsga aloqasi bo'lmagan suhbatlar",
+      "Agressiv harakat va darsga aloqasi bo'lmagan suhbatlar",
       "Kayfiyat va holat dinamikasi",
     ],
     faceTitle: "Yuz bo'yicha tanish",
     faceText: "Davomat avtomatik yoziladi: kirish, chiqish, kechikish. Qog'oz jurnal kerak emas.",
     frameNote: "Dars vaqtida telefon aniqlandi · Camera 01",
-    note: "E'tibor ko'rsatkichi — hisoblangan qiymat, sensor o'lchovi emas. Buni ochiq aytamiz.",
+    note: "E'tibor ko'rsatkichi va dars bahosi — hisoblangan qiymat, sensor o'lchovi emas. Ovoz tahlili va reyting misoli namunaviy. Buni ochiq aytamiz.",
+    rank: {
+      title: "O'qituvchilar reytingi",
+      rows: [
+        { name: "Rahimova N.", value: 91 },
+        { name: "Yusupov A.", value: 84 },
+        { name: "Karimova D.", value: 79 },
+      ],
+    },
+    card: { role: "O'qituvchi", name: "Karimova Dilnoza", subject: "Ingliz tili · 5-B sinf", scoreLabel: "Umumiy ball" },
+    camTitle: "Kamera tahlili",
+    camChips: ["O'qituvchi faol", "Sinf e'tibori", "Telefon aniqlandi"],
+    voice: {
+      title: "Ovoz tahlili",
+      status: "Dars ovozi tahlil qilinmoqda",
+      lines: [
+        { who: "O'qituvchi", text: "Bugun biz hozirgi zamon sifatlarini takrorlaymiz.", onTopic: true },
+        { who: "Sinfdan", text: "Kecha futbol ko'rdingmi?", onTopic: false },
+        { who: "O'qituvchi", text: "Keling, misolni birgalikda yechib ko'ramiz.", onTopic: true },
+      ],
+      onLabel: "Darsga oid",
+      offLabel: "Darsga oid emas",
+      scoreTitle: "Dars o'tishi bahosi",
+      scores: [
+        { label: "Mavzuga muvofiqlik", value: 86 },
+        { label: "Tushuntirish va savol-javob", value: 78 },
+        { label: "Sinf e'tibori", value: 72 },
+      ],
+      verdict: "Dars o'tish sifati baholandi",
+    },
   },
 
   parentsApp: {
@@ -369,7 +516,6 @@ export const UZ: InvestorCopy = {
       { label: "Kirish nazorati", cam: "Camera 01", when: "14-09 · 14:52" },
     ],
     events: [
-      { type: "Qurol", when: "15 Sentabr, 11:30", cam: "Moon darvoza", conf: "0.91" },
       { type: "Chekish", when: "14 Sentabr, 12:15", cam: "Camera 01", conf: "52%" },
       { type: "Janjal", when: "9 Sentabr, 18:58", cam: "IP PTZ Camera", conf: "yuqori" },
       { type: "Kechikish", when: "11 Sentabr, 10:44", cam: "Camera 01", conf: "100%" },
@@ -385,72 +531,52 @@ export const UZ: InvestorCopy = {
   },
 
   results: {
-    kicker: "Real natija",
-    title: "Nima o'zgardi",
+    kicker: "Natija",
+    title: "Nima beradi",
     gains: [
       { num: "soniyalar", label: "Hodisani aniqlash", note: "Ilgari — yozuvni keyin ko'rish" },
       { num: "avtomatik", label: "Hodisa hujjati", note: "Kadr, video, vaqt, joy" },
-      { num: "real vaqt", label: "Ota-ona xabardorligi", note: "Ilgari — kechqurun, og'zaki" },
+      { num: "real vaqt", label: "Direktor va mas'ul xodimlar xabardorligi", note: "Ilgari — kech, og'zaki" },
       { num: "0", label: "Yangi kamera", note: "Mavjud uskuna ishlatiladi" },
     ],
     verdict: "Muassasa allaqachon to'lagan uskuna birinchi marta natija bera boshladi.",
-    note: "⚠️ Bu slayd kengaytirilishi kerak: pilot muddati, aniqlangan hodisalar soni va aniqlik foizi haqiqiy panel ma'lumoti bilan to'ldirilsin.",
+    note: "",
   },
 
-  market: {
-    kicker: "Bozor hajmi",
-    title: "Pastdan yuqoriga hisob — muassasa va o'quvchi soni bo'yicha",
-    tamLabel: "Butun ta'lim tizimi, to'liq qamrovda",
-    tamNote: "Yillik takrorlanuvchi daromad",
-    segNames: ["Umumta'lim maktablari", "Kollej va texnikumlar", "Oliy ta'lim muassasalari"],
-    segCols: { inst: "muassasa", students: "o'quvchi", price: "tarif / oyiga", monthly: "to'liq qamrovda / oy" },
-    source: "Muassasa va o'quvchi soni — Statistika qo'mitasi, 2025/2026 o'quv yili. Tarif va daromad — model bo'yicha hisob.",
-  },
-
-  rivals: {
-    kicker: "Raqobat",
-    title: "Ular boshqa maydonda o'ynaydi",
-    us: "Campus AI",
-    list: [
-      { name: "Global platformalar", note: "Verkada, Avigilon" },
-      { name: "Uskuna vendorlari", note: "Hikvision, Dahua" },
-      { name: "Mahalliy integratorlar", note: "SKUD, CCTV" },
+  offer: {
+    kicker: "Biz nima beramiz",
+    title: "Uchta asosiy qiymat",
+    items: [
+      {
+        title: "Davomat",
+        points: [
+          "Face ID yo'qlamasi: dars boshida va dars oxirida",
+          "Xonadagi o'quvchilar soni har darsda sanaladi",
+          "Maktabga kelgan, lekin darsga kirmagan yoki chiqib ketganlar avtomatik chiqadi",
+          "Qog'oz jurnal kerak emas",
+        ],
+      },
+      { title: "Reyting", points: [] },
+      {
+        title: "Xavfsizlik",
+        points: [
+          "Qurol, janjal, chekish, qoldirilgan buyum",
+          "Real vaqtda aniqlash",
+          "Direktor va mas'ul xodimga darhol xabar",
+        ],
+      },
     ],
-    rows: [
-      "Muassasa serverida (on-prem)",
-      "Internetsiz ishlaydi",
-      "O'zbek tilida interfeys va ovoz",
-      "Ta'limga ixtisoslashgan detektorlar",
-      "Dars va o'quvchi e'tibori tahlili",
-      "Ota-onalar ilovasi",
-      "2026-yil qaroriga moslik",
-      "Mavjud kameraga ulanadi",
-      "O'quvchiga hisoblangan tarif",
-    ],
-    legend: { yes: "bor", partial: "qisman", no: "yo'q" },
-    edgeTitle: "Uchta hal qiluvchi ustunlik",
-    edges: [
-      "Narx toifasi 10× past — global platformalar bitta kamera uchun yiliga 199–1 799 $ litsenziya oladi",
-      "Mahalliy ma'lumotda o'qitilgan modellar va o'zbek tili",
-      "Qaror talab qilgan hisobotni tayyor holda beradi",
-    ],
-    note: "Raqobatchilar imkoniyatlari ochiq manbalar asosida baholangan.",
-  },
-
-  profit: {
-    kicker: "Daromad va foyda",
-    title: "Bozorning bir foizida ham foyda bor",
-    cols: { share: "Qamrov", inst: "Muassasa", revenue: "Yillik daromad", profit: "Sof foyda", margin: "Marja" },
-    highlight: "Bir foiz qamrov — bu atigi yuzga yaqin muassasa.",
-    breakevenLabel: "Nolga chiqish nuqtasi",
-    unitTitle: "Bitta mijoz",
-    unitLabels: {
-      arpu: "O'rtacha oylik to'lov",
-      margin: "Yalpi marja",
-      payback: "Qoplanish",
-      ltv: "LTV / CAC",
+    stats: { start: "Dars boshida xonada", end: "Dars oxirida xonada", gone: "Kelgan, lekin darsda yo'q" },
+    rank: {
+      caption: "O'qituvchilar reytingi",
+      rows: [
+        { name: "Rahimova N.", subject: "Matematika", value: 91 },
+        { name: "Yusupov A.", subject: "Fizika", value: 84 },
+        { name: "Karimova D.", subject: "Ingliz tili", value: 79 },
+        { name: "Saidov B.", subject: "Tarix", value: 73 },
+      ],
     },
-    note: "Xarajat uch qismdan: doimiy jamoa, har muassasaga qo'shiladigan xizmat va daromadga proporsional sotuv. Model bo'yicha hisob.",
+    note: "Reyting misoli namunaviy. Hammasi muassasaning o'z serverida, mavjud kameralar ustida ishlaydi.",
   },
 
   finale: {
@@ -460,11 +586,10 @@ export const UZ: InvestorCopy = {
     points: [
       "Qonun majburiyati — muddati 2027-yil",
       "Mahsulot tayyor va 179-maktabda ishlayapti",
-      "Ta'limga ixtisoslashgan mahalliy raqobatchi yo'q",
     ],
     ctaTalk: "Bog'lanish",
     ctaDeck: "Mahsulot taqdimoti",
     ctaSite: "Sayt",
-    foot: "Bozor raqamlari — Statistika qo'mitasi · daromad hisobi — model bo'yicha",
+    foot: "Campus AI · ta'lim muassasalari uchun sun'iy intellekt",
   },
 };

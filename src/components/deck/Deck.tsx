@@ -97,7 +97,9 @@ export default function Deck<T extends DeckCopyBase>({ deck }: { deck: DeckDefin
   const key = `${lang}:${slide}:${runId}`;
   if (lastKey.current !== key) {
     lastKey.current = key;
-    freshRef.current = !seen.current.has(slide);
+    /* Orqaga qaytilganda ham slayd qayta o'ynaydi: ovoz har safar boshidan
+       o'qiladi va animatsiya u bilan sinxron bo'lishi kerak. */
+    freshRef.current = true;
     seen.current.add(slide);
   }
   const fresh = !staticMode && freshRef.current;

@@ -42,7 +42,7 @@ import { useStudentLabel } from "@/hooks/useStudentLabel";
 import { useAppStore } from "@/store/useAppStore";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { Missing, MissingBlock } from "@/components/common/Missing";
-import type { InstitutionRow, Metric } from "@/lib/institutionRows";
+import type { InstitutionRow, Metric } from "@/lib/nvr/institutionRows";
 import { csvName, downloadCsv, sortRows, sumInstitutions, toCsv, type SortDir } from "@/lib/statistics";
 import { DataBadge } from "@/components/dashboard/DataBadge";
 import { CellBar, KpiTile, StatPanel, StatusPill, Th, fmt, rateTone } from "@/components/common/panels";

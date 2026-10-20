@@ -17,8 +17,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import { isoDate } from "@/hooks/useStudentDay";
 import { useNvrAttendance } from "@/hooks/useNvrAttendance";
 import type { PersonType } from "@/lib/api";
-import type { PersonBrief } from "@/lib/studentStats";
-import { absenceSnapshot, subscribeAbsence, summarizeAbsence, type AbsenceSummary } from "@/lib/absenceReasons";
+import type { PersonBrief } from "@/lib/nvr/studentStats";
+import { absenceSnapshot, subscribeAbsence, summarizeAbsence, type AbsenceSummary } from "@/lib/nvr/absenceReasons";
 
 export const BOARD_TYPES: PersonType[] = ["teacher", "staff", "student"];
 

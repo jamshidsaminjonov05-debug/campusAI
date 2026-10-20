@@ -1,7 +1,7 @@
 /**
  * SERVER SOATI — "bugun" hisoblashda ishlatiladigan asos.
  *
- * `GUIDE.md` ("Vaqt zonasi bitta joydan — kodingizga tegadi"): "bugun"ni
+ * `FRONTEND.md` ("Vaqt zonasi bitta joydan — kodingizga tegadi"): "bugun"ni
  * brauzer zonasidan olmang — panel boshqa mintaqadan ochilsa (yoki
  * qurilmaning soati noto'g'ri sozlangan bo'lsa) hisoblangan "bugun"
  * serverdan bir kun farq qilib, ro'yxat SABABSIZ bo'sh chiqadi. kuzatuv posti

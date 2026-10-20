@@ -29,7 +29,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { keyOf, originOf } from "../../../config/services.mjs";
-import { SESSION_COOKIE } from "@/lib/nvrSession";
+import { SESSION_COOKIE } from "@/lib/nvr/nvrSession";
 
 // Har so'rov jonli bo'lsin — Next javobni keshlab qo'ymasin
 export const dynamic = "force-dynamic";

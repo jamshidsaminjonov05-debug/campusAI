@@ -9,11 +9,12 @@ import { CameraQuickView } from "@/components/cameras/CameraQuickView";
 import { BuildingInterior } from "@/components/dashboard/BuildingInterior";
 import { DEFAULT_INSTITUTION_ID, INSTITUTIONS, institutionById } from "@/config/institutions";
 import { CAMPUS_CENTER, CAMPUS_ZOOM } from "@/config/campusPoints";
-import { buildingAnchors, loadCampusAreas, type CampusArea, type CampusBuilding } from "@/lib/campusAreas";
+import { buildingAnchors, loadCampusAreas, type CampusArea, type CampusBuilding } from "@/lib/nvr/campusAreas";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
-import { useDetectionFeed } from "@/hooks/useDetectionFeed";
+import { useDetections } from "@/hooks/useDetections";
+import { fromNvr, type DetectionEvent } from "@/lib/nvr/detectionEvents";
 import { cameraHeading, placementFor } from "@/config/cameraPlacements";
-import { DETECTION_BY_ID } from "@/lib/detectionTypes";
+import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
 
 /**
  * 🔴 **BOSHQARUV PANELINING XARITASI — Hodisalar HUD'idagi bilan AYNI
@@ -148,7 +149,19 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
   const anchors = useMemo(() => (area ? buildingAnchors(area) : []), [area]);
 
   const nvr = useNvrChannels();
-  const feed = useDetectionFeed();
+  /* ⚠️ Ilgari `useDetectionFeed()` edi — u BUGUNGI kunning HAMMASINI
+     sahifama-sahifa (6+3 so'rov, megabaytlab JSON) o'qiydi, xaritaga esa
+     faqat eng yangi 12 ta nishon kerak. Endi qo'ng'iroq/radar bilan AYNI
+     yengil kesh (`all`, 100) — Boshqaruv panelidan kunlik skan olib tashlandi. */
+  const recent = useDetections({ category: "all", limit: 100 });
+  const feed = useMemo(() => {
+    const events: DetectionEvent[] = [];
+    for (const e of recent.events) {
+      const d = fromNvr(e);
+      if (d) events.push(d);
+    }
+    return { events };
+  }, [recent.events]);
   /* Oqim SHU SAHIFADA ochiladi — bo'lim almashmaydi (`CameraQuickView`). */
   const [camChannel, setCamChannel] = useState<string | null>(null);
 
@@ -327,7 +340,7 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
       <button
         onClick={() => setOverview((v) => !v)}
         title={overview ? tm.campusHint : tm.overviewHint}
-        className={`absolute right-3 top-3 z-30 flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold backdrop-blur-xl transition-colors ${
+        className={`absolute right-3 top-3 z-30 flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition-colors ${
           overview
             ? "border-ice/50 bg-ice/20 text-ice-bright"
             : "border-white/10 bg-[#0C1020]/80 text-slate-200 hover:text-white"

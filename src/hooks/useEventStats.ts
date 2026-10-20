@@ -24,7 +24,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getEventStats, listFaces, type NvrEventStats } from "@/lib/nvrApi";
+import { getEventStats, listFaces, liveInterval, type NvrEventStats } from "@/lib/nvr/nvrApi";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 
 export interface StatsRange {
@@ -138,9 +138,12 @@ export function summarizeStats(d?: NvrEventStats): Omit<EventStatsView, "isLoadi
   };
 }
 
-/** Oraliqsiz (butun tarix) so'rov og'irroq va sekin o'zgaradi — kamroq yangilanadi. */
+/** Oraliqsiz (butun tarix) so'rov og'irroq va sekin o'zgaradi — kamroq yangilanadi.
+ *  Oraliqlisini SSE ulangan paytda `useLiveSync` o'zi yangilaydi (polling — zaxira). */
 const timing = (ranged: boolean) =>
-  ranged ? { refetchInterval: 60_000, staleTime: 45_000 } : { refetchInterval: 5 * 60_000, staleTime: 4 * 60_000 };
+  ranged
+    ? { refetchInterval: liveInterval(2 * 60_000, 5 * 60_000), staleTime: 90_000 }
+    : { refetchInterval: 10 * 60_000, staleTime: 8 * 60_000 };
 
 export function useEventStats({ from, to, enabled = true }: StatsRange = {}): EventStatsView {
   const q = useQuery({

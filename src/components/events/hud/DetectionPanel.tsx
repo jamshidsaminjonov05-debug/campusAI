@@ -1,11 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, ScanFace, ShieldAlert, X } from "lucide-react";
-import { SEVERITY_COLOR } from "@/lib/alertTypes";
-import type { DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_BY_ID, type DetectionId } from "@/lib/detectionTypes";
+import { SEVERITY_COLOR } from "@/lib/nvr/alertTypes";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
+import { DETECTION_BY_ID, type DetectionId } from "@/lib/nvr/detectionTypes";
 import { useMemo } from "react";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
-import { eventChannel } from "@/lib/eventCamera";
+import { eventChannel } from "@/lib/nvr/eventCamera";
 
 interface DetectionPanelProps {
   /** Footer'da tanlangan detektor (`null` — begona shaxs ogohlantirish rejimi). */

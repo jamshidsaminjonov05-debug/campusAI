@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Clock, Prohibit, UsersThree } from "@phosphor-icons/react";
 import { useNvrAttendance, useNvrAttendanceRange, attDay } from "@/hooks/useNvrAttendance";
 import { EventDossier } from "@/components/detections/EventDossier";
-import { saveAttendanceSettings, type NvrAttendanceSettings } from "@/lib/nvrApi";
+import { saveAttendanceSettings, type NvrAttendanceSettings } from "@/lib/nvr/nvrApi";
 import { fmt } from "@/components/common/panels";
 import { AttendanceDrilldown } from "./AttendanceDrilldown";
 import { useT } from "@/i18n";

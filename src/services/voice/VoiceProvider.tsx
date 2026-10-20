@@ -1,7 +1,7 @@
 import { createContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { INSTITUTIONS } from "@/config/institutions";
-import { fullRegionName } from "@/lib/institutionRows";
+import { fullRegionName } from "@/lib/nvr/institutionRows";
 import { api } from "@/lib/api";
 import { voiceApi } from "./VoiceService";
 import { InsecureContextError, MicPermissionDeniedError, VoiceRecorder } from "./VoiceRecorder";

@@ -10,7 +10,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { listChannels, type NvrChannel } from "@/lib/nvrApi";
+import { listChannels, type NvrChannel } from "@/lib/nvr/nvrApi";
 import type { CameraOut } from "@/lib/api";
 
 /** Kanal → backend `CameraOut` ko'rinishi. */

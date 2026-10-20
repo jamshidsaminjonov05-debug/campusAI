@@ -1,13 +1,13 @@
 {
  "texts": [
   "The first problem is safety.",
-  "A fight in the yard, an armed person on the grounds, a student smoking, a fire starting.",
-  "All of it reaches the camera, and nobody sees it in real time."
+  "A fight in the yard, an armed person on the grounds, a student smoking, a suspicious bag left in a classroom.",
+  "All of it reaches the camera, but there is no system that detects it in real time and sends it to the person responsible."
  ],
- "duration": 10.79,
+ "duration": 14.89,
  "offsets": [
   0.25,
-  2.31,
-  7.25
+  2.16,
+  8.43
  ]
 }

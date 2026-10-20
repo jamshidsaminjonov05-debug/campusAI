@@ -10,8 +10,8 @@
  * yuritiladi va o'sha kun sanasi qaytariladi — panel uni ochiq yozadi,
  * "bugun 0 ta" degan aldamchi xulosa chiqmaydi.
  */
-import type { DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
+import { DETECTION_TYPES, type DetectionId } from "@/lib/nvr/detectionTypes";
 
 /** Xavfli deb hisoblanadigan jiddiylik darajalari. */
 const DANGEROUS = new Set(["critical", "high"]);

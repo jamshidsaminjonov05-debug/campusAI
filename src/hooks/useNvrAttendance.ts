@@ -24,7 +24,7 @@ import {
   type NvrAttendanceStatus,
   type NvrAttendanceSummary,
   type NvrPersonRole,
-} from "@/lib/nvrApi";
+} from "@/lib/nvr/nvrApi";
 import { nowAdjusted, setServerClockFromIso } from "@/lib/serverClock";
 
 /** `YYYY-MM-DD` — SERVER zonasidan (`lib/serverClock.ts`), brauzer emas. */
@@ -34,7 +34,7 @@ export function attDay(d = nowAdjusted()): string {
 
 /**
  * Ilova ochilganda BIR MARTA server soatini so'raydi va brauzer bilan
- * farqni saqlaydi (`GUIDE.md`, "Vaqt zonasi bitta joydan — kodingizga
+ * farqni saqlaydi (`FRONTEND.md`, "Vaqt zonasi bitta joydan — kodingizga
  * tegadi"). `App.tsx`da bir marta chaqiriladi. Server bu manzilni hali
  * bermasa (eski versiya) yoki so'rov muvaffaqiyatsiz bo'lsa — jim
  * o'tkazib yuboriladi, "bugun" avvalgidek brauzer soatidan hisoblanadi.

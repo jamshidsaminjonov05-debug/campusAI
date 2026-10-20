@@ -1,13 +1,17 @@
 {
  "texts": [
-  "So what changed?",
-  "Incidents are detected in seconds, manual reporting disappears, and every case is documented with a frame.",
-  "And most importantly, parents are informed in real time for the first time."
+  "The system also analyses the lesson itself.",
+  "The camera sees the teacher's activity, the students' attention, and phone distraction.",
+  "Voice analysis listens to what the teacher says and decides whether each statement is relevant to the lesson.",
+  "Camera and voice together rate how the teacher runs the lesson.",
+  "As a result, each teacher's ability to run a lesson is rated and a teacher ranking is formed."
  ],
- "duration": 12.01,
+ "duration": 22.65,
  "offsets": [
   0.25,
-  1.62,
-  7.51
+  3.16,
+  7.95,
+  13.74,
+  17.27
  ]
 }

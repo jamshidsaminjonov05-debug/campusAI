@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sortRows, sumInstitutions, sumRegions } from "./statistics";
-import type { InstitutionRow, RegionRow } from "@/lib/institutionRows";
+import type { InstitutionRow, RegionRow } from "@/lib/nvr/institutionRows";
 
 /**
  * ⚠️ **BU FAYL HALI ISHGA TUSHIRILMAGAN** (2026-09-06 da yozilgan).

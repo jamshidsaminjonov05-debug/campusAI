@@ -19,7 +19,7 @@ import {
   type NvrPerson,
   type NvrPersonPayload,
   type NvrPersonRole,
-} from "@/lib/nvrApi";
+} from "@/lib/nvr/nvrApi";
 
 export function useNvrPeople(
   q: { role?: NvrPersonRole; search?: string; klass?: string; limit?: number; offset?: number } = {}

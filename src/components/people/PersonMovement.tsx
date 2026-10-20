@@ -4,8 +4,8 @@ import { DoorOpen, SignIn, SignOut, MapPin } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { isoDate, useStudentDay } from "@/hooks/useStudentDay";
 import type { PersonOut } from "@/lib/api";
-import { parseCameraName, placeLabel } from "@/lib/cameraNaming";
-import { buildMovement, type MovementPoint } from "@/lib/studentStats";
+import { parseCameraName, placeLabel } from "@/lib/nvr/cameraNaming";
+import { buildMovement, type MovementPoint } from "@/lib/nvr/studentStats";
 
 const KIND_STYLE: Record<MovementPoint["kind"], { color: string; Icon: typeof SignIn }> = {
   entry: { color: "#34D399", Icon: SignIn },

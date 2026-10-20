@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, BellRinging, Checks, ImageBroken } from "@phosphor-icons/react";
+import { Bell, BellRinging, BellSlash, Checks, ImageBroken } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { detectSubject, nvrDateTime, nvrImageUrl, type NvrEvent } from "@/lib/nvrApi";
-import { isSeen, markSeen, seenVersion, subscribeSeen, unseenOf } from "@/lib/detectionSeen";
-import { LEVEL_TONE, detectionLevel } from "@/lib/detectionLevel";
+import { detectSubject, nvrDateTime, nvrImageUrl, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { isSeen, markSeen, seenVersion, subscribeSeen, unseenOf } from "@/lib/nvr/detectionSeen";
+import { LEVEL_TONE, detectionLevel } from "@/lib/nvr/detectionLevel";
+import { isNotifyMuted, setNotifyMuted, subscribeNotifyMuted } from "@/lib/nvr/notifyMute";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
 import type { Messages } from "@/i18n";
@@ -87,19 +88,28 @@ export function NotificationBell() {
 
   // `localStorage` store'iga obuna — sahifada "ko'rildi" bo'lsa rozetka kamayadi
   const version = useSyncExternalStore(subscribeSeen, seenVersion, () => 0);
+  /** Jim rejimi — `DetectionToast.tsx`dagi ekran-usti karta bilan AYNI global holat. */
+  const muted = useSyncExternalStore(subscribeNotifyMuted, isNotifyMuted, () => false);
   /* Ro'yxatda O'QILGANLAR ham turadi — ular RANGSIZ bo'lib qoladi.
      Ilgari faqat ko'rilmaganlar chizilardi va operator xabarni bosishi bilan
-     u ro'yxatdan YO'QOLARDI: nima bosganini qayta ko'ra olmasdi. */
+     u ro'yxatdan YO'QOLARDI: nima bosganini qayta ko'ra olmasdi.
+     🔵 JIM REJIMIDA yangi (haqiqatda ko'rilmagan) qatorlar ham RANGSIZ
+     chiqadi — 2026-09-18, foydalanuvchi so'rovi: "bossam ... alert
+     rangsiz bo'lib qoladi". ⚠️ Bu `markSeen()` CHAQIRMAYDI — `isSeen()`
+     holatining o'zi o'zgarmaydi, faqat KO'RINISH muzlanadi: jim rejimi
+     o'chirilsa, hali chindan bosilmagan qatorlar yana yorqin bo'lib
+     qaytadi (operator ularni haqiqatan ko'rmagan). */
   const rows = useMemo(
-    () => events.slice(0, MAX_ROWS).map((ev) => ({ ev, seen: isSeen(String(ev.id)) })),
+    () => events.slice(0, MAX_ROWS).map((ev) => ({ ev, seen: isSeen(String(ev.id)) || muted })),
     // `version` — store o'zgarganini bildiruvchi yagona signal
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, version]
+    [events, version, muted]
   );
+  /** Jim bo'lsa qo'ng'iroq "jaranglamaydi" — rozetka va qizil halqa chizilmaydi. */
   const unseenCount = useMemo(
-    () => unseenOf(events).length,
+    () => (muted ? 0 : unseenOf(events).length),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, version]
+    [events, version, muted]
   );
 
   const measure = useCallback(() => {
@@ -173,14 +183,22 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t.notify.title}
         aria-expanded={open}
-        title={has ? t.notify.hint(unseenCount) : t.notify.empty}
+        title={muted ? t.notify.mutedHint : has ? t.notify.hint(unseenCount) : t.notify.empty}
         className={`relative grid h-9 w-9 place-items-center rounded-xl border transition-colors ${
           has
             ? "border-[#F43F5E]/40 bg-[#F43F5E]/10 text-[#FF8FA3] hover:border-[#F43F5E]/70"
             : "border-white/[0.08] bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-slate-100"
         }`}
       >
-        {has ? <BellRinging size={17} weight="fill" /> : <Bell size={17} weight="duotone" />}
+        {/* Jim bo'lsa DOIM chizilgan qo'ng'iroq — operator oyna ochmasdan
+            ham "hozir jim" ekanini bilsin (foydalanuvchi so'rovi). */}
+        {muted ? (
+          <BellSlash size={17} weight="duotone" />
+        ) : has ? (
+          <BellRinging size={17} weight="fill" />
+        ) : (
+          <Bell size={17} weight="duotone" />
+        )}
         {has && (
           <span
             className="absolute -right-1 -top-1 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#F43F5E] px-1
@@ -213,21 +231,42 @@ export function NotificationBell() {
             <header className="mb-2 flex flex-none items-baseline gap-2">
               <p className="text-[10px] uppercase tracking-wider text-ice-cyan/70">{t.notify.title}</p>
               <span className="truncate text-[9.5px] text-slate-500">
-                {has ? t.notify.hint(unseenCount) : t.notify.emptyHint}
+                {muted ? t.notify.mutedHint : has ? t.notify.hint(unseenCount) : t.notify.emptyHint}
               </span>
-              {has && (
-                /* "Hammasini o'qildi" — ilgari faqat ikonka edi va nima
-                   qilishi tushunarsiz edi; endi YOZUVI ham bor. */
+              <div className="ml-auto flex flex-none items-center gap-1.5">
+                {has && (
+                  /* "Hammasini o'qildi" — ilgari faqat ikonka edi va nima
+                     qilishi tushunarsiz edi; endi YOZUVI ham bor. */
+                  <button
+                    type="button"
+                    onClick={() => markSeen(events.map((e) => String(e.id)))}
+                    title={t.notify.markAll}
+                    className="flex flex-none items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 text-[9.5px] font-semibold text-slate-300 transition-colors hover:border-ice/50 hover:text-ice-bright"
+                  >
+                    <Checks size={13} weight="bold" />
+                    {t.notify.markAllShort}
+                  </button>
+                )}
+                {/* 🔵 JIM/YOQISH TUGMASI (2026-09-18, foydalanuvchi so'rovi:
+                    "hodisa aniqlansa ham alert chiqmaydigan qiladigan
+                    tugma qo'shishing kerak"). `DetectionToast.tsx`dagi
+                    ekran-usti karta va ovoz shu YERDAN boshqariladi —
+                    ikkalasi bitta global holatni o'qiydi. */}
                 <button
                   type="button"
-                  onClick={() => markSeen(events.map((e) => String(e.id)))}
-                  title={t.notify.markAll}
-                  className="ml-auto flex flex-none items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 text-[9.5px] font-semibold text-slate-300 transition-colors hover:border-ice/50 hover:text-ice-bright"
+                  onClick={() => setNotifyMuted()}
+                  title={muted ? t.notify.unmute : t.notify.mute}
+                  aria-pressed={muted}
+                  className={`flex flex-none items-center gap-1 rounded-lg border px-1.5 py-0.5 text-[9.5px] font-semibold transition-colors ${
+                    muted
+                      ? "border-amber-400/40 bg-amber-400/10 text-amber-300 hover:border-amber-400/70"
+                      : "border-white/[0.1] bg-white/[0.05] text-slate-300 hover:border-ice/50 hover:text-ice-bright"
+                  }`}
                 >
-                  <Checks size={13} weight="bold" />
-                  {t.notify.markAllShort}
+                  <BellSlash size={13} weight={muted ? "fill" : "bold"} />
+                  {muted ? t.notify.muted : ""}
                 </button>
-              )}
+              </div>
             </header>
 
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">

@@ -29,7 +29,7 @@ import { useStudentLabel } from "@/hooks/useStudentLabel";
 import { csvName, downloadCsv, sortRows, sumRegions, toCsv, type SortDir } from "@/lib/statistics";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { Missing } from "@/components/common/Missing";
-import type { Metric } from "@/lib/institutionRows";
+import type { Metric } from "@/lib/nvr/institutionRows";
 import { DataBadge } from "@/components/dashboard/DataBadge";
 import { AXIS, CellBar, StatPanel, StatusPill, TOOLTIP, Th, fmt, rateTone } from "@/components/common/panels";
 

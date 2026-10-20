@@ -36,7 +36,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
-import { nvrChannelSnapshotUrl, nvrChannelStreamUrl } from "@/lib/nvrApi";
+import { nvrChannelSnapshotUrl, nvrChannelStreamUrl } from "@/lib/nvr/nvrApi";
 import { CameraStreamModal } from "./CameraStreamModal";
 
 export function CameraQuickView({

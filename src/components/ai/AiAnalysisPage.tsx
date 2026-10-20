@@ -13,7 +13,7 @@ import { ARRIVAL_PERIODS, localDay, periodRange, type ArrivalsOptions } from "@/
 import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { listEvents, nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { listEvents, liveInterval, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
 
@@ -99,7 +99,7 @@ export function AiAnalysisPage() {
       >;
     },
     staleTime: 45_000,
-    refetchInterval: 60_000,
+    refetchInterval: liveInterval(2 * 60_000, 5 * 60_000),
   });
 
   /** Tur bo'yicha kesim — server sonlari + haqiqiy kadrlar. */

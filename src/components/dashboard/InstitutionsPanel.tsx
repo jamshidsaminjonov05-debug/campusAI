@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Buildings, MagnifyingGlass, UsersThree, VideoCamera } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
-import { searchInstitutionRows, type InstitutionRow } from "@/lib/institutionRows";
+import { searchInstitutionRows, type InstitutionRow } from "@/lib/nvr/institutionRows";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { useAppStore } from "@/store/useAppStore";
 import { DashPanel } from "./DashPanel";

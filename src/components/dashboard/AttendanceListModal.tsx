@@ -43,8 +43,8 @@ import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventVideo } from "@/components/detections/EventVideo";
 import { AbsenceReasonModal } from "./AbsenceReasonModal";
-import type { PersonBrief } from "@/lib/studentStats";
-import type { NvrAttendanceRow, NvrAttendanceSettings, NvrAttendanceStatus } from "@/lib/nvrApi";
+import type { PersonBrief } from "@/lib/nvr/studentStats";
+import { nvrEventVideoUrl, type NvrAttendanceRow, type NvrAttendanceSettings, type NvrAttendanceStatus } from "@/lib/nvr/nvrApi";
 
 /**
  * Holat RANGI — Statistikadagi davomat jadvali bilan bir xil.
@@ -840,7 +840,10 @@ function AttendanceQuickView({
                 alt={r.full_name}
                 eager
               />
-              <EventVideo eventId={r.event_id} />
+              {/* Davomat yozuvi doim kuzatuv postining O'Z hodisasi
+                  (2-versiya bunday ro'yxatga umuman qo'shilmaydi) —
+                  raqam ko'rinishidagi `nvrEventVideoUrl()` yetarli. */}
+              <EventVideo eventId={r.event_id} videoUrl={nvrEventVideoUrl(r.event_id)} />
             </div>
           ) : (
             <p className="rounded-lg border border-white/[0.06] bg-white/[0.02] py-6 text-center text-[11.5px] text-slate-500">

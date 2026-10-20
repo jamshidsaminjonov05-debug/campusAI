@@ -19,8 +19,9 @@ import {
   type NvrCategory,
   type NvrEvent,
   type NvrQueryCategory,
-} from "@/lib/nvrApi";
-import { listWeapon2Alerts, listWeapon2Cameras, weapon2ToNvrEvent } from "@/lib/weapon2Api";
+} from "@/lib/nvr/nvrApi";
+import { listWeapon2Alerts, listWeapon2Cameras, weapon2ToNvrEvent } from "@/lib/nvr/weapon2Api";
+import { listJanjal2Alerts, listJanjal2Cameras, janjal2ToNvrEvent } from "@/lib/nvr/janjal2Api";
 
 export const NVR_CATEGORIES: NvrCategory[] = ["face", "gun", "janjal", "smoking"];
 
@@ -42,8 +43,27 @@ function tabFilter(tab: NvrTab): (e: NvrEvent) => boolean {
   return () => true;
 }
 
-/** Bitta o'tishning chegarasi — `FRONTEND.md` 4-A dagi mezon (45 soniya). */
-const VISIT_GAP_MS = 45_000;
+/**
+ * Bitta o'tishning chegarasi — `FRONTEND.md` 4-A dagi mezon.
+ *
+ * 🔴 **45s → 180s (2026-09-18, foydalanuvchi xabar qildi: "hodisalar
+ * nima sababdan 1 daqiqa 30 soniya keyin ham kelyabdi").** Sabab —
+ * mos kelmay qolgan raqam: server (backend) `group=true` uchun bu
+ * mezonni ALLAQACHON **2026-09-03 da 45'dan 180 soniyaga ko'targan edi**
+ * (`FRONTEND.md` 4-A: "eng ko'p uchraydigan tanaffus **46–90 soniya** —
+ * eski 45 soniyalik oynadan tashqarida qolib, bitta odam jurnalda
+ * o'nlab kartochka bo'lib chiqardi"), lekin BU FAYLDAGI qiymat
+ * yangilanmay, eski 45 000 da qolib ketgan edi.
+ *
+ * Oqibat: kamera oldida turib qolgan (qorovul, gaplashayotganlar) odam
+ * 46–90 soniyadan keyin YANA kadr yuborsa — SERVER buni HALI HAM o'sha
+ * o'tishning davomi deb hisoblardi (180s ichida), lekin bizning JONLI
+ * (SSE) birlashtiruvchimiz 45s'dan keyin kelgan kadrni YANGI, ALOHIDA
+ * o'tish deb qo'shib qo'yardi — ya'ni bitta odamning davomiy turishi
+ * ekranda "yana bir hodisa 90 soniyadan keyin ham kelyapti" bo'lib
+ * ko'rinardi. Endi ikkalasi (server va klient) BIR XIL 180 soniya.
+ */
+const VISIT_GAP_MS = 180_000;
 
 const ms = (iso: string) => new Date(iso).getTime();
 
@@ -176,14 +196,19 @@ export interface NvrEventsOptions {
    * ⚠️ **"2-VERSIYA"** (2026-09-09, foydalanuvchi so'rovi: "ikki xil
    * sahifa yaratishing shart emas, 2-versiya bosilganda TO'LIQ
    * Aniqlanganlar sahifasi ikkinchi versiya uchun bo'ladi, kelmasa 0
-   * qoyib ketaverasan"). `"weapon2"` bo'lsa — quyida BUTUNLAY ALOHIDA,
-   * SODDAROQ yo'l ishlaydi: kuzatuv posti SSE/guruhlash/offset mantig'i BUTUNLAY
-   * chetlab o'tiladi (ular kuzatuv postiga xos, u yerda ma'nosi yo'q), o'rniga
-   * `WEAPON2_ORIGIN`dan sahifalab olinadi va `weapon2ToNvrEvent()`
+   * qoyib ketaverasan"). `"weapon2"`/`"janjal2"` bo'lsa — quyida
+   * BUTUNLAY ALOHIDA, SODDAROQ yo'l ishlaydi: kuzatuv posti SSE/
+   * guruhlash/offset mantig'i BUTUNLAY chetlab o'tiladi (ular kuzatuv
+   * postiga xos, u yerda ma'nosi yo'q), o'rniga tegishli lokal serverdan
+   * sahifalab olinadi va `weapon2ToNvrEvent()`/`janjal2ToNvrEvent()`
    * orqali xuddi shu `NvrFeed` shakliga o'giriladi — chaqiruvchi
    * (`DetectionsPage.tsx`) hech narsani BILMAYDI, bir xil interfeys.
+   *
+   * 2026-09-17: `"janjal2"` qo'shildi — `weapon2` (qurol) qanday
+   * ishlagan bo'lsa, "Janjal" 2-versiyasi ham AYNI naqshda (alohida
+   * server, `janjal2Api.ts`).
    */
-  source?: "nvr" | "weapon2";
+  source?: "nvr" | "weapon2" | "janjal2";
 }
 
 /** Sahifalash — server `offset`/`limit` va `total` beradi, ya'ni ANIQ. */
@@ -261,9 +286,10 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
       });
       return { events: merge(group, p.events), total: p.total };
     },
-    // ⚠️ "2-versiya"da bu so'rov UMUMAN kerak emas — behuda tarmoq
-    // safarini oldini olish uchun o'chiriladi (pastdagi weapon2 filialiga qarang).
-    enabled: source !== "weapon2",
+    // ⚠️ "2-versiya"da (weapon2/janjal2) bu so'rov UMUMAN kerak emas —
+    // behuda tarmoq safarini oldini olish uchun o'chiriladi (pastdagi
+    // "2-VERSIYA" filialiga qarang).
+    enabled: source === "nvr",
     staleTime: 15_000,
     placeholderData: keepPreviousData,
   });
@@ -272,7 +298,7 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
      jonli oqim YO'Q (bunday imkoniyat u serverda umuman yo'q) — effekt
      shunchaki hech narsa qilmaydi. */
   useEffect(() => {
-    if (source === "weapon2") return;
+    if (source !== "nvr") return;
     const stop = subscribeNvr(
       cat,
       (ev) => setLiveEvents((prev) => merge(group, [ev], prev).slice(0, 100)),
@@ -305,10 +331,20 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
    * kuzatuv postining o'z ma'lumotiga hech qachon JIM almashtirilmaydi.
    */
   const weapon2Relevant = tab === "hammasi" || tab === "gun";
+  /* 🔴 2026-09-18, foydalanuvchi so'rovi: "yuz tanish, chek va telefonda
+     2-versiya uchun bo'sh turishi kerak va hech qanday so'rov kerak
+     emas". Ilgari bu yerda `weapon2Relevant` YO'Q edi — faqat
+     `source === "weapon2"` tekshirilardi. `DetectionsPage.tsx`dagi
+     `weapon2Source` formulasi ("janjal" bo'lmasa DOIM "weapon2")
+     tufayli `source` Yuz tanish/Chekish/Telefon tabida ham "weapon2"
+     bo'lib qolaveradi — ya'ni kameralar ro'yxati (`listWeapon2Cameras()`)
+     bu tablarda ham SO'RALARDI, natija hech qayerda ishlatilmasa ham
+     (`weapon2Q` o'ZI to'g'ri `weapon2Relevant` bilan yopilgan edi, faqat
+     kameralar so'rovi unutilgan). Endi ikkalasi BIR XIL shartga bo'ysunadi. */
   const weapon2CamerasQ = useQuery({
     queryKey: ["weapon2-cameras"],
     queryFn: () => listWeapon2Cameras(),
-    enabled: source === "weapon2",
+    enabled: source === "weapon2" && weapon2Relevant,
     staleTime: 5 * 60_000,
   });
   const weapon2Q = useQuery({
@@ -323,15 +359,77 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
     for (const c of weapon2CamerasQ.data ?? []) m.set(c.id, c.location || c.name);
     return m;
   }, [weapon2CamerasQ.data]);
+  /**
+   * ⚠️ **`weapon2Relevant` BU YERDA HAM SHART** (2026-09-18, foydalanuvchi
+   * xabar qildi: "u oyna bo'sh bo'lsin, u yerda hozir qurolniki
+   * chiqyabdi"). `weapon2Q`ning `queryKey`si (`["weapon2-alerts",
+   * safePage, pageSize]`) `tab`ni O'Z ICHIGA OLMAYDI — ya'ni "Qurol"
+   * tabida bir marta muvaffaqiyatli kelgan `weapon2Q.data` "Yuz
+   * tanish"ga o'tilganda ham KESHDA QOLAVERADI (`enabled:false` faqat
+   * yangi so'rovni to'xtatadi, ESKI natijani TOZALAMAYDI — React
+   * Query'ning o'zi shunday ishlaydi). So'rov to'g'ri o'chirilgan bo'lsa
+   * ham, shu tekshiruvsiz "Qurol" tabidagi eski hodisalar boshqa
+   * (mos kelmagan) tabda ko'rinaverardi. */
   const weapon2Events = useMemo(
     () =>
-      (weapon2Q.data?.data ?? []).map((a) =>
-        weapon2ToNvrEvent(a, weapon2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)
-      ),
-    [weapon2Q.data, weapon2CameraLabel]
+      !weapon2Relevant
+        ? []
+        : (weapon2Q.data?.data ?? []).map((a) =>
+            weapon2ToNvrEvent(a, weapon2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)
+          ),
+    [weapon2Q.data, weapon2CameraLabel, weapon2Relevant]
   );
-  const weapon2Total = weapon2Q.data?.total ?? 0;
+  const weapon2Total = weapon2Relevant ? weapon2Q.data?.total ?? 0 : 0;
   const weapon2TotalPages = Math.max(1, Math.ceil(weapon2Total / pageSize));
+
+  /**
+   * ── "JANJAL — 2-VERSIYA" — weapon2 bilan AYNI naqsh, ALOHIDA server
+   * ──────────────────────────────────────────────────────────────────
+   * 2026-09-17, foydalanuvchi so'rovi: "aniqlanganlar qismida 2chi
+   * versida janjalni bosganimizda berilgan backend swageridan olib
+   * kelishi kerak". `janjal2ToNvrEvent()` HAR DOIM `category:"janjal"`
+   * qaytaradi (server faqat janjal beradi) — ya'ni bu manba FAQAT
+   * "Janjal" tabiga mos; `DetectionsPage.tsx` shu sabab `source` ni
+   * FAQAT o'sha tab uchun `"janjal2"` qiladi (`weapon2Relevant` bilan
+   * AYNI himoya — mos kelmagan tabda so'rov UMUMAN yuborilmaydi).
+   */
+  const janjal2Relevant = tab === "janjal";
+  /* `weapon2CamerasQ` bilan AYNI himoya (yuqoridagi izohga qarang) —
+     amalda `source` faqat "janjal" tabida "janjal2" bo'ladi, lekin
+     ikkala shart bir joyda ANIQ ko'rinib tursin, tasodifan
+     mos kelmay qolishdan himoyalansin. */
+  const janjal2CamerasQ = useQuery({
+    queryKey: ["janjal2-cameras"],
+    queryFn: () => listJanjal2Cameras(),
+    enabled: source === "janjal2" && janjal2Relevant,
+    staleTime: 5 * 60_000,
+  });
+  const janjal2Q = useQuery({
+    queryKey: ["janjal2-alerts", safePage, pageSize],
+    queryFn: () => listJanjal2Alerts(safePage, pageSize),
+    enabled: source === "janjal2" && janjal2Relevant,
+    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+  });
+  const janjal2CameraLabel = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const c of janjal2CamerasQ.data ?? []) m.set(c.id, c.location || c.name);
+    return m;
+  }, [janjal2CamerasQ.data]);
+  /* `weapon2Events`dagi bilan AYNI himoya (yuqoridagi izohga qarang) —
+     amalda `source==="janjal2"` faqat "Janjal" tabida bo'ladi, lekin
+     eski keshdan tasodifan sizib chiqmasin deb ANIQ tekshiriladi. */
+  const janjal2Events = useMemo(
+    () =>
+      !janjal2Relevant
+        ? []
+        : (janjal2Q.data?.data ?? []).map((a) =>
+            janjal2ToNvrEvent(a, janjal2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)
+          ),
+    [janjal2Q.data, janjal2CameraLabel, janjal2Relevant]
+  );
+  const janjal2Total = janjal2Relevant ? janjal2Q.data?.total ?? 0 : 0;
+  const janjal2TotalPages = Math.max(1, Math.ceil(janjal2Total / pageSize));
 
   const total = query.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -359,6 +457,19 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
       pageSize,
       totalPages: weapon2TotalPages,
       setPage: (p) => setPageRaw(Math.min(Math.max(1, p), weapon2TotalPages)),
+    };
+  }
+  if (source === "janjal2") {
+    return {
+      events: janjal2Events,
+      total: janjal2Total,
+      loading: janjal2Q.isLoading,
+      error: janjal2Q.error ? String((janjal2Q.error as Error).message ?? janjal2Q.error) : null,
+      live: false,
+      page: safePage,
+      pageSize,
+      totalPages: janjal2TotalPages,
+      setPage: (p) => setPageRaw(Math.min(Math.max(1, p), janjal2TotalPages)),
     };
   }
 

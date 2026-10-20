@@ -15,8 +15,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDetections } from "./useDetections";
 import { localDay, useArrivals } from "./useTodayArrivals";
-import { fromNvr, type DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_TYPES, type DetectionId } from "@/lib/detectionTypes";
+import { fromNvr, type DetectionEvent } from "@/lib/nvr/detectionEvents";
+import { DETECTION_TYPES, type DetectionId } from "@/lib/nvr/detectionTypes";
 
 /** Takroriy tashrifni aniqlash uchun shaxs kalitlari tarixi. */
 const HISTORY_KEY = "hik-unknown-history";

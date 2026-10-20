@@ -1,13 +1,15 @@
 {
  "texts": [
-  "Three things to close on.",
-  "The state created the demand with a twenty twenty seven deadline. The product is built and running in a school.",
-  "And the market is empty. We are ready for your questions."
+  "So what do we deliver to the school?",
+  "First, attendance. The roll call runs on face ID, at the start of the lesson and at the end. The system counts the students in the room and automatically lists those who came to school but did not attend the lesson, or left it.",
+  "Second, the teacher ranking: teachers are rated one after another by how they deliver lessons.",
+  "Third, safety: weapons, fights, smoking and abandoned objects are detected in real time and sent to the person responsible."
  ],
- "duration": 11.16,
+ "duration": 26.6,
  "offsets": [
   0.25,
-  1.85,
-  7.8
+  2.43,
+  14.09,
+  19.28
  ]
 }

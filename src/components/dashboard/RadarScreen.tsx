@@ -1,4 +1,4 @@
-import { nvrEventLabel } from "@/lib/eventLabels";
+import { nvrEventLabel } from "@/lib/nvr/eventLabels";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -7,13 +7,13 @@ import { useT, type Messages } from "@/i18n";
 import { useScheme } from "@/theme";
 import { useAppStore } from "@/store/useAppStore";
 import { useDetections } from "@/hooks/useDetections";
-import { detectionLevel, LEVEL_TONE } from "@/lib/detectionLevel";
-import { seenVersion, subscribeSeen, unseenOf } from "@/lib/detectionSeen";
+import { detectionLevel, LEVEL_TONE } from "@/lib/nvr/detectionLevel";
+import { seenVersion, subscribeSeen, unseenOf } from "@/lib/nvr/detectionSeen";
 import { cameraHeading, cameraPlaceLabel, placementFor } from "@/config/cameraPlacements";
 import { DEFAULT_INSTITUTION_ID, INSTITUTIONS, institutionById } from "@/config/institutions";
 import { CAMPUS_CENTER, CAMPUS_ZOOM } from "@/config/campusPoints";
 import { MapLibreMap, type YMarker } from "@/map/maplibre/MapLibreMap";
-import { nvrImageUrl, subscribeNvr, type NvrEvent } from "@/lib/nvrApi";
+import { nvrImageUrl, subscribeNvr, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
@@ -73,8 +73,16 @@ const BARS = 24;
 const TRAIL = 8; // nur izi bo'laklari
 /** SSE dan saqlanadigan oxirgi hodisalar soni (ro'yxat 20 tagacha chiziladi). */
 const LIVE_KEEP = 60;
-/** Bir o'tishning ikkinchi kadri — kamera + shaxs + 45 soniya. */
-const VISIT_MS = 45_000;
+/**
+ * Bir o'tishning ikkinchi kadri — kamera + shaxs + oraliq.
+ *
+ * 🔴 45s → 180s (2026-09-18) — `useNvrEvents.ts`dagi `VISIT_GAP_MS` bilan
+ * AYNI tuzatish, AYNI sabab: server bu mezonni 2026-09-03 da 180
+ * soniyaga ko'targan (`FRONTEND.md` 4-A), bu yerdagi nusxa eskirib
+ * qolgan edi. Ikkalasi bir xil qolishi SHART — aks holda radar va
+ * "Aniqlanganlar" bir xil hodisani boshqa-boshqa guruhlagan bo'lardi.
+ */
+const VISIT_MS = 180_000;
 
 /**
  * Ikki yozuv BITTA o'tishmi (`useNvrEvents.merge()` bilan AYNI qoida).
@@ -376,7 +384,7 @@ export function RadarScreen({ onPick, onOpenMap }: { onPick: (id: number) => voi
   const [mx, my] = polar(R, -90);
 
   return (
-    <div className="nexa-card relative flex min-h-0 flex-1 flex-col overflow-hidden p-5">
+    <div className="nexa-card map-flat relative flex min-h-0 flex-1 flex-col overflow-hidden p-5">
       {/* ── FON: sekin aylanadigan 3D kampus + kameralar + parda ── */}
       <div className="pointer-events-none absolute inset-0">
         <MapLibreMap
@@ -388,7 +396,11 @@ export function RadarScreen({ onPick, onOpenMap }: { onPick: (id: number) => voi
           markers={camMarkers}
           initial3D
           interactive={false}
-          autoRotate={2.5}
+          /* ⚠️ `autoRotate` OLIB TASHLANDI (2026-09-25, qotish): xarita har
+             kadrda 3D sahnani (binolar, fasad, daraxtlar) qayta chizib,
+             ustidagi radar animatsiyalari bilan birga GPU'ni band qilardi.
+             Endi fon BIR MARTA chiziladi va qotadi — MapLibre o'zi
+             faqat o'zgarish bo'lganda chizadi (`interactive={false}`). */
           controls={[]}
           onMapReady={onMapReady}
         />
@@ -790,7 +802,7 @@ function BlipList({
   return (
     <div
       /* `bottom-[100px]` — pastda ATAYLAB ochiq joy (so'rov bo'yicha). */
-      className="absolute bottom-[100px] left-0 top-0 z-20 flex flex-col gap-2 px-3 py-4 backdrop-blur-[2px]"
+      className="absolute bottom-[100px] left-0 top-0 z-20 flex flex-col gap-2 px-3 py-4"
       style={{ width, background: p.listBg, borderRight: `1px solid ${p.edge}` }}
     >
       <p className="flex items-baseline gap-1.5 px-1 text-[11px] font-bold uppercase leading-tight tracking-[0.14em]" style={{ color: p.textSoft }}>

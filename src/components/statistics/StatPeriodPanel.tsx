@@ -9,7 +9,7 @@ import { DataBadge } from "@/components/dashboard/DataBadge";
 import { localDay } from "@/hooks/useTodayArrivals";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 import { useEventStats } from "@/hooks/useEventStats";
-import { listEvents } from "@/lib/nvrApi";
+import { listEvents } from "@/lib/nvr/nvrApi";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
 import { useT, type Messages } from "@/i18n";
 import { dayMonthLabel } from "@/lib/dateLabel";

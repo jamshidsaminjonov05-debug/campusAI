@@ -1,15 +1,15 @@
 "use client";
 
-import { nvrEventLabel } from "@/lib/eventLabels";
+import { nvrEventLabel } from "@/lib/nvr/eventLabels";
 import { useT } from "@/i18n";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CaretLeft, CaretRight, Checks, X } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { markSeen, seenVersion, subscribeSeen, unseenOf } from "@/lib/detectionSeen";
+import { markSeen, seenVersion, subscribeSeen, unseenOf } from "@/lib/nvr/detectionSeen";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { useAppStore } from "@/store/useAppStore";
 import { DashPanel } from "./DashPanel";
 

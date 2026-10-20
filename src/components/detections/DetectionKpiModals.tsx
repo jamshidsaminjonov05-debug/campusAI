@@ -33,7 +33,7 @@ import { useModalHistory } from "@/hooks/useModalHistory";
 import { CameraQuickView } from "@/components/cameras/CameraQuickView";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { NVR_MAX_LIMIT, listEvents, nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { NVR_MAX_LIMIT, listEvents, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { NVR_COLOR } from "./DetectionCard";
 
 /* ─────────────────────────── Umumiy qobiq ─────────────────────────── */

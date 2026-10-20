@@ -30,7 +30,7 @@ import {
   type PersonType,
 } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useInstitutionScope } from "@/lib/institutionScope";
+import { useInstitutionScope } from "@/lib/nvr/institutionScope";
 
 /** Login bo'lmaganda so'rovlar yuborilmasin. */
 function useAuthed() {
@@ -61,7 +61,13 @@ export function useDashboard() {
     // Muassasa kalitda — bosh admin muassasa almashtirsa kesh aralashmaydi
     queryKey: ["dashboard", institutionId],
     queryFn: () => api.dashboard(),
-    refetchInterval: 5_000,
+    /* ⚠️ Ilgari `5_000` edi — 5 soniyada bir, `SettingsPage.tsx`da (faqat
+       modul holatini tekshirish uchun) va `useDashboardData()`da. Bu
+       endpoint (`/statistics/dashboard`) `BACKEND.md`da hujjatlashtirilgan:
+       amalda deyarli DOIM bo'sh/eskirgan javob beradi — shuncha tez-tez
+       so'rash foydasiz tarmoq yukidan boshqa narsa bermaydi (2026-09-18,
+       foydalanuvchi so'rovi). */
+    refetchInterval: 60_000,
     enabled,
   });
 }
@@ -71,22 +77,13 @@ export function useEmotionsDaily(days = 7) {
   return useQuery({
     queryKey: ["emotions-daily", days],
     queryFn: () => api.emotionsDaily(days),
-    refetchInterval: 60_000,
+    // Kayfiyat moduli serverda o'rnatilmagan (kunlik agregat) — daqiqada bir so'rash foydasiz
+    refetchInterval: 5 * 60_000,
     enabled,
   });
 }
 
 /* ---------------------------------- Davomat ---------------------------------- */
-
-export function useRecentAttendance(limit = 10) {
-  const enabled = useAuthed();
-  return useQuery({
-    queryKey: ["attendance-recent", limit],
-    queryFn: () => api.recentAttendance(limit),
-    refetchInterval: 10_000,
-    enabled,
-  });
-}
 
 export function useAttendance(
   params: {
@@ -107,7 +104,7 @@ export function useAttendance(
   return useQuery({
     queryKey: ["attendance", params],
     queryFn: () => api.listAttendance(params),
-    refetchInterval: opts?.live ? 15_000 : false,
+    refetchInterval: opts?.live ? 60_000 : false,
     enabled: enabled && idOk,
   });
 }
@@ -191,8 +188,8 @@ export function useAllAttendance(
   return useQuery({
     queryKey: ["attendance-all", params],
     queryFn: () => api.listAllAttendance(params),
-    refetchInterval: opts?.live ? 30_000 : false,
-    staleTime: 30_000,
+    refetchInterval: opts?.live ? 60_000 : false,
+    staleTime: 45_000,
     enabled: enabled && idOk && (opts?.enabled ?? true),
   });
 }
@@ -262,7 +259,16 @@ export function useCameras(brand?: CameraBrand) {
     queryKey: ["cameras", institutionId, brand],
     // ⚠️ Backend tayyor bo'lgach: api.listCameras({ brand, institution_id: institutionId })
     queryFn: async () => scopeToInstitution(await api.listCameras(brand), institutionId) ?? [],
-    refetchInterval: 15_000,
+    /* ⚠️ Ilgari `15_000` edi (har 15 soniyada) — bu hook `GlobalSearch.tsx`
+       orqali `App.tsx`da global chaqiriladi, ya'ni panelning HAR sahifasida
+       DOIM ishlaydi. `CamerasPage.tsx`ning o'z izohi tasdiqlaydi: "Asosiy
+       backend'da kamera ro'yxati BO'SH, kuzatuv posti qurilmasida esa 32 ta
+       kanal" — haqiqiy, jonli kamera ro'yxati `useNvrChannels()`dan keladi,
+       bu endpoint esa deyarli doim bo'sh reyestr. Kameralar soni daqiqada
+       emas, kamdan-kam (admin qo'shsa/o'chirsa) o'zgaradi — shuncha
+       tez-tez so'rash foydasiz tarmoq yuki edi (2026-09-18, foydalanuvchi
+       so'rovi: "nima sababdan /cameras qayta-qayta so'ralyabdi"). */
+    refetchInterval: 5 * 60_000,
     enabled,
   });
 }
@@ -329,17 +335,10 @@ export function useEvents(params: { event_type?: string; is_resolved?: boolean; 
     queryKey: ["events", institutionId, params],
     // ⚠️ Backend tayyor bo'lgach: api.listEvents({ ...params, institution_id: institutionId })
     queryFn: async () => scopeToInstitution(await api.listEvents(params), institutionId) ?? [],
-    refetchInterval: 10_000,
-    enabled,
-  });
-}
-
-export function useEventStats() {
-  const enabled = useAuthed();
-  return useQuery({
-    queryKey: ["event-stats"],
-    queryFn: () => api.eventStats(),
-    refetchInterval: 30_000,
+    /* ⚠️ Ilgari `10_000` edi. Bu eski backend `/events` (jami 6 ta test yozuvi,
+       2026-07 dan) — faqat shaxs oynasida ishlatiladi va o'zgarmaydi; haqiqiy
+       jonli hodisalar kuzatuv posti SSE'sidan (`useLiveSync`). */
+    staleTime: 60_000,
     enabled,
   });
 }
@@ -366,7 +365,7 @@ export function useAdminStatus() {
   return useQuery({
     queryKey: ["admin-status"],
     queryFn: () => api.adminStatus(),
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
     enabled,
   });
 }

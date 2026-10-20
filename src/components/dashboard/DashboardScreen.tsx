@@ -83,7 +83,7 @@ export function DashboardScreen() {
             <AttendanceBoard onPickType={setAttendanceType} onPickAll={() => setAttendanceType("all")} />
 
             {/* Xarita TO'LIQ orqa fonda, qolgan hammasi ustida suzadi. */}
-            <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl">
+            <div className="map-flat relative min-h-0 flex-1 overflow-hidden rounded-2xl">
               <Map3D onOpenAlerts={() => setAlertsOpen(true)} />
 
               {/* Chap-yuqori: muassasa qidiruvi (dropdown). `top-16` — Map3D'ning

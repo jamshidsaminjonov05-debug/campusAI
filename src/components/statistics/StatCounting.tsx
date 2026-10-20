@@ -22,7 +22,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowsClockwise, ArrowsLeftRight, DoorOpen, SignIn, SignOut, Warning } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
-import { nvrTime } from "@/lib/nvrApi";
+import { nvrTime } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { localDay } from "@/hooks/useTodayArrivals";
 import { EMPTY_COUNTING_STATS, useCountingCameras, useCountingEvents, useCountingStats } from "@/hooks/useCounting";

@@ -1,13 +1,15 @@
 {
  "texts": [
-  "Xulosa uchta.",
-  "Talabni davlat yaratdi va muddat ikki ming yigirma yettinchi yil. Mahsulot tayyor va maktabda ishlayapti.",
-  "Bozor bo'sh. Savollaringizga javob berishga tayyormiz."
+  "Xo'sh, biz muassasaga nima beramiz?",
+  "Birinchi o'rinda — davomat. Yo'qlama face ID orqali, dars boshida ham, dars oxirida ham. Tizim xonadagi o'quvchilarni sanaydi va maktabga kelgan, lekin darsga kirmagan yoki darsdan chiqib ketganlarni avtomatik chiqaradi.",
+  "Ikkinchi — o'qituvchilar reytingi: dars o'tish sifatiga qarab o'qituvchilar ketma-ket baholanadi.",
+  "Uchinchi — xavfsizlik: qurol, janjal, chekish va qoldirilgan buyum real vaqtda aniqlanadi va mas'ulga yuboriladi."
  ],
- "duration": 11.07,
+ "duration": 29.3,
  "offsets": [
   0.25,
-  1.5,
-  7.4
+  2.48,
+  15.85,
+  21.74
  ]
 }

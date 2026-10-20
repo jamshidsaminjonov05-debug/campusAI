@@ -4,7 +4,7 @@ import { Warning, SecurityCamera, Gauge as GaugeIcon, GraduationCap, UsersThree,
 import { Icon as LucideIcon } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
-import { STATUS_COLOR, type InstitutionRow, type Metric } from "@/lib/institutionRows";
+import { STATUS_COLOR, type InstitutionRow, type Metric } from "@/lib/nvr/institutionRows";
 import { useLiveInstitution } from "@/hooks/useLiveInstitutions";
 import { Missing } from "@/components/common/Missing";
 import { useAppStore } from "@/store/useAppStore";

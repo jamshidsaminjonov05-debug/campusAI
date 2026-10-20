@@ -3,10 +3,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "@phosphor-icons/react";
-import { getEvent } from "@/lib/nvrApi";
+import { getEvent } from "@/lib/nvr/nvrApi";
 import { DetectionModal } from "@/components/detections/DetectionsPage";
-import { DETECTION_BY_ID } from "@/lib/detectionTypes";
-import type { DetectionEvent } from "@/lib/detectionEvents";
+import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
 
 /**
  * HUD'dan bosilgan hodisaning TAFSILOTI.

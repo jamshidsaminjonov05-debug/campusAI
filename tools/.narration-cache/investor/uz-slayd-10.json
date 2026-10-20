@@ -1,13 +1,17 @@
 {
  "texts": [
-  "Endi eng muhimi. Bu tizim hozir ishlab turibdi.",
-  "Toshkentdagi bir yetmish to'qqizinchi maktabda janjal, qurol, chekish va davomat detektorlari faol.",
-  "Ekranda ko'rgan kadrlaringiz o'sha maktabdan olingan."
+  "Davomat — tizimning eng kuchli tomonlaridan biri.",
+  "Avval kirishdagi kamera har o'quvchini yuzidan taniydi: yigirma sakkiz o'quvchidan yigirma beshtasi yuz orqali o'tgan, uchtasi o'tmagan — ular maktabga kelmagan.",
+  "Keyin sinf kamerasi xonadagilarni sanaydi: birinchi darsda yigirma besh o'quvchi o'tirgan.",
+  "Oxirgi dars tugashida esa yigirma sakkiztadan faqat o'n yettitasi qolgan.",
+  "Jami o'n bir o'quvchi darsda yo'q — tizim buni avtomatik hisoblab beradi."
  ],
- "duration": 12.64,
+ "duration": 26.24,
  "offsets": [
   0.25,
-  3.33,
-  8.96
+  3.17,
+  12.07,
+  17.36,
+  22.02
  ]
 }

@@ -22,7 +22,7 @@ import { Avatar } from "./PeoplePage";
 import { FaceHistoryModal } from "./FaceHistoryModal";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { useNvrClasses, useNvrPeople, useNvrPeopleMutations } from "@/hooks/useNvrPeople";
-import { nvrPersonPhotoUrl, type NvrPerson, type NvrPersonRole } from "@/lib/nvrApi";
+import { nvrPersonPhotoUrl, type NvrPerson, type NvrPersonRole } from "@/lib/nvr/nvrApi";
 import { fmt } from "@/components/common/panels";
 import { Missing, MissingBlock } from "@/components/common/Missing";
 import { useT } from "@/i18n";

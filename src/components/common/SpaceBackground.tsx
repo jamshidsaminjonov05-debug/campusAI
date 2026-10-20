@@ -8,10 +8,6 @@ import {
   useTransform,
 } from "framer-motion";
 
-// SVG feTurbulence — statik noise teksturasi (tarmoqsiz, data-uri)
-const NOISE_URI =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
-
 /** `#rrggbb` → `"r,g,b"` (CSS `rgba()` uchun tayyor). */
 function hexToRgb(hex: string): string | null {
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
@@ -73,7 +69,7 @@ interface Spark {
  * blueprint grid, sichqoncha spotlight, noise). Sichqonchani o'zi kuzatadi —
  * istalgan sahifaga qo'yish kifoya. Past opacity — kontent diqqatni tortadi.
  */
-export const SpaceBackground = memo(function SpaceBackground() {
+export const SpaceBackground = memo(function SpaceBackground({ animated = true }: { animated?: boolean }) {
   const scheme = useScheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -88,6 +84,7 @@ export const SpaceBackground = memo(function SpaceBackground() {
   const py = useSpring(pyRaw, { stiffness: 120, damping: 26 });
 
   useEffect(() => {
+    if (!animated) return;
     function onMove(e: MouseEvent) {
       mxRaw.set((e.clientX / window.innerWidth) * 2 - 1);
       myRaw.set((e.clientY / window.innerHeight) * 2 - 1);
@@ -96,7 +93,7 @@ export const SpaceBackground = memo(function SpaceBackground() {
     }
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [mxRaw, myRaw, pxRaw, pyRaw]);
+  }, [animated, mxRaw, myRaw, pxRaw, pyRaw]);
 
   // Spotlight — sichqoncha ortidan yumshoq radial nur
   const spotlight = useMotionTemplate`radial-gradient(560px circle at ${px}px ${py}px, var(--space-spot), transparent 70%)`;
@@ -106,10 +103,6 @@ export const SpaceBackground = memo(function SpaceBackground() {
   // Grid va nebula parallaksi (sichqonchaga teskari, sekin)
   const gridX = useTransform(mx, [-1, 1], [10, -10]);
   const gridY = useTransform(my, [-1, 1], [10, -10]);
-  const nebAX = useTransform(mx, [-1, 1], [-24, 24]);
-  const nebAY = useTransform(my, [-1, 1], [-16, 16]);
-  const nebBX = useTransform(mx, [-1, 1], [20, -20]);
-  const nebBY = useTransform(my, [-1, 1], [14, -14]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,6 +144,8 @@ export const SpaceBackground = memo(function SpaceBackground() {
       canvas!.height = h * dpr;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       seed();
+      // Statik rejimda animatsiya sikli yo'q — o'lcham o'zgarganda bir marta qayta chizamiz
+      if (!animated) frame();
     }
 
     function frame() {
@@ -228,18 +223,18 @@ export const SpaceBackground = memo(function SpaceBackground() {
         ctx!.fill();
       }
 
-      raf = requestAnimationFrame(frame);
+      if (animated) raf = requestAnimationFrame(frame);
     }
 
     resize();
     window.addEventListener("resize", resize);
-    raf = requestAnimationFrame(frame);
+    if (animated) raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
     /* `scheme` — dep: mavzu almashganda ranglar qayta olinadi */
-  }, [mx, my, scheme]);
+  }, [mx, my, scheme, animated]);
 
   return (
     /* `space-bg` — YORUG' rejimda ham ko'rinadi, faqat ranglari almashadi
@@ -250,33 +245,35 @@ export const SpaceBackground = memo(function SpaceBackground() {
       {/* Asosiy gradient fon */}
       <div className="space-base absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,#111524_0%,#0D1020_45%,#090B14_100%)]" />
 
-      {/* Nebula qatlamlari — sekin suzadigan xira dog'lar */}
-      <motion.div style={{ x: nebAX, y: nebAY }} className="absolute inset-0">
-        <motion.div
-          animate={{ x: [0, 60, 0], y: [0, 40, 0], scale: [1, 1.12, 1] }}
-          transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
-          className="space-neb absolute left-[8%] top-[6%] h-[46vmax] w-[46vmax] rounded-full bg-[#3B5BDB] opacity-[0.07] blur-[120px]"
-        />
-        <motion.div
-          animate={{ x: [0, -50, 0], y: [0, 30, 0] }}
-          transition={{ duration: 42, repeat: Infinity, ease: "easeInOut" }}
-          className="space-neb absolute -bottom-[12%] right-[4%] h-[40vmax] w-[40vmax] rounded-full bg-[#5F3DC4] opacity-[0.06] blur-[130px]"
-        />
-      </motion.div>
-      <motion.div style={{ x: nebBX, y: nebBY }} className="absolute inset-0">
-        <motion.div
-          animate={{ x: [0, 40, 0], y: [0, -50, 0], scale: [1, 1.08, 1] }}
-          transition={{ duration: 38, repeat: Infinity, ease: "easeInOut" }}
-          className="space-neb absolute left-[30%] top-[38%] h-[34vmax] w-[34vmax] rounded-full bg-[#1C4E9E] opacity-[0.08] blur-[110px]"
-        />
-      </motion.div>
+      {/* Nebula — STATIK radial-gradient dog'lar.
+          🔴 Ilgari bu yerda `blur-[120px]` li, framer-motion bilan
+          cheksiz suzadigan uchta katta doira turardi: katta blur + harakat
+          = brauzer har kadrda ekranning yarmini qayta blur qilardi va
+          ORTIDA turgan HAR BIR `backdrop-filter` paneli ham qayta hisoblanardi
+          (qotishning asosiy sabablaridan biri). Gradient blur'siz o'sha
+          yumshoq dog'ni beradi va bir marta chiziladi. Rang `--neb`
+          orqali (yorug' mavzuda `index.css` urg'u rangiga almashtiradi). */}
+      <div
+        className="space-neb absolute left-[8%] top-[6%] h-[46vmax] w-[46vmax] rounded-full opacity-[0.09]"
+        style={{ backgroundImage: "radial-gradient(closest-side, var(--neb, #3B5BDB), transparent)" }}
+      />
+      <div
+        className="space-neb absolute -bottom-[12%] right-[4%] h-[40vmax] w-[40vmax] rounded-full opacity-[0.08]"
+        style={{ backgroundImage: "radial-gradient(closest-side, var(--neb, #5F3DC4), transparent)" }}
+      />
+      <div
+        className="space-neb absolute left-[30%] top-[38%] h-[34vmax] w-[34vmax] rounded-full opacity-[0.1]"
+        style={{ backgroundImage: "radial-gradient(closest-side, var(--neb, #1C4E9E), transparent)" }}
+      />
 
       {/* ⚠️ BLUEPRINT SETKASI bu yerdan OLIB TASHLANDI — u endi ilova
           qobig'ining foni (`.app-grid`, `index.css`). Ikkalasi birga
           turganda ekranda IKKI QAVAT setka chiqib qolardi. Quyidagi
           kursor atrofidagi yorug' qatlam esa qoladi: u bezak, takror emas. */}
 
-      {/* Yorug' grid qatlami — faqat kursor atrofida mask orqali ko'rinadi */}
+      {/* Yorug' grid qatlami — faqat kursor atrofida mask orqali ko'rinadi.
+          Statik rejimda (`animated={false}`, panel) kursor kuzatilmaydi. */}
+      {animated && (
       <motion.div
         style={{
           x: gridX,
@@ -292,21 +289,16 @@ export const SpaceBackground = memo(function SpaceBackground() {
         }}
         className="space-grid absolute -inset-6 opacity-[0.14]"
       />
+      )}
 
       {/* Canvas: yulduzlar, chang, uchqunlar, tarmoq chiziqlari */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
       {/* Sichqoncha spotlight */}
-      <motion.div style={{ background: spotlight }} className="absolute inset-0" />
+      {animated && <motion.div style={{ background: spotlight }} className="absolute inset-0" />}
 
       {/* Ambient tuman + pastki vignette */}
       <div className="space-fog absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgba(9,11,20,0.9),transparent_60%)]" />
-
-      {/* Noise overlay */}
-      <div
-        style={{ backgroundImage: NOISE_URI }}
-        className="space-noise absolute inset-0 opacity-[0.035] mix-blend-overlay"
-      />
     </div>
   );
 });

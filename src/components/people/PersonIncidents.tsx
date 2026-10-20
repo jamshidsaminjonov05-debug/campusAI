@@ -35,7 +35,7 @@ import { useT } from "@/i18n";
 import { Plus, Prohibit, X } from "@phosphor-icons/react";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { listEvents, nvrDateTime, type NvrCategory, type NvrEvent } from "@/lib/nvrApi";
+import { listEvents, nvrDateTime, type NvrCategory, type NvrEvent } from "@/lib/nvr/nvrApi";
 import {
   incidentsOf,
   incidentsVersion,
@@ -44,7 +44,7 @@ import {
   subscribeIncidents,
   unlinkIncident,
   type PersonIncident,
-} from "@/lib/personIncidents";
+} from "@/lib/nvr/personIncidents";
 
 /** Yuz TANISHDAN boshqa — "zararli" toifalar (serverda mavjud bo'lganlari). */
 const INCIDENT_CATEGORIES: NvrCategory[] = ["janjal", "gun", "smoking"];

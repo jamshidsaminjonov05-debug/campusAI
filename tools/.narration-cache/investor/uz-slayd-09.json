@@ -1,13 +1,17 @@
 {
  "texts": [
-  "Ota-ona esa buni telefonida ko'radi.",
-  "Farzandi kirgan va chiqqan vaqt, davomat foizi, bugungi darslar, va hodisa bo'lsa — kadr bilan bildirishnoma.",
-  "Bu maktab bilan oila o'rtasidagi birinchi ishonchli aloqa."
+  "Keyingisi — qoldirilgan buyum.",
+  "Sinfda sumka egasidan ajralib, oltmish soniyadan ortiq harakatsiz qolsa — trevoga beriladi.",
+  "Shundan keyin tizim egasini qidiradi: sumka bilan oxirgi ko'ringan shaxsning kadri boshqa kameralardan izlanadi.",
+  "Shu shaxs xonada, yo'lakda, chiqish eshigida va maktab hovlisida topiladi — uning yo'li kadrma-kadr ko'rinadi.",
+  "Evakuatsiya qarori tez qabul qilinadi."
  ],
- "duration": 13.23,
+ "duration": 24.1,
  "offsets": [
   0.25,
-  2.59,
-  9.64
+  2.25,
+  7.7,
+  13.82,
+  21.28
  ]
 }

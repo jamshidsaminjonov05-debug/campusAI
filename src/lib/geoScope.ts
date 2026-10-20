@@ -18,7 +18,7 @@
  * yo'q" bo'lardi — xaritani shunday ko'rsatkich bo'yicha bo'yash yoki
  * saralash ma'nosiz. Manba paydo bo'lsa qaytariladi.
  */
-import type { InstitutionRow, Metric, RegionRow } from "@/lib/institutionRows";
+import type { InstitutionRow, Metric, RegionRow } from "@/lib/nvr/institutionRows";
 
 export type ScopeLevel = "republic" | "region" | "campus";
 

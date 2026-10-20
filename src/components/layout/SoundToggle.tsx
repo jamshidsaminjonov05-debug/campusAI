@@ -2,8 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import { SpeakerHigh, SpeakerSlash } from "@phosphor-icons/react";
-import { isMuted, mutedVersion, setMuted, subscribeMuted, unlockSound } from "@/lib/detectionSound";
-import { preloadSpeech, stopSpeech } from "@/lib/detectionSpeech";
+import { isMuted, mutedVersion, setMuted, subscribeMuted, unlockSound } from "@/lib/nvr/detectionSound";
+import { preloadSpeech, stopSpeech } from "@/lib/nvr/detectionSpeech";
 
 /**
  * Aniqlash ovozini yoqish/o'chirish — header tugmasi.

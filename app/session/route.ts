@@ -42,11 +42,43 @@
  * muddati kuzatilmaydi (faqat `refresh` bilan yangilanadi), shuning uchun
  * aniq muddat berish yolg'on aniqlik bo'lardi. `logout()` cookie'ni
  * DARHOL o'chiradi (`DELETE`).
+ *
+ * 🔴 **`secure: NODE_ENV === "production"` — SERVERGA QO'YILGANDA
+ * BUTUN COOKIE'NI O'LDIRARDI** (2026-09-18, foydalanuvchi xabar qildi:
+ * "2chi versiyani bosgan vaqtimda ... login xatosi 401 qaytaryabdi" —
+ * FAQAT `npm run build && npm start` bilan qo'yilgan serverda, lokal
+ * `npm run dev`da esa muammo yo'q edi).
+ *
+ * Sabab: `secure: true` bo'lgan cookie'ni brauzer FAQAT HTTPS (yoki
+ * `localhost`) ustida saqlaydi/yuboradi — oddiy HTTP ustidan esa
+ * JIM tashlab yuboradi (xato ko'rinmaydi, cookie shunchaki "yo'q"
+ * bo'lib qoladi). Bu loyiha esa (`CLAUDE.md`: "LOYIHA TO'LIQ OFFLINE",
+ * hamma xizmat `http://<ichki-ip>:port`) ICHKI TARMOQDA, ODATDA oddiy
+ * HTTP orqali ishga tushiriladi — TLS sertifikat HECH QAYERDA
+ * o'rnatilmagan. `next build`da esa `NODE_ENV` AVTOMATIK
+ * `"production"` bo'ladi — ya'ni `secure: true` DOIM yoqilardi, login
+ * "muvaffaqiyatli" bo'lardi-yu (cookie javobda BOR), brauzer uni
+ * jim qabul qilmasdi. Keyingi HAR BIR `/nvr/...`/`/weapon2/...`/
+ * `/janjal2/...` so'rovida cookie yo'q → proxy `401 "Kirish talab
+ * qilinadi"` qaytaraverardi — go'yo login ishlamayotgandek.
+ *
+ * ⚠️ **`NODE_ENV` EMAS, SO'ROVNING O'ZI HTTPS'danmi — shu tekshiriladi.**
+ * `req.nextUrl.protocol` (to'g'ridan-to'g'ri `next start`) YOKI
+ * `X-Forwarded-Proto: https` (TLS teskari-proksi — nginx va h.k. —
+ * orqasida, u Next'ga ICHKARIDA oddiy HTTP bilan murojaat qiladi).
+ * Natija: oddiy HTTP LAN'da cookie ISHLAYDI (`secure:false`), TLS
+ * qo'shilsa esa (kelajakda, teskari-proksi bilan) O'ZI `secure:true`ga
+ * o'tadi — qo'lda hech narsa o'zgartirish shart emas.
  */
-import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/nvrSession";
+import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE } from "@/lib/nvr/nvrSession";
 
-export async function POST() {
+/** So'rov HAQIQATAN HTTPS ustidanmi — `NODE_ENV`ga emas, shu bilan tekshiriladi. */
+function isHttps(req: NextRequest): boolean {
+  return req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+}
+
+export async function POST(req: NextRequest) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set({
     name: SESSION_COOKIE,
@@ -55,8 +87,7 @@ export async function POST() {
     value: "1",
     httpOnly: true,
     sameSite: "lax",
-    // Dev ko'pincha oddiy HTTP (LAN) da ishlaydi — `secure` faqat production'da.
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps(req),
     path: "/",
     // Muddat YO'Q = sessiya cookie (brauzer yopilsa o'chadi).
   });

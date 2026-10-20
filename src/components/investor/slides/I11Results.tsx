@@ -3,7 +3,13 @@
 import { motion } from "framer-motion";
 import { BellRing, CameraOff, FileCheck2, Timer } from "lucide-react";
 import { useCopy } from "../copy";
-import { EASE, Glass, ORB_CLEAR, SlideTitle, Stage } from "@/components/deck/ui";
+import {
+  EASE,
+  Glass,
+  ORB_CLEAR,
+  SlideTitle,
+  Stage,
+} from "@/components/deck/ui";
 import type { SlideProps } from "@/components/deck/types";
 
 /**
@@ -43,7 +49,11 @@ export default function I11Results({ t, fresh, at }: SlideProps) {
               key={g.label}
               initial={fresh ? { opacity: 0, y: 22 } : false}
               animate={on ? { opacity: 1, y: 0 } : { opacity: 0.14, y: 0 }}
-              transition={{ duration: 0.55, delay: fresh && on ? i * 0.12 : 0, ease: EASE }}
+              transition={{
+                duration: 0.55,
+                delay: fresh && on ? i * 0.12 : 0,
+                ease: EASE,
+              }}
             >
               <Glass active={on} className="flex h-full flex-col p-5">
                 <span
@@ -59,7 +69,9 @@ export default function I11Results({ t, fresh, at }: SlideProps) {
                 >
                   {g.num}
                 </span>
-                <span className="mt-2 block text-[12.5px] leading-tight text-white">{g.label}</span>
+                <span className="mt-2 block text-[12.5px] leading-tight text-white">
+                  {g.label}
+                </span>
 
                 <span className="mt-auto block border-t border-white/[0.07] pt-3 text-[10.5px] leading-snug text-slate-500">
                   {g.note}
@@ -81,14 +93,16 @@ export default function I11Results({ t, fresh, at }: SlideProps) {
       </motion.p>
 
       {/* asoschiga eslatma — pilot statistikasi bilan to'ldirilsin */}
-      <motion.p
-        initial={fresh ? { opacity: 0 } : false}
-        animate={show(2) ? { opacity: 1 } : {}}
-        transition={{ duration: 0.7, delay: 0.3 }}
-        className={`mt-2.5 rounded-lg border border-amber-400/25 bg-amber-500/[0.07] px-3.5 py-2 text-[10.5px] leading-snug text-amber-200/80 ${ORB_CLEAR}`}
-      >
-        {c.note}
-      </motion.p>
+      {c.note && (
+        <motion.p
+          initial={fresh ? { opacity: 0 } : false}
+          animate={show(2) ? { opacity: 1 } : {}}
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className={`mt-2.5 rounded-lg border border-amber-400/25 bg-amber-500/[0.07] px-3.5 py-2 text-[10.5px] leading-snug text-amber-200/80 ${ORB_CLEAR}`}
+        >
+          {c.note}
+        </motion.p>
+      )}
     </Stage>
   );
 }

@@ -28,12 +28,14 @@ import type { SlideProps } from "@/components/deck/types";
 
 /** Kartalar — `copy.detectors.cases` tartibida */
 const MEDIA = [
-  { video: "/video/investor/qurol-1.mp4", poster: "/video/investor/qurol-1-poster.jpg", tone: "#FF5C5C" },
+  { video: "/video/investor/qurol.mp4", poster: "/video/investor/qurol-poster.jpg", tone: "#FF5C5C" },
   { image: "/imges/investor/kadr-chekish.webp", tone: "#FFC46B" },
   /* ⚠️ RAMKALI kadr. 11-slayddagi `kadr-janjal-hovli.webp` — SHU SAHNANING
      xom yozuvi (ramkasiz) va bu yerga to'g'ri kelmaydi: slaydning butun
      da'vosi "tizim aniqladi" degani, uni esa faqat ramka isbotlaydi. */
   { image: "/imges/investor/kadr-janjal-ramka.webp", tone: "#FF8A8A" },
+  /* Telefonda gaplashish — Camera 01, haqiqiy kadr (ishonch ko'rsatilmaydi) */
+  { image: "/imges/investor/telfon.webp", tone: "#8FB8FF" },
 ] as const;
 
 export default function I7Detectors({ active, t, fresh, at }: SlideProps) {
@@ -44,7 +46,7 @@ export default function I7Detectors({ active, t, fresh, at }: SlideProps) {
     <Stage>
       <SlideTitle kicker={c.kicker} title={c.title} run={fresh} />
 
-      <div className="mt-[clamp(14px,2.4vh,32px)] grid gap-3 lg:grid-cols-3">
+      <div className="mt-[clamp(14px,2.4vh,32px)] grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {c.cases.map((k, i) => {
           const media = MEDIA[i];
           const on = show(1);
@@ -88,12 +90,14 @@ export default function I7Detectors({ active, t, fresh, at }: SlideProps) {
                       <Camera size={11} />
                       {k.cam}
                     </span>
-                    <span
-                      className="rounded-md border px-2 py-[3px] font-mono text-[11px] tabular-nums"
-                      style={{ borderColor: `${media.tone}55`, color: media.tone }}
-                    >
-                      {k.conf}
-                    </span>
+                    {k.conf && (
+                      <span
+                        className="rounded-md border px-2 py-[3px] font-mono text-[11px] tabular-nums"
+                        style={{ borderColor: `${media.tone}55`, color: media.tone }}
+                      >
+                        {k.conf}
+                      </span>
+                    )}
                   </div>
                   <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] tabular-nums text-slate-400">
                     <Clock size={11} />
@@ -114,6 +118,17 @@ export default function I7Detectors({ active, t, fresh, at }: SlideProps) {
         className={`mt-3 ${ORB_CLEAR}`}
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ice/70">{c.allTitle}</span>
+          {c.all.map((d) => (
+            <span
+              key={d}
+              className="rounded-md border border-ice/25 bg-ice/[0.06] px-2 py-1 font-mono text-[10px] tracking-[0.04em] text-slate-200"
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ice/70">{c.moreTitle}</span>
           {c.more.map((d) => (
             <span

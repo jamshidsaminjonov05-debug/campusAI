@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { MagnifyingGlass, X } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import type { PersonType } from "@/lib/api";
-import type { PersonBrief } from "@/lib/studentStats";
+import type { PersonBrief } from "@/lib/nvr/studentStats";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import {
   ABSENCE_CODES,
@@ -25,7 +25,7 @@ import {
   getReason,
   setReason,
   type AbsenceCode,
-} from "@/lib/absenceReasons";
+} from "@/lib/nvr/absenceReasons";
 
 /** Modalda bir vaqtda ko'rsatiladigan maksimal qator — yuqoridagi izohga qarang. */
 const MAX_ROWS = 60;

@@ -63,3 +63,6 @@ test-results/
 *output*.txt
 test_output.txt
 __pycache__
+
+# Voyaga yetmagan o'quvchilar rasmlari — repoga TUSHMASIN
+public/imges/investor/3asinf/

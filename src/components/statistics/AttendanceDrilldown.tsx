@@ -15,7 +15,7 @@ import { Donut3D, type DonutSlice } from "@/components/common/Donut3D";
 import { StatPanel, TabPill, fmt } from "@/components/common/panels";
 import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { useT } from "@/i18n";
-import type { NvrAttendanceRow, NvrAttendanceStatus } from "@/lib/nvrApi";
+import type { NvrAttendanceRow, NvrAttendanceStatus } from "@/lib/nvr/nvrApi";
 import { attDay, type AttendanceDayPoint } from "@/hooks/useNvrAttendance";
 
 /**
@@ -186,6 +186,18 @@ export function AttendanceDrilldown({
   /* AnimatePresence `key` — chuqurlashuv darajasi o'zgarganda karta
      QAYTA suzib kirsin (o'tish sezilsin), shunchaki mazmun almashmasin
      (`MapDetailOverlay.tsx`dagi bilan AYNI naqsh). */
+  /** Qaydsiz kunda "qaytish" manzili — davrdagi qaydi bor OXIRGI ish kuni
+   *  (yo'q bo'lsa davr oxiri). Tanlangan kunning o'zi bo'lsa tugma chiqmaydi. */
+  const dayPoint = points.find((p) => p.date === day);
+  const backTarget = useMemo(() => {
+    const worked = points
+      .filter((p) => !p.isWeekend && p.early + p.late + p.absent > 0)
+      .map((p) => p.date)
+      .sort();
+    const target = worked[worked.length - 1] ?? to;
+    return target && target !== day ? target : null;
+  }, [points, to, day]);
+
   const panelKey = slice == null ? "none" : `${slice}:${roleTile ?? ""}:${klass ?? ""}`;
 
   return (
@@ -203,10 +215,11 @@ export function AttendanceDrilldown({
         </button>
       }
     >
-      {totalKnown === 0 ? (
-        <p className="py-10 text-center text-[12px] text-slate-500">Bu kun uchun davomat qaydi yo&apos;q.</p>
-      ) : (
-        <div className="flex flex-col items-center gap-5 md:flex-row md:items-center">
+      {/* ⚠️ Qaydsiz kunda (dam olish kuni, kamera hech kimni tanimagan) ham
+          KALENDAR va QAYTISH tugmasi qoladi (2026-10-19, foydalanuvchi
+          so'rovi). Ilgari bo'sh xabar butun panelni — kalendarni ham —
+          almashtirib yuborardi va boshqa kunni tanlashning yo'li qolmasdi. */}
+      <div className="flex flex-col items-center gap-5 md:flex-row md:items-center">
           {/* ── KALENDAR — chap tomonda, bo'lak tanlansa TUGMAGA aylanadi ── */}
           {showCalendar &&
             (calendarOpen ? (
@@ -234,6 +247,28 @@ export function AttendanceDrilldown({
               bo'lib qolyabdi ... pie chart kattaroq bo'lsin"). `flex-1` —
               qolgan butun kengliqni oladi, `Donut3D`ning ICHKI `maxWidth`
               (`size`) uni yuqoridan cheklaydi. */}
+          {totalKnown === 0 ? (
+            <div className="flex min-h-[260px] min-w-0 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-10 text-center">
+              <p className="text-[13px] font-semibold text-slate-300">
+                {dayPoint?.isWeekend ? "Dam olish kuni — davomat olinmaydi." : "Bu kun uchun davomat qaydi yo'q."}
+              </p>
+              <p className="max-w-sm text-[11.5px] leading-snug text-slate-500">
+                {showCalendar
+                  ? "Kalendardan boshqa kunni tanlang yoki oxirgi ish kuniga qayting."
+                  : "Boshqa kunni ko'rish uchun yuqoridagi davr tanlovidan Hafta yoki Oy ni tanlang."}
+              </p>
+              {backTarget && (
+                <button
+                  type="button"
+                  onClick={() => onSelectDay(backTarget)}
+                  className="flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-400/[0.06] px-3 py-1.5 text-[11.5px] font-semibold text-cyan-200 transition-colors hover:border-cyan-300/60 hover:bg-cyan-400/[0.12]"
+                >
+                  <CaretLeft size={12} weight="bold" />
+                  Oxirgi ish kuniga qaytish ({backTarget})
+                </button>
+              )}
+            </div>
+          ) : (
           <motion.div layout className="min-w-0 flex-1" transition={{ type: "spring", stiffness: 260, damping: 30 }}>
             <Donut3D
               data={pieData}
@@ -246,6 +281,7 @@ export function AttendanceDrilldown({
               }}
             />
           </motion.div>
+          )}
 
           {/* ── KARTA — o'ngdan suzib kiradi ── */}
           <AnimatePresence mode="wait">
@@ -367,7 +403,6 @@ export function AttendanceDrilldown({
             )}
           </AnimatePresence>
         </div>
-      )}
     </StatPanel>
   );
 }

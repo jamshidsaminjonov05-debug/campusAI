@@ -11,7 +11,7 @@
  *     Faqat texnik kontekst: muassasa id'si, sahifa, xato matni, brauzer.
  */
 import { API_BASE } from "@/config/endpoints";
-import { getInstitutionScope } from "@/lib/institutionScope";
+import { getInstitutionScope } from "@/lib/nvr/institutionScope";
 
 const QUEUE_KEY = "campus-error-queue";
 const MAX_QUEUED = 20;

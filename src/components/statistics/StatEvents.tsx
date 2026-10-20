@@ -36,7 +36,7 @@ import { csvName, downloadCsv, toCsv } from "@/lib/statistics";
 import { useEventStats } from "@/hooks/useEventStats";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
-import { NVR_MAX_LIMIT, listEvents, nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { NVR_MAX_LIMIT, listEvents, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { NVR_COLOR } from "@/components/detections/DetectionCard";
 import { DonutChart } from "@/components/dashboard/DashPanel";

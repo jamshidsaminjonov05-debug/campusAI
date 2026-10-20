@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowsClockwise as RefreshCw, Broadcast as Radio, CircleNotch as Loader2, DownloadSimple as Download, Play, VideoCameraSlash as VideoOff } from "@phosphor-icons/react";
-import { getVideoInfo, nvrEventVideoUrl, nvrPanelUrl, probeVideo, type NvrVideoState } from "@/lib/nvrApi";
+import { getVideoInfo, nvrPanelUrl, probeVideo, type NvrVideoState } from "@/lib/nvr/nvrApi";
 import { useT } from "@/i18n";
 
 /**
@@ -35,6 +35,25 @@ import { useT } from "@/i18n";
  * yo'q, brauzerning o'zi allaqachon shu faylni bir marta olgan bo'lishi
  * mumkin (keshdan). Shuning uchun `state === "ready"` bo'lgandagina
  * ko'rinadi — aks holda server hali `202` qaytaradi, fayl emas.
+ *
+ * 🔴 **"2-VERSIYA" (`weapon2`/`janjal2`) — BUTUNLAY BOSHQA VIDEO OQIMI**
+ * (2026-09-17, foydalanuvchi so'rovi: "2chi versiyada rasm kelayabdi
+ * lekin videolari kelmayabdi"). Sabab: bu komponent ILGARI faqat
+ * `eventId`ni olardi va undan doim kuzatuv posti manzilini qurardi
+ * (`nvrEventVideoUrl(eventId)` — raqam berilsa `NVR_BASE`dan
+ * `/events/{id}/video`) — 2-versiya alertining `id`si kuzatuv posti
+ * `id` fazosiga ALOQASI YO'Q, ya'ni bu manzil noto'g'ri (yo boshqa
+ * hodisaning videosi, yo umuman yo'q) edi. Ustiga `probeVideo()`/
+ * `getVideoInfo()` — ikkalasi ham kuzatuv postining O'Z aylantirish/panel
+ * API'siga so'rov yuboradi, 2-versiya bunday API'ga EGA EMAS.
+ *
+ * Endi chaqiruvchi (`DetectionsPage.tsx`) to'liq manzilni
+ * (`nvrEventVideoUrl(ev)` — `ev.video_url` bo'lsa O'SHANI oladi, ya'ni
+ * `/weapon2/...`/`/janjal2/...` uchun ALLAQACHON to'g'ri) va `external`
+ * bayrog'ini (`isLocalModelEvent(ev)`) beradi: `external` bo'lsa
+ * probe/panel so'rovlari UMUMAN yuborilmaydi — 2-versiya videosi statik
+ * fayl (kuzatuv postidagi H.265→MP4 konvertatsiya bosqichi yo'q),
+ * shuning uchun holat DOIM "tayyor".
  */
 /** `Content-Disposition: attachment; filename="..."` dan fayl nomini oladi. */
 function filenameFromDisposition(v: string | null): string | null {
@@ -42,7 +61,19 @@ function filenameFromDisposition(v: string | null): string | null {
   return m ? m[1] : null;
 }
 
-export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolean }) {
+export function EventVideo({
+  eventId,
+  ready,
+  videoUrl,
+  external = false,
+}: {
+  eventId: number;
+  ready?: boolean;
+  /** To'liq `<video src>` manzili — `nvrEventVideoUrl(ev)` (chaqiruvchida hisoblanadi). */
+  videoUrl: string;
+  /** `true` — "2-versiya" (`weapon2`/`janjal2`) hodisasi: probe/panel API o'tkazib yuboriladi. */
+  external?: boolean;
+}) {
   const v = useT().nvr.dossier.video;
   const [live, setLive] = useState(false);
   /* Asl lavha (`.dav`) bir necha MB — kuzatuv posti uni RTSP manbadan REAL VAQTDA
@@ -56,12 +87,15 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
   /* `<video>` MP4 tayyor bo'lsa ham brauzer uni hali OLIB KELMAGAN bo'lishi
      mumkin (lokal tarmoq bo'lsa ham fayl bir necha MB) — shuncha vaqt ekran
      qop-qora turmasin, aylanuvchi belgi + matn ko'rsatiladi
-     (`EventVideoModal.tsx` dagi bilan bir xil naqsh: onWaiting/onCanPlay). */
+     (onWaiting/onCanPlay). */
   const [buffering, setBuffering] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   /* Tayyorlik — ochiq API. Hodisadagi `video_ready` boshlang'ich qiymat
-     bo'lib xizmat qiladi: tayyor bo'lsa qo'shimcha so'rov yuborilmaydi. */
+     bo'lib xizmat qiladi: tayyor bo'lsa qo'shimcha so'rov yuborilmaydi.
+     ⚠️ `external` (2-versiya) bo'lsa BUTUNLAY o'chiriladi — video statik
+     fayl, kuzatuv postining aylantirish holati unga tegishli emas
+     (yuqoridagi izohga qarang). */
   const q = useQuery({
     queryKey: ["nvr-video", eventId],
     queryFn: () => probeVideo(eventId),
@@ -70,18 +104,23 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
     refetchInterval: (query) => (query.state.data === "preparing" ? 5000 : false),
     staleTime: 30_000,
     retry: false,
+    enabled: !external,
   });
 
-  /* Qo'shimcha (kodek / jonli oqim / asl lavha) — panel API. Ixtiyoriy. */
+  /* Qo'shimcha (kodek / jonli oqim / asl lavha) — panel API. Ixtiyoriy,
+     va `external`da UMUMAN so'ralmaydi — bu API 2-versiya `id`sini
+     bilmaydi (kuzatuv postining O'Z hodisa raqamlariga tegishli). */
   const extra = useQuery({
     queryKey: ["nvr-video-info", eventId],
     queryFn: () => getVideoInfo(eventId),
     staleTime: 60_000,
     retry: false,
+    enabled: !external,
   });
 
-  const state = q.data;
-  const info = extra.data;
+  // 2-versiya videosi — statik fayl, DOIM "tayyor" (konvertatsiya/probe yo'q).
+  const state = external ? "ready" : q.data;
+  const info = external ? undefined : extra.data;
   const liveUrl = nvrPanelUrl(info?.live_url);
 
   const toggleLive = useCallback(() => setLive((v) => !v), []);
@@ -101,7 +140,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
     setDownloading(true);
     setDownloadError(false);
     try {
-      const res = await fetch(nvrEventVideoUrl(eventId), { cache: "no-store" });
+      const res = await fetch(videoUrl, { cache: "no-store" });
       if (!res.ok) throw new Error(`${res.status}`);
       const filename = filenameFromDisposition(res.headers.get("content-disposition")) ?? `hodisa-${eventId}.mp4`;
       const blob = await res.blob();
@@ -125,7 +164,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
     } finally {
       setDownloading(false);
     }
-  }, [state, downloading, eventId]);
+  }, [state, downloading, eventId, videoUrl]);
 
   return (
     <section className="nvr-video">
@@ -141,8 +180,13 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
           <button
             type="button"
             onClick={() => {
-              q.refetch();
-              extra.refetch();
+              // `external`da `q`/`extra` o'chirilgan (yuqoridagi izohga
+              // qarang) — ularga qayta so'rov yubormaymiz, faqat elementni
+              // qayta yuklaymiz (kesh/uzilgan ulanishdan tiklash uchun).
+              if (!external) {
+                q.refetch();
+                extra.refetch();
+              }
               setBuffering(true);
               videoRef.current?.load();
             }}
@@ -199,7 +243,7 @@ export function EventVideo({ eventId, ready }: { eventId: number; ready?: boolea
             <video
               key={eventId}
               ref={videoRef}
-              src={nvrEventVideoUrl(eventId)}
+              src={videoUrl}
               controls
               playsInline
               preload="auto"

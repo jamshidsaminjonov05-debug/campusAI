@@ -688,7 +688,6 @@ export const api = {
     limit?: number;
     offset?: number;
   }) => request<AttendanceOut[]>(`/attendance${qs(p)}`),
-  recentAttendance: (limit = 10) => request<RecentEntry[]>(`/attendance/recent${qs({ limit })}`),
 
   /**
    * BUTUN ro'yxat — sahifama-sahifa (`page_size` chegarasi bor).

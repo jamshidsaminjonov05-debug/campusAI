@@ -2,19 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { AnimatePresence } from "framer-motion";
 import { MapLibreMap, type YMarker } from "@/map/maplibre/MapLibreMap";
 import { CAMPUS_CENTER, CAMPUS_FOCUS_REGION, CAMPUS_POINTS, CAMPUS_ZOOM } from "@/config/campusPoints";
-import { buildingAnchors, loadCampusAreas, type CampusArea } from "@/lib/campusAreas";
+import { buildingAnchors, loadCampusAreas, type CampusArea } from "@/lib/nvr/campusAreas";
 import { cameraHeading, placementFor } from "@/config/cameraPlacements";
 import { useDetectionCameras } from "@/hooks/useDetections";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
-import { eventChannel } from "@/lib/eventCamera";
+import { eventChannel } from "@/lib/nvr/eventCamera";
 import { MapPin } from "@phosphor-icons/react";
 import { CameraPlacer } from "./CameraPlacer";
-import { placementsVersion, setPlacement, subscribePlacements } from "@/lib/cameraPlacementStore";
+import { placementsVersion, setPlacement, subscribePlacements } from "@/lib/nvr/cameraPlacementStore";
 import { INSTITUTIONS, institutionById } from "@/config/institutions";
 import { DEFAULT_INSTITUTION_ID } from "@/config/institutions";
 import { useDetectionFeed } from "@/hooks/useDetectionFeed";
-import type { DetectionEvent } from "@/lib/detectionEvents";
-import { DETECTION_BY_ID, detectionIdByCode, type DetectionId } from "@/lib/detectionTypes";
+import type { DetectionEvent } from "@/lib/nvr/detectionEvents";
+import { DETECTION_BY_ID, detectionIdByCode, type DetectionId } from "@/lib/nvr/detectionTypes";
 import { useAppStore } from "@/store/useAppStore";
 import { CameraQuickView } from "@/components/cameras/CameraQuickView";
 import { HudEventDetail } from "./HudEventDetail";
@@ -362,7 +362,7 @@ export function EventsHudScreen() {
           setPlacing(null);
         }}
         title="Kamera joylashtirish rejimi"
-        className={`absolute left-4 top-36 z-30 grid h-9 w-9 place-items-center rounded-lg border backdrop-blur-xl transition-colors ${
+        className={`absolute left-4 top-36 z-30 grid h-9 w-9 place-items-center rounded-lg border transition-colors ${
           placerOpen
             ? "border-ice/70 bg-ice/20 text-white"
             : "border-white/15 bg-[#0C1020]/85 text-slate-300 hover:text-white"

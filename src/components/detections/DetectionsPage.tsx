@@ -24,6 +24,8 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNvrEvents, type NvrTab } from "@/hooks/useNvrEvents";
+import { listWeapon2Alerts, listWeapon2Cameras } from "@/lib/nvr/weapon2Api";
+import { listJanjal2Alerts, listJanjal2Cameras } from "@/lib/nvr/janjal2Api";
 import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
 import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
 import { AlertKpiModal, CameraKpiModal } from "./DetectionKpiModals";
@@ -32,26 +34,28 @@ import {
   getEvent,
   getFace,
   isAlarm,
+  isLocalModelEvent,
   listVisit,
   nvrDateTime,
+  nvrEventVideoUrl,
   nvrImageUrl,
   nvrPersonPhotoUrl,
   nvrTime,
   verifyEvent,
   type NvrEvent,
   type NvrVerifyResult,
-} from "@/lib/nvrApi";
-import { parseCameraName, placeLabel } from "@/lib/cameraNaming";
+} from "@/lib/nvr/nvrApi";
+import { parseCameraName, placeLabel } from "@/lib/nvr/cameraNaming";
 import { dayMonthLongLabel } from "@/lib/dateLabel";
-import { attrLabel, attrValue } from "@/lib/nvrAttributes";
-import { resolveCampus } from "@/lib/cameraBinding";
+import { attrLabel, attrValue } from "@/lib/nvr/nvrAttributes";
+import { resolveCampus } from "@/lib/nvr/cameraBinding";
 import { CAMPUS_POINTS } from "@/config/campusPoints";
 import { Pistol } from "@/components/common/PistolIcon";
 import { DetectionCard, NVR_COLOR } from "./DetectionCard";
 import { EventVideo } from "./EventVideo";
 import { EnrollPerson } from "./EnrollPerson";
 import { useAppStore } from "@/store/useAppStore";
-import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/detectionSeen";
+import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/nvr/detectionSeen";
 import { Pagination } from "@/components/common/Pagination";
 import { TabPill, fmt } from "@/components/common/panels";
 import { LibraryPhoto } from "@/components/people/FaceDatabasePage";
@@ -305,6 +309,18 @@ export function DetectionsPage() {
     setPrimaryTab(id);
   };
 
+  /**
+   * "2-versiya" YOQIQ bo'lganda QAYSI lokal serverdan o'qiladi — tabga
+   * qarab (2026-09-17, foydalanuvchi so'rovi: "janjalni bosganimizda
+   * berilgan backend swageridan olib kelishi kerak"). `weapon2Api.ts`
+   * faqat QUROL, `janjal2Api.ts` faqat JANJAL beradi (ikkalasi ham
+   * alohida server) — shuning uchun "Janjal" tabida manba `janjal2`ga
+   * almashadi, qolgan hamma joyda (Qurol/Hammasi/boshqa tab) avvalgidek
+   * `weapon2` (ilgarigi xatti-harakat o'zgarmadi — faqat Janjal
+   * QO'SHILDI).
+   */
+  const weapon2Source = tab === "janjal" ? "janjal2" : "weapon2";
+
   /* Muassasa + sana oralig'i + qidiruv — kartochkalar RO'YXATIGA va statistika
      kartalariga BIR XIL qo'llanadi. Server faqat bitta `camera` bo'yicha
      filtrlaydi, kampusda bir nechta kamera bo'lishi mumkin — shuning uchun
@@ -365,7 +381,7 @@ export function DetectionsPage() {
   } = useNvrEvents(tab, clientFiltered ? WINDOW : PAGE, {
     dateFrom,
     dateTo,
-    source: weapon2Mode ? "weapon2" : "nvr",
+    source: weapon2Mode ? weapon2Source : "nvr",
   });
 
   /** Klient rejimidagi sahifa (server rejimida ishlatilmaydi). */
@@ -461,6 +477,78 @@ export function DetectionsPage() {
   /** "Xavf signali" — foydalanuvchi ta'rifi: janjal + qurol (`isDangerEvent`,
    *  KPI kartochka va oyna BIR XIL sonni ko'rsatsin). */
   const dangerCount = kpiStats.danger;
+
+  /**
+   * ╔══════════════════════════════════════════════════════════════════╗
+   * ║  YUQORI KPI QATORI — "2-VERSIYA"GA MOSLAB (2026-09-17)           ║
+   * ╚══════════════════════════════════════════════════════════════════╝
+   *
+   * Ilgari bu qator `weapon2Mode`dan MUSTAQIL edi (yuqoridagi "KPI qatori
+   * ('Hammasi'da) 2-versiyaga ULANMAGAN" izohiga qarang) — 2-versiya
+   * yoqiq bo'lsa ham kuzatuv postining o'z (10 000+ yuz qaydi) sonlarini
+   * ko'rsatardi, holbuki pastdagi kartochka to'ri allaqachon `weapon2`/
+   * `janjal2`dan o'qiydi — ikki xil manba bitta ekranda chalkashardi.
+   * Foydalanuvchi so'rovi: "yuqori panelni 2chi versiya uchun moslab
+   * chiqarib ber".
+   *
+   * ⚠️ **Sana oralig'i QO'LLANILMAYDI** — ikkala server ham (`weapon2`,
+   * `janjal2`) faqat `page`/`page_size` qabul qiladi (`/openapi.json`da
+   * tekshirilgan, 2026-09-17), `date_from`/`date_to` YO'Q. Shuning uchun
+   * bu yerdagi son DOIM butun tarix — hint shuni ochiq yozadi.
+   *
+   * ⚠️ **"Tanilgan yuzlar" KARTOCHKASI 2-versiyada UMUMAN CHIZILMAYDI**
+   * (foydalanuvchi so'rovi: "yuz tanish ... uchun ma'lumot 2chi versiyada
+   * yo'q ... hech narsa chiqarmasligi kerak"). 2-versiya faqat qurol/
+   * janjal aniqlaydi — yuz tanish modeli YO'Q, shuning uchun o'ylab
+   * topilgan "0 tanilgan" o'rniga kartochkaning O'ZI yo'qoladi (4
+   * ustunli katakdan 3 ustunliga qaytadi) — agar kelajakda shu vazifani
+   * bajaradigan model ulansa, shu yerga kartochka qaytariladi.
+   *
+   * Qolgan uchta kartochka combi:
+   *  - "Tanlangan davrda" — QUROL + JANJAL jami (butun tarix);
+   *  - "Xavf signali" — 2-versiyaning O'ZI 100% xavfli (faqat qurol/
+   *    janjal beradi), shuning uchun AYNI son — bu yolg'on emas, sabab
+   *    hintda yozilgan;
+   *  - "Faol kameralar" — HAR IKKI serverdan, kamida bitta qabul
+   *    qilingan (`accepted > 0`) signal bergan kameralar.
+   * Uchalasi ham BOSILMAYDI: NVR KPI kartochkalari ochadigan oynalar
+   * (`TodayArrivalsModal`/`AlertKpiModal`/`CameraKpiModal`) kuzatuv
+   * postining o'z hooklariga qurilgan — 2-versiya ma'lumotini bilmaydi,
+   * shuning uchun mos kelmagan oyna ochishdan ko'ra умuman bosilmasin.
+   */
+  const weapon2KpiEnabled = weapon2Mode && primaryTab === "hammasi";
+  const weapon2KpiAlertsQ = useQuery({
+    queryKey: ["weapon2-alerts", 1, 1],
+    queryFn: () => listWeapon2Alerts(1, 1),
+    enabled: weapon2KpiEnabled,
+    staleTime: 15_000,
+  });
+  const janjal2KpiAlertsQ = useQuery({
+    queryKey: ["janjal2-alerts", 1, 1],
+    queryFn: () => listJanjal2Alerts(1, 1),
+    enabled: weapon2KpiEnabled,
+    staleTime: 15_000,
+  });
+  const weapon2KpiCamerasQ = useQuery({
+    queryKey: ["weapon2-cameras"],
+    queryFn: () => listWeapon2Cameras(),
+    enabled: weapon2KpiEnabled,
+    staleTime: 5 * 60_000,
+  });
+  const janjal2KpiCamerasQ = useQuery({
+    queryKey: ["janjal2-cameras"],
+    queryFn: () => listJanjal2Cameras(),
+    enabled: weapon2KpiEnabled,
+    staleTime: 5 * 60_000,
+  });
+  const weapon2KpiLoading =
+    weapon2KpiEnabled && (weapon2KpiAlertsQ.isLoading || janjal2KpiAlertsQ.isLoading);
+  const weapon2KpiGunTotal = weapon2KpiAlertsQ.data?.total ?? 0;
+  const weapon2KpiJanjalTotal = janjal2KpiAlertsQ.data?.total ?? 0;
+  const weapon2KpiTotal = weapon2KpiGunTotal + weapon2KpiJanjalTotal;
+  const weapon2KpiCameras =
+    (weapon2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0).length +
+    (janjal2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0).length;
 
   /* 3D kampus markeridan kelgan fokus: filtr tozalanadi (aks holda hodisa
      joriy kategoriyaga tushmay ro'yxatda ko'rinmasdi) va yozuv topilishi
@@ -606,78 +694,121 @@ export function DetectionsPage() {
       {/* ⚠️ **TO'RTALA KARTOCHKA BOSILADI** (2026-09-08, foydalanuvchi
           so'rovi: "yuqori tablardagi hamma cardlar bosilishi kerak").
           Har biri o'z oynasini ochadi — pastdagi render bo'limiga qarang. */}
-      <div className="grid flex-none grid-cols-4 gap-2.5">
-        {/* "Tanlangan davrda" — HAMMA (tanish + notanish) ro'yxati */}
-        <button
-          type="button"
-          onClick={() => setArrivalsKnown("all")}
-          className="text-left"
-          title="Ro'yxatni ochish"
-        >
-          <DetKpi
-            Icon={ChartLineUp}
-            value={kpiStats.total}
-            label={t.nvr.statPeriod}
-            /* ⚠️ Ilgari bu yerda `${filteredEvents.length} tasi ro'yxatda`
-               turardi — `filteredEvents` esa JORIY SAHIFANING ro'yxati
-               (`pageSize=24`), butun davrning emas. Davr o'zgarganda ham
-               sahifada doim ≤24 element bo'lgani uchun son deyarli
-               qimirlamasdi ("davr o'zgarsa ham o'zgarmayapti" — aynan shu
-               sabab). Ustiga `arrivals.capped` (butun davr sonining o'zi
-               taxminiy ekanligi, "X tasi ro'yxatda"ga aloqasi yo'q) bitta
-               matnga qorishtirilgan edi. Endi ikkalasi to'g'ri: hint
-               joriy TABDAGI (Yuz tanish/Qurol/...) server hisoblagan
-               `total`ni ko'rsatadi — bu HAM davrga, HAM tabga qarab
-               chindan o'zgaradi; "qisman" esa faqat YUQORIDAGI sonning
-               o'zi (`arrivals.events`) taxminiy bo'lsa chiqadi. */
-            hint={
-              kpiStats.isLoading
-                ? "sanalmoqda…"
-                : `${n(total)} ta "${currentTabLabel}"da`
-            }
-            tone="#22B8E6"
-          />
-        </button>
-        {/* "Tanilgan yuzlar" — FAQAT tanilganlar (nomiga mos, 2026-09-08 da
-            tuzatildi: ilgari HAMMASINI ko'rsatuvchi oynani ochardi). */}
-        <button type="button" onClick={() => setArrivalsKnown("yes")} className="text-left" title="Ro'yxatni ochish">
-          <DetKpi
-            Icon={UserFocus}
-            value={kpiFaces.total}
-            label={t.nvr.statRecognized}
-            hint={
-              kpiFaces.total > 0
-                ? `${kpiFaces.known} tanilgan · ${kpiFaces.unknown} notanish`
-                : "yuz qayd etilmagan"
-            }
-            tone="#22C55E"
-          />
-        </button>
-        {/* "Xavf signali" — janjal + qurol (foydalanuvchi ta'rifi,
-            `isDangerEvent`). Server `alert` bayrog'i (`stats.alerts`)
-            KENGROQ — "begona shaxs" kabi boshqa toifalarni ham qamraydi,
-            shuning uchun bu yerda ATAYLAB ishlatilmaydi: kartochka soni
-            va oynadagi ro'yxat BIR XIL bo'lishi kerak. */}
-        <button type="button" onClick={() => setShowAlerts(true)} className="text-left" title="Ro'yxatni ochish">
-          <DetKpi
-            Icon={Siren}
-            value={dangerCount}
-            label={t.nvr.statAlarm}
-            hint={dangerCount > 0 ? "janjal · qurol" : "trevoga yo'q"}
-            tone="#F43F5E"
-          />
-        </button>
-        {/* "Faol kameralar" — shu davrda qaysi kameradan nechta odam
-            kelgani (`kpiStats.byChannel` — server hisobi). */}
-        <button type="button" onClick={() => setShowCameras(true)} className="text-left" title="Ro'yxatni ochish">
-          <DetKpi
-            Icon={SecurityCamera}
-            value={kpiStats.byChannel.length}
-            label={t.nvr.statCameras}
-            hint="hodisa kelgan kanallar"
-            tone="#F59E0B"
-          />
-        </button>
+      {/* 🔴 2026-09-17: "2-versiya" yoqiq bo'lsa BUTUN qator manbasini
+          almashtiradi (yuqoridagi "YUQORI KPI QATORI" izohiga qarang) —
+          3 ustun (yuz tanish kartochkasi YO'Q, chunki 2-versiya bunday
+          ma'lumot bermaydi), kartochkalar BOSILMAYDI. */}
+      <div className={`grid flex-none gap-2.5 ${weapon2Mode ? "grid-cols-3" : "grid-cols-4"}`}>
+        {weapon2Mode ? (
+          <>
+            {/* "Tanlangan davrda" — QUROL + JANJAL jami, 2-versiya
+                serverlari sana filtri BERMAYDI, shuning uchun DOIM
+                butun tarix (hint ochiq yozadi). */}
+            <DetKpi
+              Icon={ChartLineUp}
+              value={weapon2KpiTotal}
+              label={t.nvr.statPeriod}
+              hint={
+                weapon2KpiLoading
+                  ? "sanalmoqda…"
+                  : `${n(weapon2KpiGunTotal)} qurol · ${n(weapon2KpiJanjalTotal)} janjal — butun tarix`
+              }
+              tone="#22B8E6"
+            />
+            {/* "Xavf signali" — 2-versiya FAQAT qurol/janjal beradi, ya'ni
+                oqimning O'ZI 100% xavfli — shuning uchun AYNI son. */}
+            <DetKpi
+              Icon={Siren}
+              value={weapon2KpiTotal}
+              label={t.nvr.statAlarm}
+              hint="2-versiya — barcha signal qurol/janjal"
+              tone="#F43F5E"
+            />
+            {/* "Faol kameralar" — ikkala server bo'yicha, kamida bitta
+                signal bergan (`accepted > 0`) kameralar. */}
+            <DetKpi
+              Icon={SecurityCamera}
+              value={weapon2KpiCameras}
+              label={t.nvr.statCameras}
+              hint="signal bergan kameralar (qurol + janjal)"
+              tone="#F59E0B"
+            />
+          </>
+        ) : (
+          <>
+            {/* "Tanlangan davrda" — HAMMA (tanish + notanish) ro'yxati */}
+            <button
+              type="button"
+              onClick={() => setArrivalsKnown("all")}
+              className="text-left"
+              title="Ro'yxatni ochish"
+            >
+              <DetKpi
+                Icon={ChartLineUp}
+                value={kpiStats.total}
+                label={t.nvr.statPeriod}
+                /* ⚠️ Ilgari bu yerda `${filteredEvents.length} tasi ro'yxatda`
+                   turardi — `filteredEvents` esa JORIY SAHIFANING ro'yxati
+                   (`pageSize=24`), butun davrning emas. Davr o'zgarganda ham
+                   sahifada doim ≤24 element bo'lgani uchun son deyarli
+                   qimirlamasdi ("davr o'zgarsa ham o'zgarmayapti" — aynan shu
+                   sabab). Ustiga `arrivals.capped` (butun davr sonining o'zi
+                   taxminiy ekanligi, "X tasi ro'yxatda"ga aloqasi yo'q) bitta
+                   matnga qorishtirilgan edi. Endi ikkalasi to'g'ri: hint
+                   joriy TABDAGI (Yuz tanish/Qurol/...) server hisoblagan
+                   `total`ni ko'rsatadi — bu HAM davrga, HAM tabga qarab
+                   chindan o'zgaradi; "qisman" esa faqat YUQORIDAGI sonning
+                   o'zi (`arrivals.events`) taxminiy bo'lsa chiqadi. */
+                hint={
+                  kpiStats.isLoading
+                    ? "sanalmoqda…"
+                    : `${n(total)} ta "${currentTabLabel}"da`
+                }
+                tone="#22B8E6"
+              />
+            </button>
+            {/* "Tanilgan yuzlar" — FAQAT tanilganlar (nomiga mos, 2026-09-08 da
+                tuzatildi: ilgari HAMMASINI ko'rsatuvchi oynani ochardi). */}
+            <button type="button" onClick={() => setArrivalsKnown("yes")} className="text-left" title="Ro'yxatni ochish">
+              <DetKpi
+                Icon={UserFocus}
+                value={kpiFaces.total}
+                label={t.nvr.statRecognized}
+                hint={
+                  kpiFaces.total > 0
+                    ? `${kpiFaces.known} tanilgan · ${kpiFaces.unknown} notanish`
+                    : "yuz qayd etilmagan"
+                }
+                tone="#22C55E"
+              />
+            </button>
+            {/* "Xavf signali" — janjal + qurol (foydalanuvchi ta'rifi,
+                `isDangerEvent`). Server `alert` bayrog'i (`stats.alerts`)
+                KENGROQ — "begona shaxs" kabi boshqa toifalarni ham qamraydi,
+                shuning uchun bu yerda ATAYLAB ishlatilmaydi: kartochka soni
+                va oynadagi ro'yxat BIR XIL bo'lishi kerak. */}
+            <button type="button" onClick={() => setShowAlerts(true)} className="text-left" title="Ro'yxatni ochish">
+              <DetKpi
+                Icon={Siren}
+                value={dangerCount}
+                label={t.nvr.statAlarm}
+                hint={dangerCount > 0 ? "janjal · qurol" : "trevoga yo'q"}
+                tone="#F43F5E"
+              />
+            </button>
+            {/* "Faol kameralar" — shu davrda qaysi kameradan nechta odam
+                kelgani (`kpiStats.byChannel` — server hisobi). */}
+            <button type="button" onClick={() => setShowCameras(true)} className="text-left" title="Ro'yxatni ochish">
+              <DetKpi
+                Icon={SecurityCamera}
+                value={kpiStats.byChannel.length}
+                label={t.nvr.statCameras}
+                hint="hodisa kelgan kanallar"
+                tone="#F59E0B"
+              />
+            </button>
+          </>
+        )}
       </div>
 
       {/* ⚠️ **KANAL KESIMI QATORI OLIB TASHLANDI** (2026-09-05,
@@ -827,8 +958,14 @@ export function DetectionsPage() {
             {/* 🔵 2026-09-11: 2-versiya endi tabdan mustaqil yoqiq qolishi
                 mumkin (yuqoridagi `selectTab` izohiga qarang) — bu tabda
                 u ma'lumot bermasa SABABI aytiladi, umumiy "topilmadi"
-                bilan aralashtirilmaydi. */}
-            {weapon2Mode && tab !== "gun" && tab !== "hammasi" ? t.nvr.weapon2Unsupported : t.nvr.notFound}
+                bilan aralashtirilmaydi.
+                2026-09-17: "Janjal" ham QO'LLAB-QUVVATLANADIGAN tab bo'ldi
+                (`janjal2` manbasi) — `weapon2Unsupported` endi FAQAT
+                haqiqatan mos kelmagan tablarda (Yuz tanish/Chekish/
+                Telefon) chiqadi. */}
+            {weapon2Mode && tab !== "gun" && tab !== "hammasi" && tab !== "janjal"
+              ? t.nvr.weapon2Unsupported
+              : t.nvr.notFound}
           </p>
         )}
 
@@ -903,7 +1040,7 @@ function VerifyRecognition({
   /** Kamera nishonini kattalashtirish (dossiyedagi rasm ko'ruvchisi). */
   onZoom?: () => void;
   /**
-   * Serverning OLDINDAN bergan hukmi (`ev.verdict`, `GUIDE.md` — "Tasdiqlangan
+   * Serverning OLDINDAN bergan hukmi (`ev.verdict`, `FRONTEND.md` — "Tasdiqlangan
    * odam QAYTA so'ralmaydi"). Bo'sh bo'lmasa savol UMUMAN ko'rsatilmaydi —
    * o'rniga shu hukm read-only ko'rinishda chiziladi.
    */
@@ -1010,7 +1147,7 @@ function VerifyRecognition({
         </div>
       ) : preVerdict ? (
         /* 🔵 Server OLDINDAN hukm bergan — savol QAYTA ko'rsatilmaydi
-           (`GUIDE.md`, 2026-09-10 kunduzi: "Tasdiqlangan odam QAYTA
+           (`FRONTEND.md`, 2026-09-10 kunduzi: "Tasdiqlangan odam QAYTA
            so'ralmaydi"). `verdict_scope:"person"` bo'lsa bu ANIQ shu
            kadr emas, odamning O'ZI ilgari tasdiqlangani uchun. */
         <div
@@ -1178,7 +1315,7 @@ export function DetectionModal({
    * yuzi kelda"). "Tanish to'g'rimi?" bloki ilgari FAQAT `face.data?.person`
    * ga (alohida `GET /faces/{id}` so'rovi) tayanardi. Kuzatuv posti
    * yangi hodisaning yuz guruhini odamga BOG'LASH ishini fonda,
-   * biroz KECHIKTIRIB bajaradi (`GUIDE.md`, "verdict_scope: person" —
+   * biroz KECHIKTIRIB bajaradi (`FRONTEND.md`, "verdict_scope: person" —
    * "guruh hali hisoblanmagan" bilan AYNI sabab) — juda yangi hodisada
    * (masalan shu zahoti tushgan kadr) `getFace()` `person: null`
    * qaytarishi mumkin, garchi `GET /events/{id}` javobidagi `ev.person`
@@ -1249,10 +1386,10 @@ export function DetectionModal({
      faqat vakil kadrni o'chirsak, qolgan kadrlardan biri ro'yxatda
      "o'chmagan" bo'lib qayta chiqardi. Shuning uchun o'tishning barcha
      kadri (`listVisit`) o'chiriladi.
-     ⚠️ "2-versiya" (`/weapon2/...`) hodisasi BOSHQA serverniki — bu yo'l
-     unga tegishli emas, tugma chizilmaydi. */
+     ⚠️ "2-versiya" (`/weapon2/...`/`/janjal2/...`) hodisasi BOSHQA
+     serverniki — bu yo'l unga tegishli emas, tugma chizilmaydi. */
   const qc = useQueryClient();
-  const deletable = !(ev.image_url ?? "").startsWith("/weapon2");
+  const deletable = !isLocalModelEvent(ev);
   const [confirmDel, setConfirmDel] = useState(false);
   /** "Shaxs haqida ma'lumot" — shu shaxsning to'liq tarixi (`FaceHistoryModal`). */
   const [personOpen, setPersonOpen] = useState(false);
@@ -1313,7 +1450,7 @@ export function DetectionModal({
        (2026-09-11, foydalanuvchi so'rovi: "eng asosiy bo'lishi kerak
        bo'lgan narsa O'qituvchi yoki talaba ekanligi"). Shuning uchun
        ism qatoridan DARHOL keyin — matn tig'izligi orasida yo'qolib
-       ketmasin. Manba — `ev.person.role_label` (`GUIDE.md` 10-D,
+       ketmasin. Manba — `ev.person.role_label` (`FRONTEND.md` 10-D,
        kadrda TAYYOR keladi, qo'shimcha so'rov kerak emas). */
     if (ev.category === "face" && roleText) add("role", L.role, roleText);
     if (ev.face_id != null) add("faceId", L.faceId, String(ev.face_id), undefined, true);
@@ -1567,7 +1704,12 @@ export function DetectionModal({
               sig'ardi, xulosa esa markazda yolg'iz qolib pastida bo'sh
               joy qolardi. */}
           <aside className="nvr-dsr-side">
-            <EventVideo eventId={ev.id} ready={ev.video_ready} />
+            <EventVideo
+              eventId={ev.id}
+              ready={ev.video_ready}
+              videoUrl={nvrEventVideoUrl(ev)}
+              external={isLocalModelEvent(ev)}
+            />
 
             {/* ⚠️ "Tanish to'g'rimi?" bloki CHAP USTUNGA ko'chirildi —
                 o'sha yerdagi izohga qarang. */}

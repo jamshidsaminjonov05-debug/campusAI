@@ -1,10 +1,10 @@
-import { nvrEventLabel } from "@/lib/eventLabels";
+import { nvrEventLabel } from "@/lib/nvr/eventLabels";
 import { useT } from "@/i18n";
 import { useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
 import { useAppStore } from "@/store/useAppStore";
-import { nvrTime, type NvrEvent } from "@/lib/nvrApi";
+import { nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventDossier } from "@/components/detections/EventDossier";
@@ -32,7 +32,7 @@ const SHOWN = 4;
  */
 export function RecentAlertsPanel() {
   const setActivePage = useAppStore((s) => s.setActivePage);
-  const q = useDetections({ category: "all", alarmOnly: true, limit: 12 });
+  const q = useDetections({ category: "all", alarmOnly: true, limit: 100 });
   const u = useT().dashboard.ui;
   const [openId, setOpenId] = useState<number | null>(null);
 

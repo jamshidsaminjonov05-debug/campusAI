@@ -5,7 +5,7 @@ import { useT } from "@/i18n";
 import { useStudentDay } from "@/hooks/useStudentDay";
 import type { PersonOut } from "@/lib/api";
 import { slotTime } from "@/config/lessons";
-import { buildMoodDay, type MoodGroup } from "@/lib/moodTimeline";
+import { buildMoodDay, type MoodGroup } from "@/lib/nvr/moodTimeline";
 
 const GROUP_COLOR: Record<MoodGroup, string> = {
   positive: "#34D399",

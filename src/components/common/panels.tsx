@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { CaretDown, CaretUp, type Icon } from "@phosphor-icons/react";
 import { GifIcon } from "@/components/common/GifIcon";
-import type { RegionHealth } from "@/lib/institutionRows";
+import type { RegionHealth } from "@/lib/nvr/institutionRows";
 import type { SortDir } from "@/lib/statistics";
 
 /** Recharts o'qlari va tooltip — butun sahifada bir xil. */

@@ -20,7 +20,7 @@ import {
 } from "@phosphor-icons/react";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { PersonIncidents } from "@/components/people/PersonIncidents";
-import { faceKey, personKey } from "@/lib/personIncidents";
+import { faceKey, personKey } from "@/lib/nvr/personIncidents";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { ImageLightbox } from "@/components/common/ImageLightbox";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
@@ -35,15 +35,15 @@ import {
   nvrImageUrl,
   nvrPersonPhotoUrl,
   nvrTime,
-} from "@/lib/nvrApi";
+} from "@/lib/nvr/nvrApi";
 import { useNvrPeople } from "@/hooks/useNvrPeople";
 import { attDay, usePersonAttendanceRate } from "@/hooks/useNvrAttendance";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { fmt } from "@/components/common/panels";
 import { useT } from "@/i18n";
-import { absenceSnapshot, getReason, subscribeAbsence, EXCUSED_CODES } from "@/lib/absenceReasons";
+import { absenceSnapshot, getReason, subscribeAbsence, EXCUSED_CODES } from "@/lib/nvr/absenceReasons";
 import { dayMonthLongLabel } from "@/lib/dateLabel";
-import type { NvrEvent } from "@/lib/nvrApi";
+import type { NvrEvent } from "@/lib/nvr/nvrApi";
 
 /**
  * SHAXS TARIXI — bitta `face_id`ning butun kuzatuv tarixi.
@@ -331,7 +331,7 @@ export function FaceHistoryModal({
                 <StatCell label={t.common.cameras} value={n(stats.cameras.length)} hint={pnl.hintCountUnit} />
               </div>
 
-              {/* 🔵 ARALASH GURUH OGOHLANTIRISHI (`GUIDE.md`, 2026-09-10
+              {/* 🔵 ARALASH GURUH OGOHLANTIRISHI (`FRONTEND.md`, 2026-09-10
                   kechki — "Shaxs tarixiga BEGONA kadrlar tushmaydi").
                   `mixed_face_ids` bo'sh bo'lmasa — shu odamning bir yoki
                   bir nechta yuz guruhi ARALASH (ichida boshqa odamning
@@ -664,7 +664,7 @@ function shiftMonth(month: string, delta: number): string {
  * kuzatuv umuman yo'q edi, u yerda X chizish yolg'on xulosa bo'lardi.
  */
 /**
- * `weekend` maydonini (`"5,6"` — dushanba 0, GUIDE.md 10-B) kunlar
+ * `weekend` maydonini (`"5,6"` — dushanba 0, FRONTEND.md 10-B) kunlar
  * to'plamiga o'giradi. Settings hali kelmagan/xato bo'lsa bo'sh
  * to'plam qaytadi — hech qaysi kun "dam olish" deb belgilanmaydi
  * (jim yolg'iz taxmin qilinmaydi).

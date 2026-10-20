@@ -14,7 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { institutionById } from "@/config/institutions";
 import { UNIVERSITIES, universityById } from "@/config/universities";
-import { INSTITUTION_ROWS, institutionRowById } from "@/lib/institutionRows";
+import { INSTITUTION_ROWS, institutionRowById } from "@/lib/nvr/institutionRows";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { ARRIVAL_PERIODS } from "@/hooks/useTodayArrivals";
 import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
@@ -239,7 +239,7 @@ export function GeoAnalyticsPage() {
 
   return (
     /* Xarita BUTUN balandlikni oladi, panellar uning USTIDA suzadi. */
-    <div className="relative h-full min-h-0 overflow-hidden rounded-3xl">
+    <div className="map-flat relative h-full min-h-0 overflow-hidden rounded-3xl">
       <div className="absolute inset-0">
         <GeoMap
           className="absolute inset-0"
