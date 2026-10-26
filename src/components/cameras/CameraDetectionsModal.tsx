@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ImageBroken, UserFocus, X } from "@phosphor-icons/react";
@@ -11,6 +11,12 @@ import { parseCameraName, placeLabel } from "@/lib/nvr/cameraNaming";
 import { useT } from "@/i18n";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { useModalHistory } from "@/hooks/useModalHistory";
+import { Pagination } from "@/components/common/Pagination";
+import { CardGridSkeleton } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
+
+/** Bir sahifadagi kadrlar soni — 4 qator × 5 ustun kenglikda. */
+const PAGE = 20;
 
 /**
  * Bitta kamera ANIQLAGAN tasvirlar — kartochkadagi "ma'lumot" tugmasi ochadi.
@@ -46,16 +52,21 @@ export function CameraDetectionsModal({
      ko'rinmasdi. Kattalashtirish yo'qolmadi — u ma'lumotlarning o'z ichida
      (butun kadr bosilganda). */
   const [openId, setOpenId] = useState<number | null>(null);
-  const { events, isLoading } = useDetections({ category: "all", channel: ch, limit: 100 });
+  /* 🔵 SAHIFALASH (2026-10-23, foydalanuvchi so'rovi: "hammasini chiqarmasdan
+     pagination qilib ber"). Ilgari 100 ta kadr bir yo'la yuklanib, 100 ta
+     rasm so'rovi ketardi. Endi 20 tadan, server `offset` bilan; `total`
+     serverdan — sahifalar soni ANIQ. */
+  const [page, setPage] = useState(1);
+  const { events, total, isLoading } = useDetections({ category: "all", channel: ch, limit: PAGE, offset: (page - 1) * PAGE });
+  const totalPages = Math.max(1, Math.ceil(total / PAGE));
+  const listRef = useRef<HTMLDivElement>(null);
+  /* Sahifa almashganda lenta TEPAGA — aks holda yangi sahifa pastdan boshlanib ko'rinardi */
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0 });
+  }, [page]);
 
   const place = useMemo(() => placeLabel(parseCameraName(cameraName).kind), [cameraName]);
 
-  // Takrorsiz odamlar — `face_id` bo'yicha (`FRONTEND.md` 5-B)
-  const people = useMemo(() => {
-    const set = new Set<number>();
-    for (const e of events) if (typeof e.face_id === "number") set.add(e.face_id);
-    return set.size;
-  }, [events]);
 
   const modal = (
     <motion.div
@@ -80,8 +91,8 @@ export function CameraDetectionsModal({
             <p className="truncate text-[13px] font-bold text-white">{cameraName}</p>
             <p className="truncate text-[10px] text-slate-500">
               #{ch}
-              {place ? ` · ${place}` : ""} · {events.length} ta hodisa
-              {people > 0 ? ` · ${people} ta odam` : ""}
+              {place ? ` · ${place}` : ""} · {total} ta hodisa
+              {totalPages > 1 ? ` · ${t.detections.page(page)} / ${totalPages}` : ""}
             </p>
           </div>
           <button
@@ -96,14 +107,11 @@ export function CameraDetectionsModal({
         </header>
 
         {/* Lenta — SCROLL bilan */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {isLoading && <p className="py-10 text-center text-[12px] text-slate-500">{t.common.loading}</p>}
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-3">
+          {isLoading && <CardGridSkeleton count={8} />}
 
           {!isLoading && events.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-16 text-slate-500">
-              <ImageBroken size={30} weight="duotone" />
-              <p className="text-[12px]">Bu kamerada hodisa qayd etilmagan</p>
-            </div>
+            <EmptyState fill title="Bu kamerada hodisa qayd etilmagan" />
           )}
 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-2.5">
@@ -112,6 +120,19 @@ export function CameraDetectionsModal({
             ))}
           </div>
         </div>
+
+        {totalPages > 1 && (
+          <footer className="flex flex-none items-center justify-center border-t border-white/[0.08] px-4 py-2.5">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={setPage}
+              prevLabel={t.detections.prev}
+              nextLabel={t.detections.next}
+              ariaLabel={t.detections.page(page)}
+            />
+          </footer>
+        )}
       </div>
 
       {/* Hodisa ma'lumotlari — shu oynaning USTIDAN (`EventDossier` o'zi

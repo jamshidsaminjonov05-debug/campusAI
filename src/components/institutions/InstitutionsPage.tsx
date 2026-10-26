@@ -21,7 +21,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Buildings, MagnifyingGlass, MapTrifold, Printer, X } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
@@ -49,6 +49,7 @@ export function InstitutionsPage() {
   const [query, setQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState<string | null>(null);
   const period = useStatPeriod("today");
+  const range = useMemo(() => ({ from: period.from, to: period.to }), [period.from, period.to]);
 
   const tabs: { id: Tab; label: string; Icon: typeof Buildings }[] = [
     { id: "regions", label: t.stats.tabs.regions, Icon: MapTrifold },
@@ -130,12 +131,27 @@ export function InstitutionsPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
-        {tab === "regions" && <StatRegions query={query} onSelectRegion={selectRegion} />}
+        {/* Davr endi jadvallarga UZATILADI (2026-10-26) — ilgari tanlov hech
+            narsaga ta'sir qilmasdi. */}
+        {tab === "regions" && (
+          <StatRegions
+            query={query}
+            onSelectRegion={selectRegion}
+            range={range}
+            loaderDays={period.days}
+            allTime={period.id === "all"}
+            resolving={period.resolving}
+          />
+        )}
         {tab === "institutions" && (
           <StatInstitutions
             query={query}
             regionFilter={regionFilter}
             onClearRegion={() => setRegionFilter(null)}
+            range={range}
+            loaderDays={period.days}
+            allTime={period.id === "all"}
+            resolving={period.resolving}
           />
         )}
       </div>

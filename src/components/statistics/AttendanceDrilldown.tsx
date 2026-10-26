@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import {
   Briefcase,
-  CalendarBlank,
   CaretLeft,
   CaretRight,
   ChalkboardTeacher,
   Gear,
+  Info,
+  MagnifyingGlass,
   Student,
+  X,
 } from "@phosphor-icons/react";
 import { Donut3D, type DonutSlice } from "@/components/common/Donut3D";
-import { StatPanel, TabPill, fmt } from "@/components/common/panels";
+import { StatPanel, fmt } from "@/components/common/panels";
 import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { useT } from "@/i18n";
 import type { NvrAttendanceRow, NvrAttendanceStatus } from "@/lib/nvr/nvrApi";
 import { attDay, type AttendanceDayPoint } from "@/hooks/useNvrAttendance";
+import { dayMonthLongLabel, weekdayLongLabel } from "@/lib/dateLabel";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -32,6 +36,16 @@ import { attDay, type AttendanceDayPoint } from "@/hooks/useNvrAttendance";
  * sinf kartochkalari, sinf bosilsa esa o'sha sinf o'quvchilarining
  * ro'yxati.
  *
+ * 🔴 **2026-10-24 — QAYTA QURILDI (UX tahlili).** Yuqoridagi "bo'lak
+ * bosilmaguncha o'ng tomon bo'sh" oqimi bekor: o'ngda DOIM SINFLAR JADVALI
+ * (o'qituvchilar guruhi tepada, har qatorda jami/erta/kech/kelmadi/
+ * davomat %), halqa bo'lagi bosilsa jadval shu holat bo'yicha FILTRLANADI
+ * (soni + sinf ichidagi ulushi), qator bosilsa — ro'yxat. Toifa/sinf
+ * KARTOCHKALARI (`RoleTileCard`/`DrillClassCard`) o'chirildi. Halqa endi
+ * TEKIS (`Donut3D` `flat` default). Kalendar DOIM ochiq, ostida davr va
+ * rang izohi. Sarlavha — bitta qator ("Tanlangan sana: 24-oktabr 2026
+ * (Shanba)"), takror sana/ISO yo'q.
+ *
  * ⚠️ **MANBA — `day`ning O'ZI, YANGI SO'ROV YO'Q.** `rows` chaqiruvchidan
  * keladi (`StatAttendance.tsx`da `att.rows` — "Ro'yxat" jadvali bilan
  * AYNI manba). Erta/Kech/Kelmagan — kun darajasidagi holat, davr
@@ -44,8 +58,7 @@ import { attDay, type AttendanceDayPoint } from "@/hooks/useNvrAttendance";
  * qaytarilgan qoida) — kartochka bosilmaydi, sababi ochiq yoziladi.
  */
 
-type RoleTile = "student" | "teacher" | null;
-type ClassSort = "class-asc" | "class-desc" | "count";
+type ClassSort = "class-asc" | "class-desc" | "count" | "rate";
 
 const STATUS_TONE: Record<NvrAttendanceStatus, string> = {
   early: "#34D399",
@@ -61,7 +74,9 @@ const STATUS_LABEL: Record<NvrAttendanceStatus, string> = {
 };
 
 export function AttendanceDrilldown({
-  rows,
+  rows: countedRows,
+  rawRows,
+  excludedPrimary = 0,
   day,
   from,
   to,
@@ -70,8 +85,14 @@ export function AttendanceDrilldown({
   onSelectDay,
   onOpenEvent,
   onOpenSettings,
+  showCalendar: showCalendarProp = true,
+  below,
 }: {
   rows: NvrAttendanceRow[];
+  /** Qoida qo'llanMAGAN to'liq ro'yxat — "1–4-sinflarni ham ko'rsatish" uchun. */
+  rawRows?: NvrAttendanceRow[];
+  /** Shanba kuni qoida bilan chiqarilgan 1–4-sinf o'quvchilari soni. */
+  excludedPrimary?: number;
   day: string;
   /**
    * Sahifaning davr chegaralari — kalendar shu oraliqdan tashqariga
@@ -99,36 +120,39 @@ export function AttendanceDrilldown({
   onOpenEvent: (eventId: number) => void;
   /** "Davomat vaqtini o'zgartirish" — ilgari "Toifalar kesimi" sarlavhasida edi. */
   onOpenSettings: () => void;
+  /** Kalendar shu panel ICHIDA chizilsinmi (default). `false` — chaqiruvchi uni
+   *  boshqa joyda (`AttendanceCalendarWidget`) chizadi — 2026-10-24, Davomat
+   *  tabida bo'sh joy ko'p edi: kalendar pastga, "Kunlik davomat" yoniga tushdi. */
+  showCalendar?: boolean;
+  /** Halqa OSTIGA qo'yiladigan blok (Davomat tabi: `DailyAttendancePanel embedded`). */
+  below?: ReactNode;
 }) {
   const t = useT();
+  const d = t.stats.drill;
   const n = (v: number) => fmt(v, t.locale);
 
+  /* ── HOLAT ──
+     `slice` — halqada tanlangan holat (null — hammasi);
+     `group` — o'ng jadvalda tanlangan qator (sinf nomi yoki `TEACHERS`),
+     tanlansa jadval o'rnida RO'YXAT chiqadi. */
   const [slice, setSlice] = useState<NvrAttendanceStatus | null>(null);
-  const [roleTile, setRoleTile] = useState<RoleTile>(null);
-  const [klass, setKlass] = useState<string | null>(null);
-  const [classSort, setClassSort] = useState<ClassSort>("class-asc");
-  /**
-   * 🔵 KALENDAR ochiq/yopiq (2026-09-10, foydalanuvchi so'rovi):
-   * bo'lak bosilganda kalendar kichrayib chap-yuqoridagi tugmaga
-   * aylanadi, tugma bosilsa yana to'liq ko'rinishga qaytadi —
-   * `slice`dan MUSTAQIL holat (drilldown ochiq turgan holda ham
-   * kalendarni qayta ochish mumkin).
-   */
-  const [calendarOpen, setCalendarOpen] = useState(true);
-  const showCalendar = from !== to;
+  const [group, setGroup] = useState<string | null>(null);
+  const [sort, setSort] = useState<ClassSort>("class-asc");
+  const [search, setSearch] = useState("");
+  /* 🔵 1–4-SINFLAR SHANBA (2026-10-24): hookda ular hisobdan CHIQARILGAN
+     (`lib/nvr/attendanceRules.ts`); bu yerda faqat KO'RSATISH tanlovi —
+     belgilansa jadval/ro'yxatda ko'rinadi, lekin halqa/KPI/jami o'zgarmaydi
+     (izoh ochiq yoziladi). */
+  const [showPrimary, setShowPrimary] = useState(false);
+  const rows = showPrimary && rawRows ? rawRows : countedRows;
+  const showCalendar = from !== to && showCalendarProp;
 
-  /* Kun almashsa (masalan kalendardan boshqa kun tanlansa) chuqurlashuv
-     boshiga qaytadi — eski sinf/toifa yangi kunda ma'nosiz qolib
-     ketmasin, kalendar ham qaytadan ochiladi (davr o'zgargan bo'lishi
-     mumkin). */
+  /* Kun almashsa chuqurlashuv boshiga qaytadi — eski sinf/holat yangi
+     kunda ma'nosiz qolib ketmasin. */
   useEffect(() => {
     setSlice(null);
-    setRoleTile(null);
-    setKlass(null);
-    setCalendarOpen(true);
+    setGroup(null);
   }, [day]);
-  useEffect(() => setRoleTile(null), [slice]);
-  useEffect(() => setKlass(null), [roleTile]);
 
   const counts = useMemo(() => {
     const c: Record<NvrAttendanceStatus, number> = { early: 0, late: 0, absent: 0, waiting: 0 };
@@ -143,49 +167,56 @@ export function AttendanceDrilldown({
   ];
   const totalKnown = counts.early + counts.late + counts.absent;
 
-  /** Tanlangan bo'lakka tegishli qatorlar — pastdagi HAMMA chuqurlashuv shundan. */
-  const sliceRows = useMemo(() => (slice ? rows.filter((r) => r.status === slice) : []), [rows, slice]);
-
-  const roleCounts = useMemo(() => {
-    let student = 0;
-    let teacher = 0;
-    for (const r of sliceRows) {
-      if (r.role === "student") student++;
-      else if (r.role === "teacher") teacher++;
+  /**
+   * 🔵 **O'NG TOMON DOIM TO'LDIRILGAN (2026-10-24, UX tahlili 1-band).**
+   * Ilgari halqa bo'lagi bosilmaguncha o'ng yarim ekran BO'SH turardi
+   * ("bo'lakni bosing"). Endi SAHIFA OCHILISHI BILAN o'ngda SINFLAR
+   * JADVALI: har sinf (va o'qituvchilar guruhi) uchun jami / erta / kech /
+   * kelmadi / davomat %. Halqa bo'lagi bosilsa AYNI jadval shu holat
+   * bo'yicha FILTRLANADI (soni + sinf ichidagi ulushi), qator bosilsa —
+   * o'sha guruhning ro'yxati. Manba — o'sha `rows`, qo'shimcha so'rov yo'q.
+   */
+  const groups = useMemo(() => {
+    const map = new Map<string, GroupStat>();
+    const bump = (key: string, label: string, kind: GroupStat["kind"], r: NvrAttendanceRow) => {
+      let g = map.get(key);
+      if (!g) {
+        g = { key, label, kind, total: 0, early: 0, late: 0, absent: 0, waiting: 0 };
+        map.set(key, g);
+      }
+      g.total++;
+      g[r.status]++;
+    };
+    for (const r of rows) {
+      if (r.role === "teacher") bump(TEACHERS, d.teachers, "teacher", r);
+      else bump(r.note ?? r.role_label, r.note ?? r.role_label, "class", r);
     }
-    return { student, teacher };
-  }, [sliceRows]);
+    const list = [...map.values()];
+    const inSlice = (g: GroupStat) => (slice ? g[slice] : g.total);
+    const rate = (g: GroupStat) => (g.total ? (g.early + g.late) / g.total : 0);
+    const byClass = (a: GroupStat, b: GroupStat) => classOrder(a.label) - classOrder(b.label);
+    if (sort === "class-asc") list.sort(byClass);
+    else if (sort === "class-desc") list.sort((a, b) => byClass(b, a));
+    else if (sort === "rate") list.sort((a, b) => rate(a) - rate(b) || byClass(a, b));
+    else list.sort((a, b) => (slice ? inSlice(b) - inSlice(a) : b.absent - a.absent) || byClass(a, b));
+    /* O'qituvchilar DOIM tepada — sinf emas, alohida toifa */
+    const teachers = list.filter((g) => g.kind === "teacher");
+    const out = [...teachers, ...list.filter((g) => g.kind !== "teacher")];
+    const q = search.trim().toLowerCase();
+    return q ? out.filter((g) => g.label.toLowerCase().includes(q)) : out;
+  }, [rows, slice, sort, search, d.teachers]);
 
-  /** Sinf kartochkalari — nom + shu bo'lakdagi son, tanlangan tartibda. */
-  const classRows = useMemo(() => {
-    if (roleTile !== "student") return [];
-    const map = new Map<string, number>();
-    for (const r of sliceRows) {
-      if (r.role !== "student") continue;
-      const name = r.note ?? r.role_label;
-      map.set(name, (map.get(name) ?? 0) + 1);
-    }
-    const list = [...map.entries()].map(([name, count]) => ({ name, count }));
-    if (classSort === "class-asc") list.sort((a, b) => classOrder(a.name) - classOrder(b.name));
-    else if (classSort === "class-desc") list.sort((a, b) => classOrder(b.name) - classOrder(a.name));
-    else list.sort((a, b) => b.count - a.count);
-    return list;
-  }, [sliceRows, roleTile, classSort]);
+  /** Tanlangan guruh + holat bo'yicha ro'yxat. */
+  const roster = useMemo(() => {
+    if (group == null) return [];
+    return rows.filter((r) => {
+      if (slice && r.status !== slice) return false;
+      return group === TEACHERS ? r.role === "teacher" : r.role !== "teacher" && (r.note ?? r.role_label) === group;
+    });
+  }, [rows, group, slice]);
+  const sliceTotal = slice ? counts[slice] : rows.length;
+  const groupLabel = group === TEACHERS ? d.teachers : group;
 
-  /** Rol bo'yicha ro'yxat — O'qituvchi tanlanganda (Xodim — manbasiz). */
-  const roleRoster = useMemo(
-    () => (roleTile === "teacher" ? sliceRows.filter((r) => r.role === "teacher") : []),
-    [sliceRows, roleTile]
-  );
-  /** Tanlangan sinf ro'yxati. */
-  const classRoster = useMemo(
-    () => (klass ? sliceRows.filter((r) => r.role === "student" && (r.note ?? r.role_label) === klass) : []),
-    [sliceRows, klass]
-  );
-
-  /* AnimatePresence `key` — chuqurlashuv darajasi o'zgarganda karta
-     QAYTA suzib kirsin (o'tish sezilsin), shunchaki mazmun almashmasin
-     (`MapDetailOverlay.tsx`dagi bilan AYNI naqsh). */
   /** Qaydsiz kunda "qaytish" manzili — davrdagi qaydi bor OXIRGI ish kuni
    *  (yo'q bo'lsa davr oxiri). Tanlangan kunning o'zi bo'lsa tugma chiqmaydi. */
   const dayPoint = points.find((p) => p.date === day);
@@ -198,12 +229,20 @@ export function AttendanceDrilldown({
     return target && target !== day ? target : null;
   }, [points, to, day]);
 
-  const panelKey = slice == null ? "none" : `${slice}:${roleTile ?? ""}:${klass ?? ""}`;
+  const panelKey = `${slice ?? "all"}:${group ?? ""}`;
+  /* Panel sarlavhasi uchun — tanlangan kun bugunmi (server soati bo'yicha). */
+  const isTodayDay = day === attDay();
+  const dayDate = useMemo(() => new Date(`${day}T00:00:00`), [day]);
+  const dayText = `${dayMonthLongLabel(dayDate, t)} ${dayDate.getFullYear()} (${weekdayLongLabel(dayDate, t)})`;
 
   return (
     <StatPanel
-      title="Bugungi holat"
-      hint={`${day} · bo'lakni bosing`}
+      /* 2026-10-24 (UX tahlili 2-band): sarlavha BITTA toza qator —
+         "Tanlangan sana: 24-oktabr 2026 (Shanba)"; bugun bo'lsa tepadagi
+         `TodayStateHeading` allaqachon aytgan, bu yerda takrorlanmaydi.
+         ISO sana faqat `title`da. */
+      title={isTodayDay ? t.stats.todayState.label : t.stats.todayState.selectedDate}
+      hint={isTodayDay ? d.filterHint : `${dayText} · ${d.filterHint}`}
       right={
         <button
           type="button"
@@ -219,36 +258,29 @@ export function AttendanceDrilldown({
           KALENDAR va QAYTISH tugmasi qoladi (2026-10-19, foydalanuvchi
           so'rovi). Ilgari bo'sh xabar butun panelni — kalendarni ham —
           almashtirib yuborardi va boshqa kunni tanlashning yo'li qolmasdi. */}
-      <div className="flex flex-col items-center gap-5 md:flex-row md:items-center">
-          {/* ── KALENDAR — chap tomonda, bo'lak tanlansa TUGMAGA aylanadi ── */}
-          {showCalendar &&
-            (calendarOpen ? (
-              <AttendanceCalendarWidget
-                from={from}
-                to={to}
-                day={day}
-                points={points}
-                todayDone={todayDone}
-                onPick={onSelectDay}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setCalendarOpen(true)}
-                className="flex flex-none items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-400/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-cyan-200 shadow-[0_0_12px_-4px_rgba(34,211,238,0.55)] transition-all hover:border-cyan-300/60 hover:bg-cyan-400/[0.12] hover:shadow-[0_0_16px_-2px_rgba(34,211,238,0.7)]"
-              >
-                <CalendarBlank size={13} />
-                Kalendarni ko&apos;rish
-              </button>
-            ))}
+      {/* TARTIB (2026-10-24, "bo'sh joylari ko'p ... yuqoriga dumaloq grafikaga
+          qo'shib"): CHAP ustun — [kalendar | halqa] qatori, ostida `below`
+          ("Kunlik davomat", embedded); O'NG ustun — sinflar jadvali. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(380px,540px)]">
+        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-start">
+          {/* ── KALENDAR — chap tomonda, davr va rang izohi bilan ── */}
+          {showCalendar && (
+            <AttendanceCalendarWidget
+              from={from}
+              to={to}
+              day={day}
+              points={points}
+              todayDone={todayDone}
+              onPick={onSelectDay}
+            />
+          )}
 
-          {/* ── HALQA — to'liq bo'sh joyni EGALLAYDI, bo'lak tanlansa
-              kichrayadi (2026-09-10, foydalanuvchi so'rovi: "height bo'sh
-              bo'lib qolyabdi ... pie chart kattaroq bo'lsin"). `flex-1` —
-              qolgan butun kengliqni oladi, `Donut3D`ning ICHKI `maxWidth`
-              (`size`) uni yuqoridan cheklaydi. */}
+          {/* ── HALQA — o'rtada, o'ng jadval doim ko'rinib turgani uchun
+              o'rtacha o'lcham (ilgari 720–860 px, bo'lak bosilmaguncha
+              butun joyni olardi). */}
           {totalKnown === 0 ? (
-            <div className="flex min-h-[260px] min-w-0 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-10 text-center">
+            <div className="flex min-h-[320px] min-w-0 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-10 text-center">
               <p className="text-[13px] font-semibold text-slate-300">
                 {dayPoint?.isWeekend ? "Dam olish kuni — davomat olinmaydi." : "Bu kun uchun davomat qaydi yo'q."}
               </p>
@@ -269,202 +301,270 @@ export function AttendanceDrilldown({
               )}
             </div>
           ) : (
-          <motion.div layout className="min-w-0 flex-1" transition={{ type: "spring", stiffness: 260, damping: 30 }}>
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
+            {/* 1–4-sinf shanba izohi — HALQA OLDIDA, qisqa matn (2026-10-26,
+                foydalanuvchi: "pie chart oldiga qo'y, qisqaroq so'z bilan").
+                Ilgari o'ng ustunda, saralash qatori ostida edi — halqa
+                sonidan nega 261 kishi kam ekani halqaning o'zida ko'rinmasdi. */}
+            {excludedPrimary > 0 && (
+              <div className="mb-2 flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-2.5 py-1.5 text-[10.5px] text-amber-200/90">
+                <span className="flex items-center gap-1.5">
+                  <Info size={12} weight="bold" className="flex-none" />
+                  {d.primaryNote(n(excludedPrimary))}
+                </span>
+                {rawRows && (
+                  <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-slate-300">
+                    <input type="checkbox" checked={showPrimary} onChange={(e) => setShowPrimary(e.target.checked)} className="accent-amber-400" />
+                    {d.showPrimary}
+                  </label>
+                )}
+              </div>
+            )}
             <Donut3D
               data={pieData}
-              size={slice ? 320 : showCalendar ? 720 : 860}
+              size={showCalendar ? 440 : 520}
+              ring={0.26}
               format={n}
               caption="jami"
               onSelect={(s) => {
-                setSlice(s.id as NvrAttendanceStatus);
-                setCalendarOpen(false);
+                const id = s.id as NvrAttendanceStatus;
+                /* Bir xil bo'lak qayta bosilsa filtr bekor bo'ladi */
+                setSlice((cur) => (cur === id ? null : id));
+                setGroup(null);
               }}
             />
-          </motion.div>
-          )}
-
-          {/* ── KARTA — o'ngdan suzib kiradi ── */}
-          <AnimatePresence mode="wait">
             {slice && (
-              <motion.div
-                key={panelKey}
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 40 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="min-h-[320px] w-full min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"
+              <button
+                type="button"
+                onClick={() => {
+                  setSlice(null);
+                  setGroup(null);
+                }}
+                className="mt-1 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-semibold"
+                style={{ borderColor: `${STATUS_TONE[slice]}66`, color: STATUS_TONE[slice] }}
               >
-                {/* Sarlavha qatori — orqaga tugmasi darajaga qarab */}
-                <div className="mb-3 flex items-center gap-2">
-                  {roleTile != null ? (
-                    <button
-                      type="button"
-                      onClick={() => setRoleTile(null)}
-                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition-colors hover:border-ice/30 hover:text-ice-bright"
-                    >
-                      <CaretLeft size={11} weight="bold" />
-                      Toifalar
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSlice(null)}
-                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition-colors hover:border-ice/30 hover:text-ice-bright"
-                    >
-                      <CaretLeft size={11} weight="bold" />
-                      Halqa
-                    </button>
-                  )}
-                  <span className="text-[12.5px] font-bold" style={{ color: STATUS_TONE[slice] }}>
-                    {STATUS_LABEL[slice]}
-                  </span>
-                  <span className="font-mono text-[10.5px] text-slate-500">{n(sliceRows.length)} ta</span>
-                  {klass && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setKlass(null)}
-                        className="ml-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10.5px] font-semibold text-slate-300 hover:text-ice-bright"
-                      >
-                        ◀ Sinflar
+                {STATUS_LABEL[slice]} · {n(counts[slice])}
+                <span className="text-slate-500">×</span>
+              </button>
+            )}
+          </div>
+          )}
+        </div>
+        {below}
+        </div>
+
+          {/* ── O'NG JADVAL / RO'YXAT — DOIM ko'rinadi ──
+              🔴 `AnimatePresence mode="wait"` OLIB TASHLANDI (2026-10-24,
+              foydalanuvchi: "yashil/sariq bossam ishlamaydi, qizil bossam
+              keyin chiqadi"). `mode="wait"` yangi panelni ESKISINING chiqish
+              animatsiyasi tugaguncha ushlab turadi; bo'lak tez-tez
+              almashganda (yoki chiqish bir sababdan tugamaganda) yangi panel
+              UMUMAN chizilmay qolardi — faqat navbatdagi kalit almashuvi
+              (sort/boshqa bo'lak) uni "uyg'otardi". Endi panel `key` bilan
+              shunchaki QAYTA MOUNT bo'ladi va kirish animatsiyasi o'ynaydi —
+              chiqish animatsiyasi yo'q, kutish ham yo'q. */}
+            <motion.div
+              key={panelKey}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="min-h-[320px] w-full min-w-0 flex-[1.3] rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 lg:max-w-[560px]"
+            >
+              {/* Sarlavha qatori */}
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                {group != null && (
+                  <button
+                    type="button"
+                    onClick={() => setGroup(null)}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition-colors hover:border-ice/30 hover:text-ice-bright"
+                  >
+                    <CaretLeft size={11} weight="bold" />
+                    {d.classesTitle}
+                  </button>
+                )}
+                <span className="text-[12.5px] font-bold text-white">{group != null ? groupLabel : d.classesTitle}</span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                  style={{
+                    color: slice ? STATUS_TONE[slice] : "#94A3B8",
+                    background: slice ? `${STATUS_TONE[slice]}22` : "rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {slice ? STATUS_LABEL[slice] : d.all} · {n(group != null ? roster.length : sliceTotal)}
+                </span>
+              </div>
+              {/* Qidiruv + SARALASH (select) — 2026-10-24, foydalanuvchi: "sortlarni
+                  select qilishing kerak va qidirish". Ilgari to'rtta pilyula edi. */}
+              {group == null && (
+                <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                  <label className="hik-input flex h-8 min-w-[160px] flex-1 items-center gap-1.5 px-2.5 text-[11.5px]">
+                    <MagnifyingGlass size={12} className="flex-none text-slate-500" />
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={d.search}
+                      className="w-full bg-transparent text-slate-200 outline-none placeholder:text-slate-500"
+                    />
+                    {search && (
+                      <button type="button" onClick={() => setSearch("")} className="text-slate-500 hover:text-slate-200">
+                        <X size={11} />
                       </button>
-                      <span className="text-[11.5px] font-bold text-white">{klass}</span>
-                    </>
+                    )}
+                  </label>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as ClassSort)}
+                    title={d.sortLabel}
+                    className="hik-input h-8 px-2.5 text-[11.5px] [color-scheme:dark] [&_option]:bg-ink-panel [&_option]:text-slate-100"
+                  >
+                    <option value="class-asc">{d.sortClass} ↑</option>
+                    <option value="class-desc">{d.sortClass} ↓</option>
+                    <option value="count">{slice ? d.sortCount : d.sortAbsent}</option>
+                    {!slice && <option value="rate">{d.sortRate}</option>}
+                  </select>
+                </div>
+              )}
+              {/* ── JADVAL ──
+                  🔵 2026-10-26, foydalanuvchi: "scroll qilma, to'liq hammasi
+                  chiqishi kerak" — `max-h-[440px] overflow-y-auto` OLIB
+                  TASHLANDI: barcha sinf qatorlari bir yo'la ko'rinadi, panel
+                  o'z balandligida o'sadi (sahifa o'zi scroll bo'ladi).
+                  `sticky` sarlavha ham olib tashlandi — ichki scroll yo'q,
+                  sahifa scrollida u viewport tepasiga yopishib qolardi. */}
+              {group == null && (
+                <div>
+                  <table className="w-full border-separate border-spacing-y-1 text-[11.5px]">
+                    <thead className="bg-[#0B1220]/95 text-[9.5px] uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-2 py-1 text-left font-bold">{d.klass}</th>
+                        <th className="px-2 py-1 text-right font-bold">{d.total}</th>
+                        {slice ? (
+                          <>
+                            <th className="px-2 py-1 text-right font-bold" style={{ color: STATUS_TONE[slice] }}>
+                              {d.count}
+                            </th>
+                            <th className="px-2 py-1 text-right font-bold" title={d.shareHint}>
+                              {d.share}
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="px-2 py-1 text-right font-bold" style={{ color: STATUS_TONE.early }}>{d.early}</th>
+                            <th className="px-2 py-1 text-right font-bold" style={{ color: STATUS_TONE.late }}>{d.late}</th>
+                            <th className="px-2 py-1 text-right font-bold" style={{ color: STATUS_TONE.absent }}>{d.absent}</th>
+                            <th className="w-[96px] px-2 py-1 text-right font-bold">{d.rate}</th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groups.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-500"><EmptyState compact title={d.noRows} /></td>
+                        </tr>
+                      )}
+                      {groups.map((g) => {
+                        const inSlice = slice ? g[slice] : g.total;
+                        const pct = g.total ? Math.round(((g.early + g.late) / g.total) * 100) : 0;
+                        const share = g.total ? Math.round((inSlice / g.total) * 100) : 0;
+                        return (
+                          <tr
+                            key={g.key}
+                            onClick={() => inSlice > 0 && setGroup(g.key)}
+                            className={`group/row ${inSlice > 0 ? "cursor-pointer" : "opacity-45"}`}
+                            title={inSlice > 0 ? `${g.label} — ro'yxat` : undefined}
+                          >
+                            <td className="rounded-l-lg bg-white/[0.025] px-2 py-1.5 font-semibold text-slate-100 transition-colors group-hover/row:bg-white/[0.06]">
+                              <span className="flex items-center gap-1.5">
+                                {g.kind === "teacher" ? (
+                                  <ChalkboardTeacher size={13} weight="duotone" className="text-violet-300" />
+                                ) : (
+                                  <Student size={13} weight="duotone" className="text-emerald-300" />
+                                )}
+                                {g.label}
+                              </span>
+                            </td>
+                            <td className="bg-white/[0.025] px-2 py-1.5 text-right font-mono text-slate-300 group-hover/row:bg-white/[0.06]">{n(g.total)}</td>
+                            {slice ? (
+                              <>
+                                <td className="bg-white/[0.025] px-2 py-1.5 text-right font-mono font-bold group-hover/row:bg-white/[0.06]" style={{ color: STATUS_TONE[slice] }}>
+                                  {n(inSlice)}
+                                </td>
+                                <td className="rounded-r-lg bg-white/[0.025] px-2 py-1.5 text-right group-hover/row:bg-white/[0.06]">
+                                  <ShareBar pct={share} tone={STATUS_TONE[slice]} />
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="bg-white/[0.025] px-2 py-1.5 text-right font-mono text-emerald-300 group-hover/row:bg-white/[0.06]">{n(g.early)}</td>
+                                <td className="bg-white/[0.025] px-2 py-1.5 text-right font-mono text-amber-300 group-hover/row:bg-white/[0.06]">{n(g.late)}</td>
+                                <td className="bg-white/[0.025] px-2 py-1.5 text-right font-mono text-rose-300 group-hover/row:bg-white/[0.06]">{n(g.absent)}</td>
+                                <td className="rounded-r-lg bg-white/[0.025] px-2 py-1.5 text-right group-hover/row:bg-white/[0.06]">
+                                  <ShareBar pct={pct} tone={rateTone(pct)} />
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                      {/* Xodimlar — manba yo'q, ochiq yoziladi (son o'ylab topilmaydi) */}
+                      <tr className="opacity-60" title={d.staffNone}>
+                        <td className="rounded-l-lg bg-white/[0.02] px-2 py-1.5 text-slate-400">
+                          <span className="flex items-center gap-1.5">
+                            <Briefcase size={13} weight="duotone" className="text-amber-300/70" />
+                            {d.staff}
+                          </span>
+                        </td>
+                        <td colSpan={5} className="rounded-r-lg bg-white/[0.02] px-2 py-1.5 text-right text-[10px] text-slate-500">
+                          {t.dashboard.ui.noSource}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* ── RO'YXAT (guruh tanlanganda) ── */}
+              {group != null && (
+                <div className="max-h-[440px] space-y-1 overflow-y-auto">
+                  {roster.length === 0 ? (
+                    <EmptyState className="py-8" title={d.emptyRoster} />
+                  ) : (
+                    roster.map((r) => <DrilldownRow key={r.person_id} r={r} onOpen={() => r.event_id && onOpenEvent(r.event_id)} />)
                   )}
                 </div>
-
-                {/* ── DARAJA 1: TOIFA KARTOCHKALARI ── */}
-                {roleTile == null && (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <RoleTileCard
-                      Icon={ChalkboardTeacher}
-                      label="O'qituvchi"
-                      count={roleCounts.teacher}
-                      tone="#A78BFA"
-                      onPick={() => setRoleTile("teacher")}
-                    />
-                    <RoleTileCard Icon={Briefcase} label="Xodimlar" count={null} tone="#F59E0B" onPick={undefined} />
-                    <RoleTileCard
-                      Icon={Student}
-                      label="Sinflar"
-                      count={roleCounts.student}
-                      tone="#34D399"
-                      onPick={() => setRoleTile("student")}
-                    />
-                  </div>
-                )}
-
-                {/* ── DARAJA 2a: O'QITUVCHI RO'YXATI ── */}
-                {roleTile === "teacher" && (
-                  <div className="max-h-[420px] space-y-1 overflow-y-auto">
-                    {roleRoster.length === 0 ? (
-                      <p className="py-8 text-center text-[11.5px] text-slate-500">Bu bo&apos;lakda o&apos;qituvchi yo&apos;q.</p>
-                    ) : (
-                      roleRoster.map((r) => <DrilldownRow key={r.person_id} r={r} onOpen={() => r.event_id && onOpenEvent(r.event_id)} />)
-                    )}
-                  </div>
-                )}
-
-                {/* ── DARAJA 2b: SINF KARTOCHKALARI (saralanadigan) ── */}
-                {roleTile === "student" && klass == null && (
-                  <>
-                    <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                      <TabPill group="drill-class-sort" active={classSort === "class-asc"} onClick={() => setClassSort("class-asc")}>
-                        Sinf ↑
-                      </TabPill>
-                      <TabPill group="drill-class-sort" active={classSort === "class-desc"} onClick={() => setClassSort("class-desc")}>
-                        Sinf ↓
-                      </TabPill>
-                      <TabPill group="drill-class-sort" active={classSort === "count"} onClick={() => setClassSort("count")}>
-                        Ko&apos;p → kam
-                      </TabPill>
-                    </div>
-                    {classRows.length === 0 ? (
-                      <p className="py-8 text-center text-[11.5px] text-slate-500">Bu bo&apos;lakda o&apos;quvchi yo&apos;q.</p>
-                    ) : (
-                      <div className="grid max-h-[380px] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-                        {classRows.map((c) => (
-                          <DrillClassCard key={c.name} name={c.name} count={c.count} tone={STATUS_TONE[slice]} onPick={() => setKlass(c.name)} />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* ── DARAJA 3: SINF O'QUVCHILARI ── */}
-                {klass != null && (
-                  <div className="max-h-[380px] space-y-1 overflow-y-auto">
-                    {classRoster.map((r) => (
-                      <DrilldownRow key={r.person_id} r={r} onOpen={() => r.event_id && onOpenEvent(r.event_id)} />
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </motion.div>
         </div>
     </StatPanel>
   );
 }
 
-function RoleTileCard({
-  Icon,
-  label,
-  count,
-  tone,
-  onPick,
-}: {
-  Icon: typeof Student;
+/** O'qituvchilar guruhining kaliti (sinf nomi bilan to'qnashmasin). */
+const TEACHERS = "__teachers__";
+
+interface GroupStat {
+  key: string;
   label: string;
-  /** `null` — manba yo'q (Xodimlar — kuzatuv posti bu toifani bilmaydi). */
-  count: number | null;
-  tone: string;
-  onPick: (() => void) | undefined;
-}) {
-  const t = useT();
-  const disabled = onPick == null;
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={disabled}
-      title={disabled ? "Kuzatuv postida «xodim» toifasi yo'q — faqat o'quvchi va o'qituvchi" : undefined}
-      style={{ ["--c" as string]: tone }}
-      className={`group flex flex-col items-start gap-1.5 rounded-xl border px-3.5 py-3 text-left transition-colors ${
-        disabled
-          ? "cursor-not-allowed border-white/[0.06] bg-white/[0.02] opacity-60"
-          : "border-white/[0.08] bg-white/[0.03] hover:border-[color:var(--c)]/40 hover:bg-[color:var(--c)]/[0.08]"
-      }`}
-    >
-      <span className="flex w-full items-center gap-2">
-        <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-[color:var(--c)]/15 text-[color:var(--c)]">
-          <Icon size={15} weight="duotone" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-white">{label}</span>
-        {!disabled && <CaretRight size={12} className="flex-none text-slate-500 transition-colors group-hover:text-[color:var(--c)]" />}
-      </span>
-      <span className="font-mono text-[20px] font-bold leading-none text-[color:var(--c)]">{count ?? "—"}</span>
-      {disabled && <span className="text-[9px] leading-snug text-slate-500">{t.dashboard.ui.noSource}</span>}
-    </button>
-  );
+  kind: "class" | "teacher";
+  total: number;
+  early: number;
+  late: number;
+  absent: number;
+  waiting: number;
 }
 
-function DrillClassCard({ name, count, tone, onPick }: { name: string; count: number; tone: string; onPick: () => void }) {
+/** Foiz + ingichka chiziq — jadval katagida. */
+function ShareBar({ pct, tone }: { pct: number; tone: string }) {
   return (
-    <button
-      type="button"
-      onClick={onPick}
-      title={`${name} — o'quvchilar ro'yxati`}
-      className="group flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.06]"
-    >
-      <span className="flex w-full items-center gap-1.5">
-        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-white">{name}</span>
-        <CaretRight size={12} className="flex-none text-slate-500 transition-colors group-hover:text-ice-bright" />
+    <span className="inline-flex items-center justify-end gap-1.5">
+      <span className="h-1 w-10 overflow-hidden rounded-full bg-white/[0.08]">
+        <span className="block h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: tone }} />
       </span>
-      <span className="font-mono text-[19px] font-extrabold leading-none" style={{ color: tone }}>
-        {count}
+      <span className="w-8 font-mono text-[10.5px] font-bold" style={{ color: tone }}>
+        {pct}%
       </span>
-    </button>
+    </span>
   );
 }
 
@@ -499,7 +599,7 @@ function rateTone(rate: number | null): string {
  * ⚠️ Oraliqdan (`from`/`to`) tashqaridagi kunlar bosilmaydi — kalendar
  * faqat SAHIFANING joriy davr tanloviga tegishli sanalarni ko'rsatadi.
  */
-function AttendanceCalendarWidget({
+export function AttendanceCalendarWidget({
   from,
   to,
   day,
@@ -554,14 +654,14 @@ function AttendanceCalendarWidget({
      tanlangan kun esa kuchliroq halqa bilan ajratiladi — oddiy tekis
      fon o'rniga "HUD panel" taassuroti. */
   return (
-    <div className="relative w-full flex-none overflow-hidden rounded-2xl border border-cyan-400/25 bg-gradient-to-b from-[#0A1626] to-[#060A14] p-3.5 shadow-[0_0_28px_-8px_rgba(34,211,238,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] md:w-[300px]">
+    <div className="relative w-full flex-none overflow-hidden rounded-2xl border border-cyan-400/25 bg-gradient-to-b from-[#0A1626] to-[#060A14] p-4 shadow-[0_0_28px_-8px_rgba(34,211,238,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] md:w-[360px]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
       <div className="mb-3 flex items-center justify-between">
         <button type="button" disabled={!canPrev} onClick={() => setMonth(shiftMonth(shown, -1))} title="Oldingi oy" className={navBtn}>
           <CaretLeft size={12} weight="bold" />
         </button>
         <p
-          className="text-[12px] font-bold uppercase tracking-[0.14em] text-cyan-200"
+          className="text-[13.5px] font-bold uppercase tracking-[0.14em] text-cyan-200"
           style={{ textShadow: "0 0 14px rgba(34,211,238,0.45)" }}
         >
           {monthLabel} <span className="text-slate-500">{y}</span>
@@ -571,9 +671,9 @@ function AttendanceCalendarWidget({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1.5">
+      <div className="grid grid-cols-7 gap-y-2">
         {t.chart.weekdays.map((w) => (
-          <span key={w} className="pb-1 text-center text-[8.5px] font-bold uppercase tracking-wide text-cyan-400/50">
+          <span key={w} className="pb-1 text-center text-[10px] font-bold uppercase tracking-wide text-cyan-400/50">
             {w.slice(0, 2)}
           </span>
         ))}
@@ -581,7 +681,7 @@ function AttendanceCalendarWidget({
           if (kind !== "cur") {
             return (
               <div key={`${kind}-${i}`} className="flex items-center justify-center">
-                <span className="grid h-8 w-8 place-items-center font-mono text-[9.5px] text-slate-700/60">{d}</span>
+                <span className="grid h-10 w-10 place-items-center font-mono text-[11px] text-slate-700/60">{d}</span>
               </div>
             );
           }
@@ -630,7 +730,7 @@ function AttendanceCalendarWidget({
                           ? `${dateStr} — ${rate}% davomat`
                           : dateStr
                 }
-                className="grid h-8 w-8 place-items-center rounded-lg font-mono text-[10px] font-bold transition-all hover:brightness-125 disabled:cursor-default"
+                className="grid h-10 w-10 place-items-center rounded-lg font-mono text-[12px] font-bold transition-all hover:brightness-125 disabled:cursor-default"
                 style={{
                   color: !inRange ? "#334155" : weekend ? "#64748B" : pending ? "#93C5FD" : "#fff",
                   background: !inRange
@@ -647,28 +747,71 @@ function AttendanceCalendarWidget({
                       : pending
                         ? "1px solid rgba(56,189,248,0.45)"
                         : `1px solid color-mix(in srgb, ${tone} 45%, transparent)`,
-                  /* BUGUN doim ajralib turadi (tanlangan bo'lmasa ham) —
-                     kalendarda "qaysi kun bugun" savoli birinchi. */
-                  boxShadow: pending
-                    ? isSelected
-                      ? "0 0 0 1.5px #38BDF8, 0 0 16px 1px rgba(56,189,248,0.5)"
-                      : "0 0 0 1px rgba(56,189,248,0.5)"
-                    : plain
-                      ? isSelected && inRange
-                        ? "0 0 0 1.5px rgba(148,163,184,0.6)"
-                        : undefined
-                      : isSelected
-                        ? `0 0 0 1.5px ${tone}, 0 0 16px 1px color-mix(in srgb, ${tone} 75%, transparent)`
+                  /* 🔵 TANLANGAN KUN — IKKI QAVATLI OQ HALQA + kattalashgan katak
+                     (2026-10-24, foydalanuvchi: "tanlangan sana sezilmayabdi").
+                     Ilgari tanlov katakning O'Z rangidagi (sariq/qizil/ko'k)
+                     halqa edi — davomat rangi va "bugun" halqasi bilan
+                     qorishib, ko'zga tashlanmasdi. Endi tanlov rangdan
+                     MUSTAQIL: oq halqa (qorong'i oraliq bilan) har qanday
+                     katakda bir xil ko'rinadi, ustiga katak 12% kattaroq va
+                     ostida kichik oq nuqta. BUGUN avvalgidek ko'k halqa bilan
+                     ajralib turadi (tanlanmagan bo'lsa ham). */
+                  boxShadow: isSelected && inRange
+                    ? `0 0 0 2px #0B1220, 0 0 0 4px #F1F5F9, 0 0 18px 3px ${pending ? "rgba(56,189,248,0.45)" : plain ? "rgba(241,245,249,0.25)" : `color-mix(in srgb, ${tone} 70%, transparent)`}`
+                    : pending
+                      ? "0 0 0 1px rgba(56,189,248,0.5)"
+                      : plain
+                        ? undefined
                         : isToday
                           ? `0 0 0 1px #38BDF8, 0 0 8px -2px color-mix(in srgb, ${tone} 65%, transparent)`
                           : `0 0 8px -2px color-mix(in srgb, ${tone} 65%, transparent)`,
+                  transform: isSelected && inRange ? "scale(1.12)" : undefined,
+                  zIndex: isSelected ? 1 : undefined,
+                  position: "relative",
                 }}
               >
                 {d}
+                {isSelected && inRange && (
+                  <span aria-hidden className="absolute -bottom-[7px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(241,245,249,0.9)]" />
+                )}
               </button>
             </div>
           );
         })}
+      </div>
+
+      {/* ── DAVR + RANG IZOHI (2026-10-24, UX tahlili 2-band: "sariq va
+          qizg'ish ranglar nimani bildiradi?"). Belgilangan kataklar —
+          sahifaning davr tanlovi (masalan "Hafta"), rang — o'sha kunning
+          davomat foizi; tanlangan kun halqa bilan. */}
+      <div className="mt-3 border-t border-cyan-400/15 pt-2.5" title={t.stats.drill.calLegendTitle}>
+        <p className="mb-1.5 font-mono text-[10.5px] text-cyan-300/70">{t.stats.drill.calRange(from, to)}</p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
+          {(
+            [
+              [rateTone(90), t.stats.drill.calLegend.good],
+              [rateTone(60), t.stats.drill.calLegend.mid],
+              [rateTone(10), t.stats.drill.calLegend.low],
+            ] as const
+          ).map(([tone, label]) => (
+            <span key={label} className="flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: `color-mix(in srgb, ${tone} 35%, #0B1220)`, boxShadow: `0 0 0 1px ${tone}99` }} />
+              {label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-sky-400/20" style={{ boxShadow: "0 0 0 1px rgba(56,189,248,0.6)" }} />
+            {t.stats.drill.calLegend.pending}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-white/[0.06]" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.15)" }} />
+            {t.stats.drill.calLegend.weekend}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-white/[0.06]" style={{ boxShadow: "0 0 0 1px #0B1220, 0 0 0 2px #F1F5F9" }} />
+            {t.stats.drill.calLegend.selected}
+          </span>
+        </div>
       </div>
     </div>
   );

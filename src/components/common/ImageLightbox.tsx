@@ -83,6 +83,41 @@ export function ImageLightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, images.length]);
 
+  /* ── SICHQONCHA G'ILDIRAGI bilan kattalashtirish (2026-10-23) ──
+     Kattalashtirish KURSOR ostidagi nuqtaga qarab: o'sha nuqta joyida qoladi.
+     ⚠️ React `onWheel` PASSIV — `preventDefault` ishlamaydi va sahifa ham
+     aylanib ketardi. Shuning uchun tinglovchi qo'lda, `passive: false`.
+     Joriy zoom/pan REF orqali o'qiladi — tinglovchi har renderda qayta
+     ulanmasin. */
+  const stageRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef({ zoom, pan });
+  viewRef.current = { zoom, pan };
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const { zoom: z0, pan: p0 } = viewRef.current;
+      /* Sensorli panelda delta kichik va tez-tez — ko'paytma silliq ishlaydi */
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      const z1 = Math.min(500, Math.max(100, z0 * factor));
+      if (z1 === z0) return;
+      if (z1 === 100) {
+        setZoom(100);
+        setPan({ x: 0, y: 0 });
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      const k = z1 / z0;
+      setZoom(z1);
+      setPan({ x: dx - (dx - p0.x) * k, y: dy - (dy - p0.y) * k });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const current = images[index];
   const zoomBy = (delta: number) => setZoom((z) => Math.min(500, Math.max(100, z + delta)));
   const resetZoom = () => {
@@ -158,6 +193,7 @@ export function ImageLightbox({
       </header>
 
       <div
+        ref={stageRef}
         className="relative min-h-0 flex-1 overflow-hidden"
         /* Ildizning `onClose` iga chiqmasin — bu yerda O'Z qoidasi bor:
            faqat RASM TASHQARISIGA bosilganda yopiladi. */
@@ -244,7 +280,7 @@ export function ImageLightbox({
             <Minus size={14} />
           </button>
           <span className="w-12 text-center font-mono text-[12px]" style={{ color: CHROME.soft }}>
-            {zoom}%
+            {Math.round(zoom)}%
           </span>
           <button
             type="button"

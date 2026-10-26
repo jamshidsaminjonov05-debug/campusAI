@@ -322,7 +322,7 @@ export const UZ: InvestorCopy = {
       "Internetsiz ishlaydi — uzilish tizimni to'xtatmaydi",
       "Uskuna sotmaymiz — obuna sotamiz",
     ],
-    note: "Mahsulotning to'liq ishlashi alohida taqdimotda: /taqdimot",
+    note: "",
   },
 
   detectors: {
@@ -348,7 +348,7 @@ export const UZ: InvestorCopy = {
       "Dars sifati va ovoz tahlili",
     ],
     moreTitle: "Boshqa detektorlar",
-    more: ["Yuz tanish", "Begona shaxs", "Yong'in va tutun", "Odamlar sanog'i", "Kechikish"],
+    more: ["Yuz tanish", "Begona shaxs", "Yong'in va tutun", "Kechikish"],
     note: "Ishonch darajasi har bir kadrda hisoblanadi va hodisa kartasida saqlanadi.",
   },
 
@@ -588,7 +588,6 @@ export const UZ: InvestorCopy = {
       "Mahsulot tayyor va 179-maktabda ishlayapti",
     ],
     ctaTalk: "Bog'lanish",
-    ctaDeck: "Mahsulot taqdimoti",
     ctaSite: "Sayt",
     foot: "Campus AI · ta'lim muassasalari uchun sun'iy intellekt",
   },

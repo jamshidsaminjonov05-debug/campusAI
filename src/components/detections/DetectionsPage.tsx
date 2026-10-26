@@ -15,7 +15,6 @@ import {
   Cigarette,
   DeviceMobile,
   type Icon as PhIcon,
-  DoorOpen,
   SquaresFour,
   Trash,
   UserFocus,
@@ -27,10 +26,13 @@ import { useNvrEvents, type NvrTab } from "@/hooks/useNvrEvents";
 import { listWeapon2Alerts, listWeapon2Cameras } from "@/lib/nvr/weapon2Api";
 import { listJanjal2Alerts, listJanjal2Cameras } from "@/lib/nvr/janjal2Api";
 import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
-import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
-import { AlertKpiModal, CameraKpiModal } from "./DetectionKpiModals";
+import { useSmokingSplit } from "@/hooks/useSmokingSplit";
+import { useV2Cameras } from "@/hooks/useV2Cameras";
+import { applyV2CameraRules, WEAPON2_ALLOWED_ALERT_IDS } from "@/lib/nvr/v2CameraFilter";
+import { CameraKpiModal } from "./DetectionKpiModals";
 import {
   deleteNvrEvent,
+  eventPerson,
   getEvent,
   getFace,
   isAlarm,
@@ -57,14 +59,17 @@ import { EnrollPerson } from "./EnrollPerson";
 import { useAppStore } from "@/store/useAppStore";
 import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/nvr/detectionSeen";
 import { Pagination } from "@/components/common/Pagination";
-import { TabPill, fmt } from "@/components/common/panels";
+import { TabPill, fmt, CardGridSkeleton } from "@/components/common/panels";
+import { DateRangePicker } from "@/components/common/DateRangePicker";
+import { CardColumnsSlider } from "@/components/common/CardColumnsSlider";
+import { useCardColumns } from "@/hooks/useCardColumns";
 import { LibraryPhoto } from "@/components/people/FaceDatabasePage";
 import { ImageLightbox } from "@/components/common/ImageLightbox";
 import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { useT } from "@/i18n";
 import type { Messages } from "@/i18n";
 import { useModalHistory } from "@/hooks/useModalHistory";
-import { StatCounting } from "@/components/statistics/StatCounting";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Sana tez tanlovi — `date_from`/`date_to` shundan hisoblanadi. `custom` — pastdagi
  *  "dan"/"gacha" sana maydonlaridan biri to'ldirilganda avtomatik yoqiladi. */
@@ -76,6 +81,10 @@ const RANGES: { id: DateRange; label: (t: Messages) => string }[] = [
   { id: "7d", label: (t) => t.nvr.range7d },
   { id: "30d", label: (t) => t.nvr.range30d },
   { id: "all", label: (t) => t.nvr.rangeAll },
+  /* "Oraliq" — tanlansa yonida loyiha uslubidagi `DateRangePicker` ochiladi
+     (2026-10-23). Ilgari IKKITA brauzer `<input type="date">` ("Dan"/"Gacha")
+     turardi — tizim tilida (ruscha "дд.мм.гггг") va tizim rangida chizilardi. */
+  { id: "custom", label: (t) => t.nvr.rangeCustom },
 ];
 
 /** `YYYY-MM-DD`. */
@@ -83,18 +92,6 @@ function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/**
- * "Aniqlanganlar"ning O'Z davr tanlovi (`DateRange`) → `TodayArrivalsModal`
- * kutgan `ARRIVAL_PERIODS` id'si (`today"/"7d"/"30d"/"all"`).
- *
- * ⚠️ `"yesterday"`/`"custom"` bu ro'yxatda YO'Q — ular uchun eng yaqin
- * xavfsiz tanlov "Hammasi" (oynaning ichidagi davr tablari baribir
- * qo'lda o'zgartiriladi, bu faqat BOSHLANG'ICH holat).
- */
-function toArrivalPeriod(range: DateRange): string {
-  if (range === "today" || range === "7d" || range === "30d" || range === "all") return range;
-  return "all";
-}
 
 function rangeToDates(range: DateRange): { dateFrom?: string; dateTo?: string } {
   const now = new Date();
@@ -186,57 +183,20 @@ const TABS: { id: NvrTab; label: (t: Messages) => string; Icon: PhIcon; gif?: st
  * proxy orqali — kalit serverda qoladi. Tarix + jonli oqim (SSE):
  * yangi hodisa kelganda ro'yxat tepasiga qo'shiladi.
  */
-/**
- * Kategoriya sarlavhasi — "Hammasi"dan boshqa har bir tab uchun (eyebrow +
- * sarlavha + izoh), `AllPeoplePage`/`FaceDatabasePage` dagi bilan AYNI
- * naqsh (bu sahifalar bilan bir xil "sarlavha" uslubi butun ilovada).
- *
- * ⚠️ Backend/kuzatuv posti tomonida biror AI model "sozlanganmi-yo'qmi" degan holatni
- * FRONTEND BILA OLMAYDI (bunday signal API'da yo'q) — shuning uchun bo'sh
- * natija uchun umumiy, HAQIQATGA mos izoh beriladi ("bu davrda topilma
- * yo'q"), server konfiguratsiyasi haqida hech narsa o'ylab topilmaydi.
- */
-const CATEGORY_INTRO: Partial<Record<NvrTab, { eyebrow: string; title: (t: Messages) => string; desc: string }>> = {
-  face: {
-    eyebrow: "Yuz tanish",
-    title: (t) => t.nvr.tabFace,
-    desc: "Kameralarda tushgan yuzlar — bazadagi shaxs bilan solishtirilgan holatlar va notanish yuzlar.",
-  },
-  gun: {
-    eyebrow: "AI model topilmalari",
-    title: (t) => t.nvr.tabGun,
-    desc: "Kamerada qurol ko'ringan barcha holatlar.",
-  },
-  janjal: {
-    eyebrow: "AI model topilmalari",
-    title: (t) => t.nvr.tabFight,
-    desc: "Janjal yoki zo'ravon harakat sifatida aniqlangan holatlar.",
-  },
-  chekish: {
-    eyebrow: "AI model topilmalari",
-    title: (t) => t.nvr.tabSmoking,
-    desc: "Chekayotgan odamlar.",
-  },
-  telefon: {
-    eyebrow: "AI model topilmalari",
-    title: (t) => t.nvr.tabPhone,
-    desc: "Telefonda gaplashayotgan odamlar.",
-  },
-};
+/* ⚠️ Kategoriya sarlavha bloki (eyebrow + sarlavha + izoh — "Yuz tanish /
+   Kameralarda tushgan yuzlar…") 2026-10-23 da OLIB TASHLANDI (foydalanuvchi
+   so'rovi) — tab nomi yuqori menyuda allaqachon ko'rinib turibdi, blok joy
+   egallab takrorlardi. `CATEGORY_INTRO` ro'yxati ham shu bilan ketdi. */
 
-type PageTab = NvrTab | "counting";
+/* "Odamlar sanog'i" tabi 2026-10-26 da OLIB TASHLANDI (foydalanuvchi: "loyihadan
+   odam sanog'ini to'liq olib tashla") — `PageTab` endi `NvrTab`ning o'zi. */
+type PageTab = NvrTab;
 
 export function DetectionsPage() {
   const t = useT();
-  /**
-   * YUQORI MENYU — 7 ta: 6 ta kategoriya + "Odamlar sanog'i".
-   * `"counting"` `NvrTab` ga kirmaydi (u butunlay boshqa manba —
-   * `StatCounting`, `FRONTEND.md` 10-A), shuning uchun holat kengroq
-   * ittifoqda (`PageTab`) va pastda `tab`ga TORAYTIRILADI — qolgan butun
-   * kod (`useNvrEvents` va h.k.) o'zgarishsiz qoladi.
-   */
+  /** YUQORI MENYU — 6 ta kategoriya. */
   const [primaryTab, setPrimaryTab] = useState<PageTab>("hammasi");
-  const tab: NvrTab = primaryTab === "counting" ? "hammasi" : primaryTab;
+  const tab: NvrTab = primaryTab;
   const setTab = (id: NvrTab) => setPrimaryTab(id);
   const [open, setOpen] = useState<NvrEvent | null>(null);
 
@@ -319,14 +279,35 @@ export function DetectionsPage() {
    * `weapon2` (ilgarigi xatti-harakat o'zgarmadi — faqat Janjal
    * QO'SHILDI).
    */
-  const weapon2Source = tab === "janjal" ? "janjal2" : "weapon2";
+  const weapon2Source = tab === "janjal" ? "janjal2" : tab === "gun" ? "weapon2" : "v2all";
+
+  /* 2-versiyada FAQAT uchta tab: Hammasi · Janjal · Qurol (2026-10-21,
+     foydalanuvchi so'rovi: "tasdiqlangan/tasdiqlanmagan, chekish ular kerak
+     emas — 3 ta narsa turadi"). 2-versiya serverlari faqat qurol va janjal
+     beradi — yuz/chekish/telefon/odamlar sanog'i bu rejimda ma'nosiz. */
+  const V2_TABS: NvrTab[] = ["hammasi", "janjal", "gun"];
+  const visibleTabs = weapon2Mode
+    ? V2_TABS.map((id) => TABS.find((x) => x.id === id)!).filter(Boolean)
+    : TABS;
+  useEffect(() => {
+    if (weapon2Mode && !V2_TABS.includes(primaryTab as NvrTab)) setPrimaryTab("hammasi");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weapon2Mode, primaryTab]);
 
   /* Muassasa + sana oralig'i + qidiruv — kartochkalar RO'YXATIGA va statistika
      kartalariga BIR XIL qo'llanadi. Server faqat bitta `camera` bo'yicha
      filtrlaydi, kampusda bir nechta kamera bo'lishi mumkin — shuning uchun
      muassasa/qidiruv filtri KLIENT tomonda, sana esa serverga uzatiladi. */
   const [institutionId, setInstitutionId] = useState<string>("all");
-  const [range, setRange] = useState<DateRange>("all");
+  /* 🔴 Default "7d", "all" EMAS (2026-10-26): sanasiz `group=true` so'rovi
+     serverda 7 s (parallel 19 s) — sahifa ochilishi, har sahifa va har tab
+     almashuvi shuncha qotardi. 7 kun bilan 1.5 s. "Hammasi" pilyulasi
+     qoladi — operator ataylab tanlasa kutadi, lekin OCHILISHDA emas.
+     Xaritadan/qo'ng'iroqdan kelgan eski hodisa (`focusedDetectionId`)
+     sahifada topilmasa `getEvent()` bilan alohida olinadi — davrga bog'liq emas. */
+  /* "Bugun" — kuzatuv postining o'z paneli kabi (2026-10-26): bugungi sahifa
+     0.5 s, 7 kunlik 1.7 s, butun tarix 7.5 s (o'lchandi). */
+  const [range, setRange] = useState<DateRange>("today");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [search, setSearch] = useState("");
@@ -365,7 +346,22 @@ export function DetectionsPage() {
    * soni ham, har sahifaning to'lasi ham haqiqiy bo'ladi.
    * Filtr yo'q bo'lsa avvalgidek server sahifalashi ishlaydi.
    */
-  const clientFiltered = institutionId !== "all" || search.trim() !== "" || (tab === "face" && knownFilter !== "all");
+  /* 🔴 2026-10-26: Chekish/Telefon ham KLIENT rejimida. Server ikkalasini
+     bitta `smoking` kategoriyasida beradi, ajratish `isPhoneEvent()` bilan
+     klientda (`useNvrEvents` `tabFilter`). Server sahifalashida (`limit=24`)
+     24 ta xom yozuv olinib, KEYIN bo'linardi — o'lchandi: 1- va 2-sahifa
+     to'liq "Telefonda gaplashish", "Chekish" faqat 3-sahifadan boshlanadi.
+     Natija: Chekish tabida "Jami 169 · Ko'rsatilmoqda 0 · Hodisa topilmadi",
+     Telefon esa "ishlaydi" (eng yangilari telefon). Endi 500 lik oyna
+     olinib, filtrlangan ro'yxat klientda sahifalanadi — Tanilganlar/
+     Notanishlar bilan AYNI naqsh. */
+  const smokingTab = tab === "chekish" || tab === "telefon";
+  const clientFiltered =
+    institutionId !== "all" || search.trim() !== "" || (tab === "face" && knownFilter !== "all") || (smokingTab && !weapon2Mode);
+  const v2CamerasRaw = useV2Cameras();
+  /* Qurolda ruxsat ro'yxati (`#44`) — `v2CameraFilter.ts`; tanlov bo'sh bo'lsa ham
+     hodisalar FAQAT shu kameradan (`get-camera-alerts`), KPI ham. */
+  const v2Cameras = useMemo(() => applyV2CameraRules(v2CamerasRaw), [v2CamerasRaw]);
   const PAGE = 24;
   const WINDOW = 500;
 
@@ -373,6 +369,7 @@ export function DetectionsPage() {
     events,
     total,
     loading,
+    switching,
     error,
     live,
     page: serverPage,
@@ -382,6 +379,8 @@ export function DetectionsPage() {
     dateFrom,
     dateTo,
     source: weapon2Mode ? weapon2Source : "nvr",
+    /* 2-versiyada faqat tanlangan kameralar (`V2CameraPicker`, 2026-10-24) */
+    v2Cameras: weapon2Mode ? v2Cameras : undefined,
   });
 
   /** Klient rejimidagi sahifa (server rejimida ishlatilmaydi). */
@@ -433,7 +432,11 @@ export function DetectionsPage() {
 
   /* ⚠️ Oyna TO'LGAN bo'lsa natija QISQARTIRILGAN bo'lishi mumkin —
      buni jim qoldirmaymiz (pastda "kamida shuncha" deb yoziladi). */
-  const windowCapped = clientFiltered && events.length >= WINDOW && total > WINDOW;
+  /* ⚠️ `events.length >= WINDOW` sharti OLIB TASHLANDI (2026-10-26): hook
+     Chekish/Telefon ajratmasini `events`ga QO'LLAB beradi, ya'ni oyna to'la
+     bo'lsa ham `events.length` 500 dan kam bo'ladi. Klient rejimida oyna
+     `limit=500` bilan olinadi — `total > WINDOW` bo'lsa u to'lgan. */
+  const windowCapped = clientFiltered && total > WINDOW;
 
   /* `lib/detectionSeen.ts` store'iga obuna — kartochka bosilganda uning
      rangi darhol o'chishi uchun qayta chizish kerak.
@@ -462,7 +465,11 @@ export function DetectionsPage() {
    *
    * Sana filtri berilmasa (default `range:"all"`) butun tarix o'qiladi.
    */
-  const kpiStats = useEventStats({ from: dateFrom, to: dateTo });
+  /* `events/stats` sanadan qat'i nazar 3.5 s (server butun tarixni skanlaydi)
+     va server bazaga so'rovlarni NAVBAT bilan bajaradi — ro'yxat (0.5 s)
+     bilan bir vaqtda yuborilsa ro'yxat ham 4 s kutardi. Ro'yxat kelgach
+     so'raladi (2026-10-26). */
+  const kpiStats = useEventStats({ from: dateFrom, to: dateTo, enabled: !loading });
   const kpiFaces = useFacesCount({ from: dateFrom, to: dateTo });
   /* ⚠️ **TO'RTALA KPI KARTOCHKA BOSILADI** (2026-09-08, foydalanuvchi
      so'rovi: "yuqori tablardagi hamma cardlar bosilishi kerak").
@@ -471,12 +478,62 @@ export function DetectionsPage() {
      (`arrivalsKnown` — `null` bo'lsa oyna yopiq, "all" — "Tanlangan
      davrda" kartochkasidan, "yes" — "Tanilgan yuzlar"dan, chunki o'sha
      kartochkaning O'ZI faqat tanilganlarni va'da qiladi). */
-  const [arrivalsKnown, setArrivalsKnown] = useState<"all" | "yes" | null>(null);
-  const [showAlerts, setShowAlerts] = useState(false);
   const [showCameras, setShowCameras] = useState(false);
   /** "Xavf signali" — foydalanuvchi ta'rifi: janjal + qurol (`isDangerEvent`,
    *  KPI kartochka va oyna BIR XIL sonni ko'rsatsin). */
   const dangerCount = kpiStats.danger;
+  /* Kategoriya tugmasidagi HISOBLAGICH (2026-10-23): tanlangan davrdagi son —
+     server `/events/stats` dan (`kpiStats`, ALLAQACHON so'ralgan, qo'shimcha
+     so'rov YO'Q). Chekish/Telefon serverda BITTA kategoriya — ikkisiga bir xil
+     son yozish chalkashtiradi, shuning uchun ularda hisoblagich YO'Q.
+     2-versiyada manba boshqa (sana filtri ham yo'q) — ko'rsatilmaydi. */
+  /* CHEKISH / TELEFON hisoblagichi (2026-10-23, foydalanuvchi: "telefondan
+     nechta aniqlangani chiqmayapti ... chekishda ham"). Serverda ikkisi BITTA
+     kategoriya (`smoking`), `/events/stats` ajratmaydi — shuning uchun davrdagi
+     `smoking` hodisalari (`limit=500`, rasmsiz, YENGIL) olinib, `isPhoneEvent()`
+     bilan klientda ikkiga bo'linadi (ro'yxat tabi bilan AYNI qoida). Oyna
+     to'lsa (`total > 500`) sonlar "+" bilan — taxminiy ekani yashirilmaydi.
+     Faqat kuzatuv posti manbasida; 2-versiyada bu tablar yo'q. */
+  /* 2026-10-24: `hooks/useSmokingSplit.ts` — Statistika bilan umumiy */
+  const smokingSplit = useSmokingSplit(dateFrom, dateTo, !weapon2Mode);
+  /**
+   * Kategoriya tugmasidagi HISOBLAGICH — HAR tabda bor (2026-10-24, UX tahlili
+   * 5-band: "Qurol 0, Janjal 0 da son bor, Chekish/Telefon/Odamlar sanog'ida
+   * yo'q — dizayn izchil emas"). Ilgari yuklanayotgan yoki xato bergan manba
+   * hisoblagichni JIMGINA yashirardi. Endi uch holat: son (0 bo'lsa xira 0),
+   * "…" (hisoblanmoqda), "—" (server javob bermadi, sababi `title`da).
+   * 2-versiyada manba boshqa (sana filtri yo'q) — hisoblagich yo'q.
+   */
+  const tabCount = (id: PageTab): { text: string; title: string; dim: boolean } | null => {
+    if (weapon2Mode) return null;
+    const pick = (): { n: number | null; loading: boolean; error: boolean; approx?: boolean } => {
+      if (id === "chekish" || id === "telefon")
+        return {
+          n: (id === "chekish" ? smokingSplit.data?.smoking : smokingSplit.data?.phone) ?? null,
+          loading: smokingSplit.isLoading,
+          error: smokingSplit.isError,
+          approx: smokingSplit.data?.capped,
+        };
+      const n = id === "hammasi" ? kpiStats.total : kpiStats.byCategory[id as "face" | "gun" | "janjal"];
+      return { n: n ?? null, loading: kpiStats.isLoading, error: Boolean(kpiStats.error) };
+    };
+    const { n, loading, error, approx } = pick();
+    if (n == null) {
+      if (loading) return { text: "…", title: t.nvr.tabCountLoading, dim: true };
+      return { text: "—", title: error ? t.nvr.tabCountError : t.nvr.tabCountLoading, dim: true };
+    }
+    const text = `${fmt(n, t.locale)}${approx ? "+" : ""}`;
+    return {
+      text,
+      title: t.nvr.tabCountTitle(text),
+      dim: n === 0,
+    };
+  };
+  /* Tab/sana/sahifa almashganda ESKI ro'yxat o'rniga kartochka skeleti
+     (`switching` — `useNvrEvents` izohi), 2026-10-26. */
+  const busy = loading || switching;
+  /* Qatordagi kartochka soni — slayderdan (3…8), "Ogohlantirishlar" bilan umumiy */
+  const cardCols = useCardColumns();
 
   /**
    * ╔══════════════════════════════════════════════════════════════════╗
@@ -543,12 +600,29 @@ export function DetectionsPage() {
   });
   const weapon2KpiLoading =
     weapon2KpiEnabled && (weapon2KpiAlertsQ.isLoading || janjal2KpiAlertsQ.isLoading);
-  const weapon2KpiGunTotal = weapon2KpiAlertsQ.data?.total ?? 0;
-  const weapon2KpiJanjalTotal = janjal2KpiAlertsQ.data?.total ?? 0;
+  /* KAMERA TANLANGAN bo'lsa (`V2CameraPicker`, 2026-10-24) KPI ham FAQAT shu
+     kameralar bo'yicha — `CameraModel.accepted` serverda ALLAQACHON hisoblangan
+     (kamera kesimi), qo'shimcha so'rov yo'q. Tanlov bo'sh — avvalgidek
+     `alert-list` `total` (butun server). */
+  const pickedCams = (rows: { id: number; accepted: number; hidden: boolean }[] | undefined, ids: number[]) =>
+    ids.length ? (rows ?? []).filter((c) => ids.includes(c.id) && !c.hidden) : null;
+  const weapon2KpiPicked = pickedCams(weapon2KpiCamerasQ.data, v2Cameras.weapon2);
+  const janjal2KpiPicked = pickedCams(janjal2KpiCamerasQ.data, v2Cameras.janjal2);
+  /* Qurolda hodisa ruxsat ro'yxati bo'lsa (faqat 2 ta) KPI ham o'sha son —
+     kameraning `accepted`i (185) ro'yxatdagi 2 ta bilan zid bo'lardi. */
+  const weapon2KpiGunTotal = WEAPON2_ALLOWED_ALERT_IDS.length
+    ? WEAPON2_ALLOWED_ALERT_IDS.length
+    : weapon2KpiPicked
+      ? weapon2KpiPicked.reduce((s, c) => s + c.accepted, 0)
+      : weapon2KpiAlertsQ.data?.total ?? 0;
+  const weapon2KpiJanjalTotal = janjal2KpiPicked
+    ? janjal2KpiPicked.reduce((s, c) => s + c.accepted, 0)
+    : janjal2KpiAlertsQ.data?.total ?? 0;
   const weapon2KpiTotal = weapon2KpiGunTotal + weapon2KpiJanjalTotal;
   const weapon2KpiCameras =
-    (weapon2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0).length +
-    (janjal2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0).length;
+    /* `hidden` (tungi klub kabi) kameralar KPI'da ham sanalmaydi */
+    (weapon2KpiPicked ?? weapon2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0 && !c.hidden).length +
+    (janjal2KpiPicked ?? janjal2KpiCamerasQ.data ?? []).filter((c) => c.accepted > 0 && !c.hidden).length;
 
   /* 3D kampus markeridan kelgan fokus: filtr tozalanadi (aks holda hodisa
      joriy kategoriyaga tushmay ro'yxatda ko'rinmasdi) va yozuv topilishi
@@ -595,11 +669,10 @@ export function DetectionsPage() {
     if (focusedDetectionId != null && fetched.isError) setFocusedDetectionId(null);
   }, [focusedDetectionId, fetched.isError, setFocusedDetectionId]);
 
-  const intro = primaryTab === "counting" ? null : CATEGORY_INTRO[tab];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      {/* ── YUQORI MENYU — 6 ta kategoriya + "Odamlar sanog'i" ──
+      {/* ── YUQORI MENYU — 6 ta kategoriya ──
           Ilgari kategoriyalar sahifa O'RTASIDA, filtr panelidan pastda
           turardi; endi Statistika/Shaxslar sahifalaridagi kabi ENG
           TEPADA — birinchi navbatda ko'rinadigan navigatsiya.
@@ -607,7 +680,7 @@ export function DetectionsPage() {
           to'g'ridan-to'g'ri sahifa foniga turadi. */}
       <div className="flex flex-none flex-wrap items-center gap-2">
         <div className="inline-flex flex-wrap gap-1">
-          {TABS.map(({ id, label, Icon, gif }) => (
+          {visibleTabs.map(({ id, label, Icon, gif }) => (
             <TabPill
               key={id}
               group="nvr-primary-tab"
@@ -617,24 +690,14 @@ export function DetectionsPage() {
               gif={gif}
               iconSize={18}
               tone={NVR_COLOR[id] ?? "#85E0FF"}
+              title={tabCount(id)?.title}
             >
               {label(t)}
+              {tabCount(id) && (
+                <span className={`nvr-tab-count${tabCount(id)!.dim ? " is-dim" : ""}`}>{tabCount(id)!.text}</span>
+              )}
             </TabPill>
           ))}
-          {/* "Odamlar sanog'i" — boshqa manba (`StatCounting`, hodisa
-              emas, O'LCHOV), shuning uchun `NvrTab` ro'yxatida emas,
-              lekin bir xil yuqori menyuda — foydalanuvchi uchun
-              "Aniqlanganlar" ichidagi yana bir kesim. */}
-          <TabPill
-            group="nvr-primary-tab"
-            active={primaryTab === "counting"}
-            onClick={() => selectTab("counting")}
-            Icon={DoorOpen}
-            iconSize={18}
-            tone="#A78BFA"
-          >
-            Odamlar sanog'i
-          </TabPill>
         </div>
 
         {/* "2-VERSIYA" — o'ng burchak, 2026-09-09 foydalanuvchi so'rovi:
@@ -649,8 +712,12 @@ export function DetectionsPage() {
             izohga qarang). Yopish — FAQAT shu tugmani qayta bosish. */}
         <button
           type="button"
-          onClick={() => setWeapon2Mode((v) => !v)}
-          title="Lokal qurol/janjal aniqlash — 2-versiya"
+          onClick={() => {
+            /* Filtr qatori 2-versiyada YO'Q — yashirin qidiruv ro'yxatni jim kesib qo'ymasin */
+            setSearch("");
+            setWeapon2Mode((v) => !v);
+          }}
+          title={t.nvr.v2ButtonTitle}
           className={`ml-auto flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
             weapon2Mode
               ? "border-fuchsia-400/50 bg-fuchsia-400/15 text-fuchsia-200"
@@ -658,7 +725,9 @@ export function DetectionsPage() {
           }`}
         >
           <Pistol size={14} weight={weapon2Mode ? "fill" : "regular"} />
-          2-versiya
+          {/* 2026-10-26: "2-versiya" o'rniga TUSHUNARLI nom (foydalanuvchi:
+              "qurol va janjalni borligini shu yerda bilib bosish uchun"). */}
+          {t.nvr.v2Button}
         </button>
       </div>
 
@@ -666,23 +735,8 @@ export function DetectionsPage() {
           KPI, kartochka to'ri, dossiye) `weapon2Mode`dan qat'i nazar
           BIR XIL, faqat `useNvrEvents(...,{ source })` orqali
           ma'lumot manbasi almashadi (yuqoridagi izohga qarang). */}
-      {primaryTab === "counting" ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <StatCounting />
-        </div>
-      ) : (
+      {(
         <>
-      {/* Kategoriya sarlavhasi — "Hammasi"dan BOSHQA har bir tabda.
-          "Hammasi"da o'rniga pastdagi umumiy KPI qatori chiqadi (aynan
-          o'sha respublika/kuzatuv umumiy manzarasi). */}
-      {intro && (
-        <div className="flex-none">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{intro.eyebrow}</p>
-          <h2 className="text-[19px] font-bold text-white">{intro.title(t)}</h2>
-          <p className="mt-1 max-w-[640px] text-[12px] leading-snug text-slate-400">{intro.desc}</p>
-        </div>
-      )}
-
       {/* Statistika kartalari — FAQAT "Hammasi"da: respublika/kuzatuv
           UMUMIY manzarasi, tanlangan kategoriyaga bog'liq emas (pastdagi
           izohga qarang — `arrivals` ATAYLAB `tab`dan mustaqil). Boshqa
@@ -721,7 +775,7 @@ export function DetectionsPage() {
               Icon={Siren}
               value={weapon2KpiTotal}
               label={t.nvr.statAlarm}
-              hint="2-versiya — barcha signal qurol/janjal"
+              hint={t.nvr.v2KpiHint}
               tone="#F43F5E"
             />
             {/* "Faol kameralar" — ikkala server bo'yicha, kamida bitta
@@ -736,13 +790,11 @@ export function DetectionsPage() {
           </>
         ) : (
           <>
-            {/* "Tanlangan davrda" — HAMMA (tanish + notanish) ro'yxati */}
-            <button
-              type="button"
-              onClick={() => setArrivalsKnown("all")}
-              className="text-left"
-              title="Ro'yxatni ochish"
-            >
+            {/* 🔵 2026-10-26 — KPI qatorida FAQAT "Faol kameralar" bosiladi
+                (foydalanuvchi: "faqat faol kameralar ishlasa yetadi"). Qolgan
+                uchtasi oddiy ko'rsatkich; ularning oynalari (`TodayArrivalsModal`,
+                `AlertKpiModal`) bu sahifadan olib tashlandi. */}
+            <div>
               <DetKpi
                 Icon={ChartLineUp}
                 value={kpiStats.total}
@@ -766,10 +818,10 @@ export function DetectionsPage() {
                 }
                 tone="#22B8E6"
               />
-            </button>
+            </div>
             {/* "Tanilgan yuzlar" — FAQAT tanilganlar (nomiga mos, 2026-09-08 da
                 tuzatildi: ilgari HAMMASINI ko'rsatuvchi oynani ochardi). */}
-            <button type="button" onClick={() => setArrivalsKnown("yes")} className="text-left" title="Ro'yxatni ochish">
+            <div>
               <DetKpi
                 Icon={UserFocus}
                 value={kpiFaces.total}
@@ -781,13 +833,13 @@ export function DetectionsPage() {
                 }
                 tone="#22C55E"
               />
-            </button>
+            </div>
             {/* "Xavf signali" — janjal + qurol (foydalanuvchi ta'rifi,
                 `isDangerEvent`). Server `alert` bayrog'i (`stats.alerts`)
                 KENGROQ — "begona shaxs" kabi boshqa toifalarni ham qamraydi,
                 shuning uchun bu yerda ATAYLAB ishlatilmaydi: kartochka soni
                 va oynadagi ro'yxat BIR XIL bo'lishi kerak. */}
-            <button type="button" onClick={() => setShowAlerts(true)} className="text-left" title="Ro'yxatni ochish">
+            <div>
               <DetKpi
                 Icon={Siren}
                 value={dangerCount}
@@ -795,10 +847,10 @@ export function DetectionsPage() {
                 hint={dangerCount > 0 ? "janjal · qurol" : "trevoga yo'q"}
                 tone="#F43F5E"
               />
-            </button>
+            </div>
             {/* "Faol kameralar" — shu davrda qaysi kameradan nechta odam
                 kelgani (`kpiStats.byChannel` — server hisobi). */}
-            <button type="button" onClick={() => setShowCameras(true)} className="text-left" title="Ro'yxatni ochish">
+            <button type="button" onClick={() => setShowCameras(true)} className="cam-kpi-link text-left" title="Kameralarni ochish">
               <DetKpi
                 Icon={SecurityCamera}
                 value={kpiStats.byChannel.length}
@@ -824,20 +876,16 @@ export function DetectionsPage() {
       </>
       )}
 
-      {arrivalsKnown != null && (
-        <TodayArrivalsModal
-          title={arrivalsKnown === "yes" ? "Tanilgan yuzlar" : "Aniqlangan shaxslar"}
-          /* Sahifaning O'Z davr tanlovi bilan boshlanadi — ikkalasi bir
-             xil narsani ko'rsatsin (`toArrivalPeriod` izohiga qarang). */
-          initialPeriod={toArrivalPeriod(range)}
-          initialKnown={arrivalsKnown}
-          onClose={() => setArrivalsKnown(null)}
-        />
+      {showCameras && (
+        <CameraKpiModal byChannel={kpiStats.byChannel} onClose={() => setShowCameras(false)} />
       )}
-      {showAlerts && <AlertKpiModal from={dateFrom} to={dateTo} onClose={() => setShowAlerts(false)} />}
-      {showCameras && <CameraKpiModal byChannel={kpiStats.byChannel} onClose={() => setShowCameras(false)} />}
 
-      {/* Muassasa + sana + qidiruv */}
+      {/* Muassasa + sana + qidiruv.
+          🔴 "Qurol va janjal" (2-versiya) rejimida qator UMUMAN YO'Q (2026-10-26,
+          foydalanuvchi: "rasmdagi qism kerak emas"): serverlar sana filtrini
+          qabul qilmaydi, kameralar esa allaqachon qat'iy ro'yxat bilan cheklangan
+          (`applyV2CameraRules`). */}
+      {!weapon2Mode && (
       <div className="hik-glass-blue flex flex-none flex-wrap items-center gap-2 rounded-2xl px-3 py-2.5">
         <select
           value={institutionId}
@@ -852,7 +900,7 @@ export function DetectionsPage() {
           ))}
         </select>
 
-        <div className="hik-input flex h-8 min-w-[180px] flex-1 items-center gap-1.5 px-2.5 text-[12px]">
+        <div className="hik-input flex h-8 w-full min-w-[180px] max-w-[360px] flex-1 items-center gap-1.5 px-2.5 text-[12px]">
           <MagnifyingGlass size={13} className="flex-none text-slate-500" />
           <input
             value={search}
@@ -862,49 +910,50 @@ export function DetectionsPage() {
           />
         </div>
 
-        <div className="flex flex-none flex-wrap gap-1.5">
-          {RANGES.map((r) => (
-            <TabPill
-              key={r.id}
-              group="nvr-range"
-              active={range === r.id}
-              onClick={() => {
-                setRange(r.id);
-                setCustomFrom("");
-                setCustomTo("");
+        {/* Davr — SEGMENTED CONTROL (bitta ramka ichida), tarqoq pilyulalar
+            emas; "Oraliq" tanlansa yonida kalendar (2026-10-23). */}
+        <div className="flex flex-none flex-wrap items-center gap-2">
+          <div className="inline-flex flex-wrap gap-0.5 rounded-xl border border-white/10 bg-white/[0.03] p-0.5">
+            {RANGES.map((r) => (
+              <TabPill
+                key={r.id}
+                group="nvr-range"
+                active={range === r.id}
+                onClick={() => {
+                  setRange(r.id);
+                  if (r.id === "custom") {
+                    /* Bo'sh oraliq bilan kalendar ochilmaydi — standart: oxirgi 7 kun */
+                    if (!customFrom || !customTo) {
+                      const d = new Date();
+                      d.setDate(d.getDate() - 6);
+                      setCustomFrom(isoDate(d));
+                      setCustomTo(isoDate(new Date()));
+                    }
+                  } else {
+                    setCustomFrom("");
+                    setCustomTo("");
+                  }
+                }}
+              >
+                {r.label(t)}
+              </TabPill>
+            ))}
+          </div>
+          {range === "custom" && customFrom && customTo && (
+            <DateRangePicker
+              from={customFrom}
+              to={customTo}
+              max={isoDate(new Date())}
+              onChange={(f, t2) => {
+                setCustomFrom(f);
+                setCustomTo(t2);
               }}
-            >
-              {r.label(t)}
-            </TabPill>
-          ))}
-        </div>
-
-        <div className="flex flex-none items-center gap-1.5">
-          <label className="text-[10.5px] uppercase tracking-wide text-slate-500">{t.nvr.dateFromLabel}</label>
-          <input
-            type="date"
-            value={customFrom}
-            max={customTo || undefined}
-            onChange={(e) => {
-              setCustomFrom(e.target.value);
-              setRange("custom");
-            }}
-            className="hik-input h-8 px-2 text-[12px] [color-scheme:dark]"
-          />
-          <label className="text-[10.5px] uppercase tracking-wide text-slate-500">{t.nvr.dateToLabel}</label>
-          <input
-            type="date"
-            value={customTo}
-            min={customFrom || undefined}
-            onChange={(e) => {
-              setCustomTo(e.target.value);
-              setRange("custom");
-            }}
-            className="hik-input h-8 px-2 text-[12px] [color-scheme:dark]"
-          />
+            />
+          )}
         </div>
 
       </div>
+      )}
 
       {/* Holat — kategoriya tugmalari YUQORIDA (`nvr-primary-tab`), bu
           yerda jonli oqim belgisi + son, "Yuz tanish"da esa
@@ -913,16 +962,24 @@ export function DetectionsPage() {
       <div className="flex flex-none flex-wrap items-center gap-3">
         <span className={`nvr-live${live ? " is-on" : ""}`}>
           <i />
-          {live ? t.nvr.live : t.nvr.connecting}
+          {live ? t.nvr.liveOn : t.nvr.connecting}
         </span>
         {/* ⚠️ Chapdagi son — FILTRGA TUSHGANLAR soni (joriy sahifaniki
             emas), o'ngdagisi — server bergan JAMI. Ilgari bu yerda
-            joriy sahifaning uzunligi turardi va u doim ≤24 edi. */}
-        <span className="font-mono text-[11px] text-slate-400" title={windowCapped ? t.nvr.capped : undefined}>
-          {matched.length}
-          {windowCapped ? "+" : ""} / {total || "—"}
+            joriy sahifaning uzunligi turardi va u doim ≤24 edi.
+            2026-10-23: "Jonli 6/6" — arxiv ro'yxati "jonli" deb o'qilardi;
+            endi ulanish belgisi va son ALOHIDA, son matn bilan. */}
+        {/* 2026-10-24: "17 / 10 411" o'qilmas edi — endi har son nomi bilan:
+            JAMI (server), filtr klientda bo'lsa FILTRGA MOS (500 lik oyna,
+            to'lgan bo'lsa "+"), KO'RSATILMOQDA (shu sahifadagi kartochkalar). */}
+        <span className="font-mono text-[11px] text-slate-400" title={windowCapped ? t.nvr.capped : t.nvr.foundTitle}>
+          {t.nvr.found(total ? fmt(total, t.locale) : "—", fmt(filteredEvents.length, t.locale))}
+          {clientFiltered && (
+            <span className="ml-2 text-slate-500">· {t.nvr.foundMatched(`${fmt(matched.length, t.locale)}${windowCapped ? "+" : ""}`)}</span>
+          )}
         </span>
-        {tab === "face" && (
+        <CardColumnsSlider className="ml-auto" />
+        {tab === "face" && !weapon2Mode && (
           <div className="inline-flex flex-wrap gap-1 border-l border-white/10 pl-3">
             {(
               [
@@ -942,20 +999,27 @@ export function DetectionsPage() {
       {/* Ro'yxat. Sahifalash `mt-auto` bilan panel PASTIGA tushadi (skroll
           bo'lmaganda), skroll paydo bo'lsa ro'yxat oxirida qoladi —
           `Pagination` izohiga qarang. Shu sabab o'ram `flex flex-col`. */}
-      <div className="hik-glass-blue flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl p-3">
+      {/* `pb-20` (2026-10-24, UX tahlili 6-band): oxirgi qator to'liq
+          ko'rinsin va o'ng-pastdagi mikrofon tugmasi (`FloatingVoiceButton`,
+          `fixed bottom-5 right-5`, 48 px) oxirgi kartochkani yopmasin. */}
+      {/* 🔵 2026-10-26: sahifalash bo'lsa `pb-3` — u `mt-auto` bilan panel TAGIDA
+          turadi (kartochka kam bo'lsa ham), ko'p bo'lsa kartochkalardan keyin
+          pastga tushadi; mikrofon tugmasi o'ng burchakda, markazdagi sahifalash
+          qatoriga tegmaydi. Bitta sahifada — avvalgidek `pb-20`. */}
+      <div className={`hik-glass-blue flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl p-3 ${totalPages > 1 ? "pb-3" : "pb-20"}`}>
         {error && (
           <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-300">
             {t.nvr.connectError(error)}
           </p>
         )}
-        {loading && filteredEvents.length === 0 && (
-          <div className="grid h-40 place-items-center">
-            <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-          </div>
+        {/* Yuklanish — Statistikadagi slayder; tab/sana/sahifa ALMASHGANDA ham
+            (`switching`), eski ro'yxat o'rnida. `key` — har yangi so'rovda
+            hisob qaytadan boshlansin. */}
+        {busy && !error && (
+          <CardGridSkeleton count={cardCols * 2} cols={cardCols} />
         )}
-        {!loading && filteredEvents.length === 0 && !error && (
-          <p className="py-10 text-center text-[12px] text-slate-500">
-            {/* 🔵 2026-09-11: 2-versiya endi tabdan mustaqil yoqiq qolishi
+        {!busy && filteredEvents.length === 0 && !error && (
+          <EmptyState fill title={<>{/* 🔵 2026-09-11: 2-versiya endi tabdan mustaqil yoqiq qolishi
                 mumkin (yuqoridagi `selectTab` izohiga qarang) — bu tabda
                 u ma'lumot bermasa SABABI aytiladi, umumiy "topilmadi"
                 bilan aralashtirilmaydi.
@@ -965,11 +1029,11 @@ export function DetectionsPage() {
                 Telefon) chiqadi. */}
             {weapon2Mode && tab !== "gun" && tab !== "hammasi" && tab !== "janjal"
               ? t.nvr.weapon2Unsupported
-              : t.nvr.notFound}
-          </p>
+              : t.nvr.notFound}</>} />
         )}
 
-        <div className="nvr-grid">
+        {!busy && (
+        <div className="nvr-grid" style={{ ["--cols" as string]: cardCols }}>
           <AnimatePresence initial={false}>
             {filteredEvents.map((ev) => (
               <motion.div
@@ -991,6 +1055,7 @@ export function DetectionsPage() {
             ))}
           </AnimatePresence>
         </div>
+        )}
 
         <Pagination
           page={page}
@@ -1224,7 +1289,8 @@ export function DetectionModal({
      ro'yxatidan ham ochiladi; bitta joyda tursa ikki marta ro'yxatga
      olinmaydi. */
   useModalHistory(onClose);
-  const campus = resolveCampus(ev.camera, ev.channel);
+  /* 2-versiya kameralari muassasa jadvalida yo'q — kartochkadagi bilan AYNI qoida */
+  const campus = isLocalModelEvent(ev) ? null : resolveCampus(ev.camera, ev.channel);
   const color = NVR_COLOR[ev.category] ?? "#85E0FF";
 
   /* Yig'ilgan o'tishning QOLGAN kadrlari (`FRONTEND.md` 4-A): `group=true`
@@ -1327,9 +1393,18 @@ export function DetectionModal({
    */
   const verifyPerson = useMemo(() => {
     if (face.data?.person) return face.data.person;
-    if (ev.person?.in_library) return { id: ev.person.person_id, full_name: ev.person.full_name, role: ev.person.role ?? "" };
+    /* `person_id` — `GET /events/{id}` shakli; ro'yxat shaklida `id` (`eventPerson()` izohi) */
+    const pid = ev.person?.person_id ?? ev.person?.id;
+    if (ev.person?.in_library && pid != null) return { id: pid, full_name: ev.person.full_name, role: ev.person.role ?? "" };
     return null;
   }, [face.data, ev.person]);
+  /* 🔴 SHAXS TARIXI TUGMASI CHIQMASDI (2026-10-26, foydalanuvchi: "aniqlanganlardan
+     kirsam shaxs profilini ko'rib bo'lmaydi"). O'lchandi: hodisa 457031 —
+     `face_id: null`, lekin `person.person_id: 518`. Kartochkadan ochilganda `ev`
+     — RO'YXAT shakli (`{id, full_name, role…}`, `in_library` YO'Q), shuning
+     uchun `verifyPerson` `null` bo'lib, tugma umuman chizilmasdi. Endi shaxs
+     raqami `eventPerson()` (ikkala shaklni ham o'qiydi) dan ham olinadi. */
+  const historyPersonId = verifyPerson?.id ?? eventPerson(ev)?.id ?? null;
 
   /* Nishon (kesilgan, index 0) va Kadr (butun rasm, index 1) — bor bo'lgan
      rasmlar shu ro'yxatga tushadi. `gun`/`smoking`da odatda bitta rasm bor,
@@ -1537,14 +1612,11 @@ export function DetectionModal({
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* Sarlavha lentasi */}
+        {/* 🔵 2026-10-26 — "CAMPUS AI · ANIQLASH BAZASI" brendi, "Ma'lumot
+            yig'ildi" va "Hodisa hujjati" yozuvlari OLIB TASHLANDI (foydalanuvchi:
+            "umuman kerak emas, ortiqcha so'zlar ko'p"). Sarlavhada faqat
+            hodisa raqami, kanal, holat va amallar qoldi. */}
         <header className="nvr-dsr-top">
-          <span className="nvr-dsr-mark">
-            <UserFocus size={18} />
-          </span>
-          <span className="nvr-dsr-brand">
-            <b>{d.brand}</b>
-            <em>{d.system}</em>
-          </span>
 
           <span className="nvr-dsr-chips">
             <span className="nvr-dsr-chip">
@@ -1576,11 +1648,9 @@ export function DetectionModal({
         </header>
 
         {/* Ism qatori */}
-        {/* ⚠️ Tartib: AVVAL holat ("Ma'lumot yig'ildi"), KEYIN shaxs nomi.
-            Ilgari ism birinchi turardi va "Notanish shaxs" degan yozuvdan
-            keyin kelgan holat izohi unga tegishlidek o'qilardi. */}
+        {/* Ism qatori: shaxs nomi → toifa → "Shaxs haqida ma'lumot".
+            "Ma'lumot yig'ildi" yozuvi 2026-10-26 da olib tashlandi. */}
         <div className="nvr-dsr-name">
-          <i>{d.collecting}</i>
           <b>{subject}</b>
           {/* 🔵 TOIFA — ENG ASOSIY belgi (2026-09-11, foydalanuvchi so'rovi:
               "eng asosiy bo'lishi kerak bo'lgan narsa O'qituvchi yoki
@@ -1604,13 +1674,12 @@ export function DetectionModal({
               qachon, qaysi kamerada ko'ringani, kunlar va barcha kadrlar.
               `face_id` bo'lsa u bo'yicha (notanish odam ham), bo'lmasa
               bazadagi shaxs raqami bo'yicha. Ikkalasi ham yo'q — tugma yo'q. */}
-          {(faceId != null || verifyPerson) && (
+          {(faceId != null || historyPersonId != null) && (
             <button type="button" onClick={() => setPersonOpen(true)} className="nvr-dsr-person">
               <IdentificationCard size={14} weight="duotone" />
               {d.openPerson}
             </button>
           )}
-          <span>{d.tag}</span>
         </div>
 
         <div className="nvr-dsr-body">
@@ -1689,7 +1758,9 @@ export function DetectionModal({
                 </button>
               </div>
             ) : (
-              <div className="grid h-[200px] flex-none place-items-center text-[12px] text-slate-500">
+              /* Rasm maydoni (`.nvr-dsr-shot`) bilan BIR XIL balandlik — hodisalar
+                 orasida o'tganda oyna sakramaydi */
+              <div className="grid min-h-[clamp(260px,38vh,440px)] flex-none place-items-center text-[12px] text-slate-500">
                 {t.nvr.noImageForType}
               </div>
             )}
@@ -1751,7 +1822,7 @@ export function DetectionModal({
                     ))}
                   </div>
                 ) : (
-                  <p className="nvr-dsr-empty">
+                  <p className={`nvr-dsr-empty ${face.isLoading ? "grid min-h-[84px] place-items-center" : ""}`}>
                     {face.isLoading ? "…" : face.isError ? d.photos.failed : d.photos.empty}
                   </p>
                 )}
@@ -1828,7 +1899,10 @@ export function DetectionModal({
                   ))}
                 </div>
               ) : (
-                <p className="nvr-dsr-empty">{visit.isLoading ? "…" : d.singleFrame}</p>
+                /* Yuklanishda kadrlar to'ri balandligida (pastdagi bloklar sakramasin) */
+                <p className={`nvr-dsr-empty ${visit.isLoading ? "grid min-h-[84px] place-items-center" : ""}`}>
+                  {visit.isLoading ? "…" : d.singleFrame}
+                </p>
               )}
             </section>
 
@@ -1907,8 +1981,8 @@ export function DetectionModal({
         {personOpen && (
           <FaceHistoryModal
             faceId={faceId ?? undefined}
-            personId={faceId == null ? verifyPerson?.id : undefined}
-            zClass="z-[96]"
+            personId={faceId == null ? historyPersonId ?? undefined : undefined}
+            zClass="z-[100]"
             onClose={() => setPersonOpen(false)}
           />
         )}

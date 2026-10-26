@@ -30,8 +30,13 @@ export type ViewMode = "list" | "card";
  * ketardi (masalan "Davomat" ro'yxati "Xodimlar" ro'yxatiga ta'sir
  * qilmasligi kerak).
  */
-export function useViewMode(key: string, initial: ViewMode = "list") {
-  const storageKey = `hik-view:${key}`;
+/* 🔵 2026-10-26 — STANDART "KARTOCHKA" (foydalanuvchi: "defaultda doim hamma
+   joyida card turishi kerak"). Ilgari `"list"` edi. Kalit `hik-view2:` —
+   effekt boshlang'ich qiymatni darhol `localStorage`ga yozgani uchun eski
+   `hik-view:` kalitlarida HAMMADA "list" saqlangan; yangi kalit bilan hamma
+   bir marta kartochkadan boshlaydi, keyingi tanlov odatdagidek saqlanadi. */
+export function useViewMode(key: string, initial: ViewMode = "card") {
+  const storageKey = `hik-view2:${key}`;
   const [mode, setMode] = useState<ViewMode>(() => {
     if (typeof window === "undefined") return initial;
     try {

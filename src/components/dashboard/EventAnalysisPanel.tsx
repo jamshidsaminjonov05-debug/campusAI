@@ -12,6 +12,7 @@ import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { DashPanel } from "./DashPanel";
+import { Skeleton } from "@/components/common/panels";
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -60,8 +61,10 @@ export function EventAnalysisPanel({ eventId, onClose }: { eventId: number; onCl
         </header>
 
         {q.isLoading && !ev ? (
-          <div className="grid h-40 flex-none place-items-center">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
+          <div className="flex-none space-y-2">
+            <Skeleton className="aspect-video w-full rounded-xl" />
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-2.5 w-1/2" />
           </div>
         ) : !ev ? (
           <p className="py-10 text-center text-[11.5px] text-slate-500">{u.failed}</p>

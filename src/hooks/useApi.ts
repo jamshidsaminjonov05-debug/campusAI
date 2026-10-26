@@ -1,34 +1,30 @@
 /**
- * Backend API uchun React Query hooklari.
- * Barcha so'rovlar src/lib/api.ts orqali — token va 401-refresh u yerda hal qilinadi.
+ * Eski backend (`src/lib/api.ts`) uchun React Query hooklari.
+ *
+ * 🔴 **2026-10-26 da QISQARTIRILDI.** `NEXT_PUBLIC_API_ORIGIN` kuzatuv posti
+ * serveriga (7007) qaraydi; eski 7005 backendning `/persons`, `/attendance`,
+ * `/cameras` CRUD, `/events`, `/statistics/*`, `/admin/*` yo'llari u yerda
+ * YO'Q (HTML yoki boshqa shakl qaytaradi). Shu yo'llarga qaragan hooklar —
+ * `useDashboard`, `useEmotionsDaily`, `useAttendance`, `useMonthlyAttendance`,
+ * `usePersons`, `usePersonMutations`, `useCameraMutations`, `useEvents`,
+ * `useEventMutations`, `useAdminStatus`, `useAdminMutations().resync/
+ * reloadFaceIndex` — chaqiruvchilari bilan birga olib tashlandi
+ * (`TEST-HISOBOT.md` 2–3-bo'lim). Qolganlari:
+ *
+ * - `useCameras` — `/api/v1/cameras` (hodisa bo'lgan kameralar) — Kameralar
+ *   sahifasida qurilma kanallari KELMAGANDA zaxira, `useStudentDay`da zaxira;
+ * - `useAllPersons` / `useAllAttendance` — `useStudentDay` zaxirasi (hozir
+ *   bo'sh qaytadi, massiv bo'lmasa `[]`);
+ * - `useUsers` / `useAdminMutations().createUser` — `GET/POST /api/users`
+ *   (kuzatuv posti serverining o'z foydalanuvchilari, admin JWT bilan).
  *
  * ── MUASSASA KO'LAMI (multi-tenancy) ─────────────────────────────────
- * Har bir ro'yxat hook'i `useInstitutionScope()` dan joriy muassasani oladi va:
- *   1. uni `queryKey` ga qo'shadi — kesh muassasalar orasida ARALASHMAYDI,
- *   2. javob kelgach `scopeToInstitution()` bilan klient tomonda filtrlaydi.
- *
- * ⚠️ HOZIRGI HOLAT: backend javoblarida muassasa belgisi YO'Q
- * (`CameraOut`/`PersonOut`/`AlarmEventOut` da `institution_id` maydoni yo'q),
- * shuning uchun filtr amalda hech narsani kesmaydi — bu KUTILGAN. Maqsad:
- * ulanish nuqtasi tayyor tursin.
- *
- * ⚠️ BACKEND TAYYOR BO'LGANDA: `scopeToInstitution()` chaqiruvlari olib
- * tashlanadi va o'rniga so'rovga parametr qo'shiladi:
- *     api.listCameras({ institution_id: scope.institutionId })
- * `queryKey` esa o'zgarishsiz qoladi.
+ * Ro'yxat hooklari `useInstitutionScope()` dan joriy muassasani oladi va
+ * `queryKey` ga qo'shadi; javobda `institution_id` bo'lmagani uchun
+ * `scopeToInstitution()` amalda hech narsani kesmaydi — ulanish nuqtasi.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  api,
-  isBackendPersonId,
-  FACE_ENGINE_HINT,
-  isFaceEngineError,
-  type CameraBrand,
-  type CameraOut,
-  type CameraPayload,
-  type PersonPayload,
-  type PersonType,
-} from "@/lib/api";
+import { api, isBackendPersonId, type CameraBrand, type PersonType } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useInstitutionScope } from "@/lib/nvr/institutionScope";
 
@@ -52,106 +48,12 @@ function scopeToInstitution<T extends object>(rows: T[] | undefined, institution
   });
 }
 
-/* --------------------------------- Statistika --------------------------------- */
-
-export function useDashboard() {
-  const enabled = useAuthed();
-  const { institutionId } = useInstitutionScope();
-  return useQuery({
-    // Muassasa kalitda — bosh admin muassasa almashtirsa kesh aralashmaydi
-    queryKey: ["dashboard", institutionId],
-    queryFn: () => api.dashboard(),
-    /* ⚠️ Ilgari `5_000` edi — 5 soniyada bir, `SettingsPage.tsx`da (faqat
-       modul holatini tekshirish uchun) va `useDashboardData()`da. Bu
-       endpoint (`/statistics/dashboard`) `BACKEND.md`da hujjatlashtirilgan:
-       amalda deyarli DOIM bo'sh/eskirgan javob beradi — shuncha tez-tez
-       so'rash foydasiz tarmoq yukidan boshqa narsa bermaydi (2026-09-18,
-       foydalanuvchi so'rovi). */
-    refetchInterval: 60_000,
-    enabled,
-  });
-}
-
-export function useEmotionsDaily(days = 7) {
-  const enabled = useAuthed();
-  return useQuery({
-    queryKey: ["emotions-daily", days],
-    queryFn: () => api.emotionsDaily(days),
-    // Kayfiyat moduli serverda o'rnatilmagan (kunlik agregat) — daqiqada bir so'rash foydasiz
-    refetchInterval: 5 * 60_000,
-    enabled,
-  });
-}
-
-/* ---------------------------------- Davomat ---------------------------------- */
-
-export function useAttendance(
-  params: {
-    person_id?: string;
-    date_from?: string;
-    date_to?: string;
-    event_type?: "entry" | "exit";
-    limit?: number;
-    offset?: number;
-  },
-  /** `live` — davomat monitoringi uchun: ro'yxat o'zi yangilanib turadi. */
-  opts?: { live?: boolean }
-) {
-  const enabled = useAuthed();
-  /* Shaxs bo'yicha filtr so'ralgan bo'lsa, id BACKENDNIKI bo'lishi shart —
-     mock odam uchun so'rov umuman yuborilmaydi. */
-  const idOk = params.person_id === undefined || isBackendPersonId(params.person_id);
-  return useQuery({
-    queryKey: ["attendance", params],
-    queryFn: () => api.listAttendance(params),
-    refetchInterval: opts?.live ? 60_000 : false,
-    enabled: enabled && idOk,
-  });
-}
-
-export function useMonthlyAttendance(personId: string | null, year?: number, month?: number) {
-  const enabled = useAuthed();
-  return useQuery({
-    queryKey: ["attendance-monthly", personId, year, month],
-    queryFn: () => api.monthlyAttendance(personId!, year, month),
-    // Mock odamning id'si backendda YO'Q — 404 bermasin (`isBackendPersonId`)
-    enabled: enabled && isBackendPersonId(personId),
-  });
-}
-
 /* ---------------------------------- Shaxslar ---------------------------------- */
 
-export function usePersons(params: {
-  person_type?: PersonType;
-  group_name?: string;
-  search?: string;
-  is_active?: boolean;
-  page?: number;
-  page_size?: number;
-}) {
-  const enabled = useAuthed();
-  const { institutionId } = useInstitutionScope();
-  return useQuery({
-    queryKey: ["persons", institutionId, params],
-    // ⚠️ Backend `institution_id` ni qo'llagach: api.listPersons({ ...params, institution_id: institutionId })
-    queryFn: async () => {
-      const res = await api.listPersons(params);
-      return { ...res, items: scopeToInstitution(res.items, institutionId) ?? res.items };
-    },
-    enabled,
-    placeholderData: (prev) => prev,
-  });
-}
-
 /**
- * BUTUN shaxslar ro'yxati — statistika uchun (jadval uchun `usePersons`).
- *
- * ⚠️ **`page_size: 500` BILAN CHAQIRMANG** — server 200 dan keyin `422`
- * qaytaradi (`lib/api.ts` dagi o'lchangan chegaralar). Ilgari
- * `useStudentDay`, `useWeeklyByType` va `WeeklyAttendance` aynan shunday
- * so'rardi: so'rov har safar yiqilib, panellar jimgina bo'sh turardi.
- * Bu hook sahifalarni O'ZI aylanib chiqadi, ya'ni 1 000 o'quvchi ham
- * to'liq keladi.
+ * BUTUN shaxslar ro'yxati — sahifalab (`page_size` ≤ 200, `lib/api.ts`
+ * dagi o'lchangan chegara). Hozirgi serverda `/persons` yo'q — bo'sh
+ * qaytadi; `useStudentDay` zaxirasi.
  */
 export function useAllPersons(
   params: { person_type?: PersonType; group_name?: string; search?: string; is_active?: boolean },
@@ -166,18 +68,15 @@ export function useAllPersons(
       return { ...res, items: scopeToInstitution(res.items, institutionId) ?? res.items };
     },
     enabled: enabled && (opts?.enabled ?? true),
-    /* Ro'yxat kun davomida kam o'zgaradi, so'rov esa bir necha sahifa —
-       navigatsiyada qayta yuklanmasin. */
     staleTime: 60_000,
     placeholderData: (prev) => prev,
   });
 }
 
 /**
- * Oraliqdagi BARCHA davomat yozuvi (`limit` 1 000 dan katta bo'lolmaydi).
- *
- * 1 000 shaxs × 7 kun = 7 000 yozuv — bitta so'rovga sig'maydi, shuning
- * uchun `offset` bilan sahifalanadi.
+ * Oraliqdagi BARCHA davomat yozuvi (`limit` ≤ 1 000, `offset` bilan
+ * sahifalanadi). Kuzatuv posti serverida `/attendance` kunlik OBYEKT —
+ * massiv bo'lmasa `[]` qaytadi.
  */
 export function useAllAttendance(
   params: { date_from?: string; date_to?: string; event_type?: "entry" | "exit"; person_id?: string },
@@ -194,62 +93,6 @@ export function useAllAttendance(
   });
 }
 
-export function usePersonMutations() {
-  const qc = useQueryClient();
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["persons"] });
-    /* ⚠️ `persons-all` / `attendance-all` ALOHIDA kalitlar — ular
-       bekor qilinmasa import yoki tahrirdan keyin Statistika va davomat
-       panellari ESKI ro'yxatni ko'rsatib turaverardi (React Query kaliti
-       boshqa, ya'ni "persons" bekor qilinishi ularga tegmaydi). */
-    qc.invalidateQueries({ queryKey: ["persons-all"] });
-    qc.invalidateQueries({ queryKey: ["attendance"] });
-    qc.invalidateQueries({ queryKey: ["attendance-all"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
-  };
-  /**
-   * Shaxs qo'shish — IKKI QADAMDA.
-   *
-   * ⚠️ NEGA: backend rasm biriktirilgan `POST /persons` ni **400** bilan
-   * rad etadi (`No module named 'onnxruntime'`) va shunda shaxs UMUMAN
-   * yaratilmaydi — foydalanuvchi formani to'ldirib, rasm tanlab, hech
-   * nima saqlanmaganini ko'rardi (o'lchandi 2026-09-02).
-   *
-   * Endi avval shaxs RASMSIZ yaratiladi (bu **201** qaytaradi), so'ng
-   * rasm alohida so'rov bilan biriktiriladi. Rasm bosqichi yiqilsa ham
-   * SHAXS SAQLANIB QOLADI, chaqiruvchiga esa `photoError` qaytadi va u
-   * ogohlantirish ko'rsatadi.
-   */
-  const create = useMutation({
-    mutationFn: async ({ data, photo }: { data: PersonPayload; photo?: File | null }) => {
-      const person = await api.createPerson(data, null);
-      if (!photo) return { person, photoError: null as string | null };
-      try {
-        return { person: await api.setPersonPhoto(person.id, photo), photoError: null as string | null };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { person, photoError: isFaceEngineError(msg) ? FACE_ENGINE_HINT : msg };
-      }
-    },
-    onSuccess: invalidate,
-  });
-  const update = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<PersonPayload> & { is_active?: boolean } }) =>
-      api.updatePerson(id, data),
-    onSuccess: invalidate,
-  });
-  const remove = useMutation({ mutationFn: (id: string) => api.deletePerson(id), onSuccess: invalidate });
-  const setPhoto = useMutation({
-    mutationFn: ({ id, photo }: { id: string; photo: File }) => api.setPersonPhoto(id, photo),
-    onSuccess: invalidate,
-  });
-  const importFile = useMutation({
-    mutationFn: ({ file, photos }: { file: File; photos?: File | null }) => api.importPersons(file, photos),
-    onSuccess: invalidate,
-  });
-  return { create, update, remove, setPhoto, importFile };
-}
-
 /* ---------------------------------- Kameralar ---------------------------------- */
 
 export function useCameras(brand?: CameraBrand) {
@@ -257,118 +100,15 @@ export function useCameras(brand?: CameraBrand) {
   const { institutionId } = useInstitutionScope();
   return useQuery({
     queryKey: ["cameras", institutionId, brand],
-    // ⚠️ Backend tayyor bo'lgach: api.listCameras({ brand, institution_id: institutionId })
     queryFn: async () => scopeToInstitution(await api.listCameras(brand), institutionId) ?? [],
-    /* ⚠️ Ilgari `15_000` edi (har 15 soniyada) — bu hook `GlobalSearch.tsx`
-       orqali `App.tsx`da global chaqiriladi, ya'ni panelning HAR sahifasida
-       DOIM ishlaydi. `CamerasPage.tsx`ning o'z izohi tasdiqlaydi: "Asosiy
-       backend'da kamera ro'yxati BO'SH, kuzatuv posti qurilmasida esa 32 ta
-       kanal" — haqiqiy, jonli kamera ro'yxati `useNvrChannels()`dan keladi,
-       bu endpoint esa deyarli doim bo'sh reyestr. Kameralar soni daqiqada
-       emas, kamdan-kam (admin qo'shsa/o'chirsa) o'zgaradi — shuncha
-       tez-tez so'rash foydasiz tarmoq yuki edi (2026-09-18, foydalanuvchi
-       so'rovi: "nima sababdan /cameras qayta-qayta so'ralyabdi"). */
+    /* Haqiqiy, jonli kamera ro'yxati `useNvrChannels()`dan; bu endpoint
+       faqat zaxira — tez-tez so'rash foydasiz (2026-09-18). */
     refetchInterval: 5 * 60_000,
     enabled,
   });
 }
 
-export function useCameraMutations() {
-  const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["cameras"] });
-  const create = useMutation({ mutationFn: (data: CameraPayload) => api.createCamera(data), onSuccess: invalidate });
-  const update = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CameraPayload> }) => api.updateCamera(id, data),
-    onSuccess: invalidate,
-  });
-  const remove = useMutation({ mutationFn: (id: string) => api.deleteCamera(id), onSuccess: invalidate });
-  const check = useMutation({ mutationFn: (id: string) => api.checkCamera(id) });
-
-  // Play/Pauza — is_active'ni darhol (server javobini kutmasdan) yangilaymiz,
-  // shunda tugma bosilgach UI kechikmasdan javob beradi; haqiqiy holat
-  // fonda invalidate orqali tekshiriladi va kerak bo'lsa qayta tiklanadi.
-  function setActiveOptimistic(id: string, isActive: boolean) {
-    const previous = qc.getQueriesData<CameraOut[]>({ queryKey: ["cameras"] });
-    qc.setQueriesData<CameraOut[]>({ queryKey: ["cameras"] }, (old) =>
-      old?.map((c) => (c.id === id ? { ...c, is_active: isActive } : c))
-    );
-    return previous;
-  }
-  function rollback(previous: ReturnType<typeof setActiveOptimistic>) {
-    previous.forEach(([key, data]) => qc.setQueryData(key, data));
-  }
-
-  // Play: backend RTSP ko'prigini haqiqatda ishga tushirmaguncha is_active'ni
-  // optimistik true qilib bo'lmaydi — aks holda <img> hali tayyor bo'lmagan
-  // oqimga ulanishga urinib, "OQIM UZILDI" xatosini ko'rsatib qo'yadi. Shu
-  // sabab bu yerda faqat onSuccess'da (POST tasdiqlangach) cache'ni yangilab,
-  // to'liq ro'yxatni qayta so'rashni (invalidate+refetch) kutish bosqichini
-  // olib tashlaymiz — bitta network round-trip qisqaradi.
-  const start = useMutation({
-    mutationFn: (id: string) => api.startStream(id),
-    onSuccess: async (_data, id) => {
-      await qc.cancelQueries({ queryKey: ["cameras"] });
-      setActiveOptimistic(id, true);
-      invalidate();
-    },
-  });
-  // Pauza: darhol (server javobini kutmasdan) to'xtatamiz — foydalanuvchi
-  // bosgan zahoti oqim uzilishini ko'rishi kerak, backend tasdig'ini kutish shart emas.
-  const stop = useMutation({
-    mutationFn: (id: string) => api.stopStream(id),
-    onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: ["cameras"] });
-      return { previous: setActiveOptimistic(id, false) };
-    },
-    onError: (_err, _id, ctx) => ctx && rollback(ctx.previous),
-    onSettled: invalidate,
-  });
-  return { create, update, remove, check, start, stop };
-}
-
-/* ---------------------------------- Hodisalar ---------------------------------- */
-
-export function useEvents(params: { event_type?: string; is_resolved?: boolean; date_from?: string; limit?: number } = {}) {
-  const enabled = useAuthed();
-  const { institutionId } = useInstitutionScope();
-  return useQuery({
-    queryKey: ["events", institutionId, params],
-    // ⚠️ Backend tayyor bo'lgach: api.listEvents({ ...params, institution_id: institutionId })
-    queryFn: async () => scopeToInstitution(await api.listEvents(params), institutionId) ?? [],
-    /* ⚠️ Ilgari `10_000` edi. Bu eski backend `/events` (jami 6 ta test yozuvi,
-       2026-07 dan) — faqat shaxs oynasida ishlatiladi va o'zgarmaydi; haqiqiy
-       jonli hodisalar kuzatuv posti SSE'sidan (`useLiveSync`). */
-    staleTime: 60_000,
-    enabled,
-  });
-}
-
-export function useEventMutations() {
-  const qc = useQueryClient();
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["events"] });
-    qc.invalidateQueries({ queryKey: ["event-stats"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
-  };
-  const resolve = useMutation({ mutationFn: (id: string) => api.resolveEvent(id), onSuccess: invalidate });
-  const create = useMutation({
-    mutationFn: (data: Parameters<typeof api.createEvent>[0]) => api.createEvent(data),
-    onSuccess: invalidate,
-  });
-  return { resolve, create };
-}
-
 /* -------------------------------- Administrator -------------------------------- */
-
-export function useAdminStatus() {
-  const enabled = useAuthed();
-  return useQuery({
-    queryKey: ["admin-status"],
-    queryFn: () => api.adminStatus(),
-    refetchInterval: 2 * 60_000,
-    enabled,
-  });
-}
 
 export function useUsers() {
   const enabled = useAuthed();
@@ -377,18 +117,10 @@ export function useUsers() {
 
 export function useAdminMutations() {
   const qc = useQueryClient();
-  const resync = useMutation({
-    mutationFn: (direction: "to_backup" | "to_primary") => api.resync(direction),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-status"] }),
-  });
-  const reloadFaceIndex = useMutation({
-    mutationFn: () => api.reloadFaceIndex(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-status"] }),
-  });
   const createUser = useMutation({
     mutationFn: (data: { username: string; password: string; full_name?: string; role?: string }) =>
       api.createUser(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
   });
-  return { resync, reloadFaceIndex, createUser };
+  return { createUser };
 }

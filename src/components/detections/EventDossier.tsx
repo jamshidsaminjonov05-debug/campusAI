@@ -15,7 +15,7 @@ import { DetectionModal } from "@/components/detections/DetectionsPage";
  * Boshqa ro'yxatlarda (kamera kadrlari, "Kameraga tushgan odamlar") to'liq
  * `NvrEvent` yo'q — faqat `id` bor, shuning uchun shu qobiq kerak.
  *
- * ⚠️ **NEGA ALOHIDA `fixed inset-0 z-[92]` O'RAMI BOR.**
+ * ⚠️ **NEGA ALOHIDA `fixed inset-0 z-[100]` O'RAMI BOR.**
  * `DetectionModal` ning o'z o'rami `z-[60]`, u esa "Aniqlanganlar"
  * sahifasida — eng ustki oyna bo'lgani uchun — yetarli. Bu komponent esa
  * BOSHQA MODAL USTIDAN ochiladi (`CameraDetectionsModal` — `z-[88]`,
@@ -56,7 +56,7 @@ export function EventDossier({ eventId, onClose }: { eventId: number | null; onC
        klik ochuvchi modalning o'ramiga yetib borardi. O'sha o'ramda esa
        `onClick={onClose}` turibdi — natijada ma'lumotlarni yopganda ostidagi
        oyna ham birga yopilib ketardi. */
-    <div className="fixed inset-0 z-[92]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100]" onClick={(e) => e.stopPropagation()}>
       {ev ? (
         <DetectionModal ev={ev} onClose={onClose} onSelect={setPicked} />
       ) : (

@@ -36,9 +36,12 @@ import type { NvrEvent } from "@/lib/nvr/nvrApi";
 import { DetectionCard } from "@/components/detections/DetectionCard";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { Pagination } from "@/components/common/Pagination";
-import { KpiTile, StatPanel, TabPill } from "@/components/common/panels";
+import { KpiTile, StatPanel, TabPill, CardGridSkeleton } from "@/components/common/panels";
+import { CardColumnsSlider } from "@/components/common/CardColumnsSlider";
+import { useCardColumns } from "@/hooks/useCardColumns";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Ro'yxat filtri — jiddiylik bo'yicha. */
 type Level = "all" | "alarm" | "warn";
@@ -98,6 +101,8 @@ export function AlertsPage() {
   const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const confirm = (ids: readonly (string | number)[]) => markSeen(ids.map(String));
+  /* Qatordagi kartochka soni — "Aniqlanganlar" bilan BITTA sozlama (`useCardColumns`) */
+  const cardCols = useCardColumns();
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
@@ -143,6 +148,7 @@ export function AlertsPage() {
         className="min-h-0 flex-1"
         right={
           <div className="flex items-center gap-1.5">
+            <CardColumnsSlider className="mr-2 border-r border-white/10 pr-3" />
             <TabPill group="alerts-level" active={level === "all"} onClick={() => changeLevel("all")}>
               {t.alerts.level.all}
             </TabPill>
@@ -168,14 +174,18 @@ export function AlertsPage() {
           </div>
         }
       >
-        <div className="flex h-full flex-col overflow-y-auto pr-1">
+        {/* `pb-20` — mikrofon tugmasi oxirgi kartochkani yopmasin ("Aniqlanganlar" bilan bir xil) */}
+        <div className={`flex h-full flex-col overflow-y-auto pr-1 ${totalPages > 1 ? "pb-1" : "pb-20"}`}>
           {q.isLoading && rows.length === 0 ? (
-            <p className="py-10 text-center text-[11px] text-slate-500">{t.alerts.loading}</p>
+            <CardGridSkeleton count={8} />
+          ) : q.error && rows.length === 0 ? (
+            /* Ilgari xato ham "Hammasi tasdiqlangan" bo'lib ko'rinardi (2026-10-26) */
+            <p className="py-10 text-center text-[11px] text-red-300" title={String(q.error)}>{t.alerts.loadError}</p>
           ) : rows.length === 0 ? (
             <Empty allDone={pending.length === 0} />
           ) : (
             <>
-              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              <div className="nvr-grid" style={{ ["--cols" as string]: cardCols }}>
                 <AnimatePresence initial={false}>
                   {pageRows.map((ev) => (
                     <motion.div
@@ -228,6 +238,9 @@ export function AlertsPage() {
 /** Bo'sh holat — sabab OCHIQ yoziladi (nol jim turmasin). */
 function Empty({ allDone }: { allDone: boolean }) {
   const t = useT();
+  /* Filtr bo'yicha topilmadi — umumiy "topilmadi" rasmi, katta va markazda.
+     "Hammasi tasdiqlangan" — yaxshi holat, yashil belgi avvalgidek. */
+  if (!allDone) return <EmptyState fill title={t.alerts.emptyFiltered} hint={t.alerts.emptyHint} />;
   return (
     <div className="grid h-full place-items-center py-12 text-center">
       <div className="flex max-w-[320px] flex-col items-center gap-2">

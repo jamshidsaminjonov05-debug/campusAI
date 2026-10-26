@@ -11,6 +11,9 @@ import { VOICE_ERROR } from "./VoiceCommands";
  */
 const BASE = SPEECH_BASE;
 
+/** `/speech/tts` serverda yo'q (404/405) — shu tabda qayta urinilmaydi. */
+let ttsUnsupported = false;
+
 function authHeaders(): HeadersInit | undefined {
   const tokens = loadTokens();
   return tokens?.access ? { Authorization: `Bearer ${tokens.access}` } : undefined;
@@ -41,7 +44,9 @@ export const voiceApi = {
   async checkHealth(): Promise<boolean> {
     try {
       const res = await fetch(`${BASE}/health`, { headers: authHeaders() });
-      return res.ok;
+      /* Kuzatuv posti serveri noma'lum yo'lga 200 + HTML qaytaradi — bu "sog'" emas
+         (STT/TTS 405, o'lchandi 2026-10-26). Faqat JSON javob xizmat bor degani. */
+      return res.ok && (res.headers.get("content-type") ?? "").includes("application/json");
     } catch {
       return false;
     }
@@ -86,6 +91,9 @@ export const voiceApi = {
 
   /** Matnni ovozli javobga (.mp3) o'giradi. */
   async textToSpeech(text: string, externalSignal?: AbortSignal): Promise<Blob> {
+    /* Server bu yo'lni bermasligi ma'lum bo'lsa qayta so'ralmaydi — har hodisa
+       e'lonida konsolga yangi `POST …/speech/tts 405` tushardi (2026-10-21). */
+    if (ttsUnsupported) throw new VoiceServiceError(VOICE_ERROR.serviceOffline);
     const { signal, cancel, isTimeout } = createRequestSignal(10_000, externalSignal);
     try {
       let res: Response;
@@ -99,7 +107,10 @@ export const voiceApi = {
       } catch {
         throw new VoiceServiceError(isTimeout() ? VOICE_ERROR.timeout : VOICE_ERROR.serviceOffline);
       }
-      if (!res.ok) throw new VoiceServiceError(VOICE_ERROR.serviceOffline);
+      if (!res.ok) {
+        if (res.status === 404 || res.status === 405) ttsUnsupported = true;
+        throw new VoiceServiceError(VOICE_ERROR.serviceOffline);
+      }
       return await res.blob();
     } finally {
       cancel();

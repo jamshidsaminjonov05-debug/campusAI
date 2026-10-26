@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import {
   AnimatePresence,
   motion,
@@ -11,22 +11,17 @@ import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { ThemeSwitcher, useScheme } from "@/theme";
 import {
   ArrowLeft,
-  CameraOff,
   Eye,
   EyeOff,
-  KeyRound,
   Lock,
-  ScanFace,
   ShieldCheck,
   User,
   X,
 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { useT } from "@/i18n";
 import { useAuthStore } from "@/store/useAuthStore";
 import { SpaceBackground } from "@/components/common/SpaceBackground";
 import { Logo } from "@/components/common/Logo";
-
-type Method = "password" | "face";
 
 /* Glass input — fokus'da yumshoq ko'k halo */
 function Field({
@@ -83,23 +78,6 @@ function saveRecentLogin(name: string): string[] {
 
 /* Gologramma yuz — wireframe bosh rasmi; qora fon mix-blend-screen bilan
    yo'qoladi, faqat ko'k to'r qoladi */
-function HoloFace({ className }: { className?: string }) {
-  return (
-    <div className={`pointer-events-none flex h-full w-full items-center justify-center ${className ?? ""}`}>
-      <motion.img
-        src="/imges/ai-face.webp"
-        alt=""
-        draggable={false}
-        animate={{ opacity: [0.75, 1, 0.75] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="w-[210px] object-contain mix-blend-screen [filter:drop-shadow(0_0_10px_rgba(142,183,255,0.4))]"
-      />
-    </div>
-  );
-}
-
-/* Karta "to'plami": ikkala karta ham BITTA nuqtadan (tepaga-orqaga) chiqib-kiradi,
-   shu sabab almashinuvda pozitsiya sakramaydi; grid stretch — balandliklar teng */
 function CarouselCard({
   active,
   children,
@@ -161,10 +139,9 @@ export function AuthPage() {
   /* Yorug'/qorong'i — bir nechta rang QORONG'I shisha uchun tanlangan,
      yorug' rejimda ular oqarib ketadi (pastdagi "Parolni unutdingizmi?"). */
   const scheme = useScheme();
-  const [method, setMethod] = useState<Method>("password");
+  const t = useT();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,13 +185,6 @@ export function AuthPage() {
     }
   }
 
-  // Face ID holati
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [camReady, setCamReady] = useState(false);
-  const [camError, setCamError] = useState<string | null>(null);
-  const [faceBusy, setFaceBusy] = useState(false);
-
   // Sichqoncha — sahna tilt'i uchun (-1..1, spring bilan silliqlangan)
   const mxRaw = useMotionValue(0);
   const myRaw = useMotionValue(0);
@@ -234,47 +204,6 @@ export function AuthPage() {
   const rotateX = useTransform(my, [-1, 1], [8, -8]);
   const rotateY = useTransform(mx, [-1, 1], [-8, 8]);
 
-  // Face rejimida kamerani yoqish, chiqishda o'chirish
-  useEffect(() => {
-    if (method !== "face") return;
-    let cancelled = false;
-    setCamError(null);
-    setCamReady(false);
-    // Xavfsiz kontekst bo'lmasa (`http://10.181.x.x:5173` — boshqa kompyuterdan
-    // ochilgan holat) brauzerda `navigator.mediaDevices` UMUMAN yo'q: bu yerda
-    // ushlamasak `.then` undefined ustida chaqirilib sahifa yiqilardi.
-    if (!window.isSecureContext || !navigator.mediaDevices) {
-      setCamError(
-        "Kamera faqat HTTPS yoki localhost'da ishlaydi. Serverga HTTPS sozlang yoki login/parol bilan kiring."
-      );
-      return;
-    }
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "user", width: { ideal: 640 } } })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setCamReady(true);
-      })
-      .catch(() => setCamError("Kameraga ulanib bo'lmadi — brauzerda ruxsat bering yoki qurilmani tekshiring"));
-    return () => {
-      cancelled = true;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setCamReady(false);
-    };
-  }, [method]);
-
-  function switchMethod(m: Method) {
-    setMethod(m);
-    setError(null);
-    setNotice(null);
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -288,46 +217,6 @@ export function AuthPage() {
       setError(err instanceof Error ? err.message : "Noma'lum xatolik");
     } finally {
       setBusy(false);
-    }
-  }
-
-  // Kadr olib /recognition/identify ga yuborish.
-  // Backend'da yuz orqali token beruvchi endpoint hozircha yo'q — topilgan
-  // shaxs ko'rsatiladi, yakuniy kirish login-parol orqali qoladi.
-  async function handleFaceScan() {
-    const video = videoRef.current;
-    if (!video || !streamRef.current || faceBusy) return;
-    setError(null);
-    setNotice(null);
-    setFaceBusy(true);
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
-      if (!blob) throw new Error("Kameradan kadr olib bo'lmadi");
-      const file = new File([blob], "face.jpg", { type: "image/jpeg" });
-      const resp = await api.identify(file, { record: false });
-      const hit = resp.results.find((r) => r.matched && r.person);
-      if (hit?.person) {
-        const sim = hit.similarity == null ? null : Math.round(hit.similarity <= 1 ? hit.similarity * 100 : hit.similarity);
-        setNotice(
-          `${hit.person.full_name} aniqlandi${sim == null ? "" : ` (${sim}%)`} — kirishni yakunlash uchun login-parol ishlating`,
-        );
-      } else if (resp.faces_detected === 0) {
-        setError("Yuz aniqlanmadi — kameraga yaqinroq va to'g'ri qarang");
-      } else {
-        setError("Yuz bazadan topilmadi");
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError("Yuz orqali kirish serverda hali faollashtirilmagan — login-parol bilan kiring");
-      } else {
-        setError(err instanceof Error ? err.message : "Noma'lum xatolik");
-      }
-    } finally {
-      setFaceBusy(false);
     }
   }
 
@@ -386,43 +275,6 @@ export function AuthPage() {
         </Link>
       </motion.div>
 
-      {/* Kirish usuli tanlovi — 2 tugma, aktiv fon layout animatsiya bilan suriladi */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-20 mb-9 flex gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1.5 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-      >
-        {(
-          [
-            { key: "password" as Method, label: "Login-parol", icon: <KeyRound size={15} strokeWidth={1.8} /> },
-            { key: "face" as Method, label: "Face ID", icon: <ScanFace size={15} strokeWidth={1.8} /> },
-          ]
-        ).map((b) => (
-          <button
-            key={b.key}
-            type="button"
-            onClick={() => switchMethod(b.key)}
-            aria-pressed={method === b.key}
-            className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12.5px] font-semibold transition-colors duration-300 ${
-              method === b.key ? "text-[#0A0F1E]" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            {method === b.key && (
-              <motion.span
-                layoutId="method-pill"
-                transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                className="absolute inset-0 rounded-xl bg-gradient-to-b from-[#B7CFFF] to-[#7FA6F2] shadow-[0_8px_22px_-6px_rgba(142,183,255,0.55)]"
-              />
-            )}
-            <span className="relative flex items-center gap-2">
-              {b.icon}
-              {b.label}
-            </span>
-          </button>
-        ))}
-      </motion.div>
-
       {/* Perspektiv sahna — karusel: aktiv karta markazda, ikkinchisi chetda */}
       <motion.div
         initial={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
@@ -442,7 +294,7 @@ export function AuthPage() {
             className="grid"
           >
             {/* Login-parol kartasi */}
-            <CarouselCard active={method === "password"}>
+            <CarouselCard active>
               <CardHeader
                 icon={<ShieldCheck size={26} strokeWidth={1.6} className="text-[#AFCBFF]" />}
                 title="Xush kelibsiz"
@@ -549,19 +401,14 @@ export function AuthPage() {
                   />
                 </Field>
 
-                <div className="flex items-center justify-between pt-0.5 text-[12px]">
-                  <label className="flex cursor-pointer select-none items-center gap-2 text-slate-400 transition-colors hover:text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
-                      className="h-3.5 w-3.5 cursor-pointer rounded border-white/20 bg-white/5 accent-[#8EB7FF]"
-                    />
-                    Eslab qolish
-                  </label>
+                {/* 🔴 "Eslab qolish" katakchasi OLIB TASHLANDI (2026-10-26, test):
+                    qiymati hech qayerda o'qilmasdi — token doim `localStorage`da.
+                    Face ID tabi ham olib tashlandi: brauzer kamerasi faqat HTTPS'da,
+                    serverda esa yuz orqali kirish yo'li yo'q (`/recognition/identify`). */}
+                <div className="flex items-center justify-end pt-0.5 text-[12px]">
                   <button
                     type="button"
-                    onClick={() => setNotice("Parolni tiklash uchun tizim administratoriga murojaat qiling")}
+                    onClick={() => setNotice(t.auth.forgotNotice)}
                     /* ⚠️ **YORUG' REJIMDA KO'RINMAY QOLGAN EDI** (2026-09-14,
                        foydalanuvchi skrinshot bilan ko'rsatdi): `#AFCBFF` —
                        QORONG'I shisha karta uchun tanlangan och ko'k, karta
@@ -575,11 +422,11 @@ export function AuthPage() {
                         : "font-medium text-[#AFCBFF] transition-colors hover:text-[#C8DAFF]"
                     }
                   >
-                    Parolni unutdingizmi?
+                    {t.auth.forgot}
                   </button>
                 </div>
 
-                {method === "password" && messages}
+                {messages}
 
                 <motion.button
                   type="submit"
@@ -597,79 +444,6 @@ export function AuthPage() {
               </form>
             </CarouselCard>
 
-            {/* Face ID kartasi */}
-            <CarouselCard active={method === "face"}>
-              <CardHeader
-                icon={<ScanFace size={26} strokeWidth={1.6} className="text-[#AFCBFF]" />}
-                title="Face ID orqali kirish"
-                subtitle="Kameraga to'g'ri qarang va skanerlang"
-              />
-
-              {/* Kamera oynasi + skaner ramkasi */}
-              <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl border border-white/[0.08] bg-[rgb(9 11 20 / 0.5)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
-                {method === "face" && !camError && (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="h-full w-full -scale-x-100 object-cover"
-                  />
-                )}
-                {camError && (
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="flex flex-col items-center gap-2.5 px-6 text-center">
-                      <CameraOff size={26} strokeWidth={1.5} className="text-slate-500" />
-                      <p className="text-[11.5px] leading-relaxed text-slate-500">{camError}</p>
-                    </div>
-                  </div>
-                )}
-                {/* Gologramma nuqtali yuz — kamera ochilguncha to'liq, video ustida
-                    hizalama yo'riqchisi sifatida shaffofroq */}
-                {!camError && (
-                  <div className="absolute inset-0 grid place-items-center">
-                    <HoloFace
-                      className={`transition-opacity duration-700 ${
-                        camReady ? "opacity-40 mix-blend-screen" : "opacity-90"
-                      }`}
-                    />
-                  </div>
-                )}
-                {/* Skaner burchaklari */}
-                {!camError && (
-                  <div className="pointer-events-none absolute inset-6">
-                    {(["top-0 left-0 border-t-2 border-l-2 rounded-tl-lg", "top-0 right-0 border-t-2 border-r-2 rounded-tr-lg", "bottom-0 left-0 border-b-2 border-l-2 rounded-bl-lg", "bottom-0 right-0 border-b-2 border-r-2 rounded-br-lg"] as const).map((pos) => (
-                      <span key={pos} className={`absolute h-7 w-7 border-[#8EB7FF]/70 ${pos}`} />
-                    ))}
-                    {/* Yurib turuvchi skaner chizig'i — tekshiruv paytida tezlashadi */}
-                    <motion.span
-                      animate={{ top: ["4%", "92%", "4%"] }}
-                      transition={{ duration: faceBusy ? 1.4 : 3.6, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute left-1 right-1 h-px bg-gradient-to-r from-transparent via-[#8EB7FF]/80 to-transparent shadow-[0_0_14px_2px_rgba(142,183,255,0.45)]"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {method === "face" && <div className="mb-4 space-y-3">{messages}</div>}
-
-              <motion.button
-                type="button"
-                onClick={handleFaceScan}
-                disabled={faceBusy || !camReady}
-                whileHover={{ y: -2, scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                className={primaryBtnCls}
-              >
-                {faceBusy ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0A0F1E]/25 border-t-[#0A0F1E]" />
-                ) : (
-                  <ScanFace size={16} strokeWidth={2} />
-                )}
-                {faceBusy ? "Tekshirilmoqda..." : "Yuzni skanerlash"}
-              </motion.button>
-            </CarouselCard>
           </motion.div>
         </motion.div>
       </motion.div>

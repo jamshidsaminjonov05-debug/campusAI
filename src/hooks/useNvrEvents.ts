@@ -11,6 +11,7 @@
  * xil `offset` bilan). Endi `total` va sahifa chegaralari ANIQ.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isAllowedWeapon2Alert } from "@/lib/nvr/v2CameraFilter";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   isPhoneEvent,
@@ -20,8 +21,51 @@ import {
   type NvrEvent,
   type NvrQueryCategory,
 } from "@/lib/nvr/nvrApi";
-import { listWeapon2Alerts, listWeapon2Cameras, weapon2ToNvrEvent } from "@/lib/nvr/weapon2Api";
-import { listJanjal2Alerts, listJanjal2Cameras, janjal2ToNvrEvent } from "@/lib/nvr/janjal2Api";
+import { listWeapon2Alerts, listWeapon2CameraAlerts, listWeapon2Cameras, weapon2ToNvrEvent } from "@/lib/nvr/weapon2Api";
+import { listJanjal2Alerts, listJanjal2CameraAlerts, listJanjal2Cameras, janjal2ToNvrEvent } from "@/lib/nvr/janjal2Api";
+import type { V2Cameras } from "@/hooks/useV2Cameras";
+
+/**
+ * 2-VERSIYADA KAMERA FILTRI (2026-10-24). Lokal serverlarning `alert-list`
+ * yo'lida kamera parametri YO'Q (`/openapi.json`: faqat `page`/`page_size`),
+ * lekin `get-camera-alerts/{camera_id}` bor. Tanlangan har kamera uchun
+ * oxirgi `V2_CAM_WINDOW` ta hodisa olinadi, hammasi vaqt bo'yicha
+ * birlashtiriladi va sahifalash KLIENTDA (`DetectionsPage`dagi 500 lik
+ * "filtr bor" rejimi bilan AYNI g'oya). `total` — serverlarning haqiqiy
+ * yig'indisi, sahifalar soni esa OYNA bilan chegaralangan.
+ */
+const V2_CAM_WINDOW = 200;
+async function fetchByCameras<T extends { detected_at: string }>(
+  ids: number[],
+  one: (cameraId: number, page: number, pageSize: number) => Promise<{ data: T[]; total: number }>
+): Promise<{ data: T[]; total: number }> {
+  const pages = await Promise.all(ids.map((id) => one(id, 1, V2_CAM_WINDOW)));
+  const data = pages
+    .flatMap((p) => p.data)
+    .sort((a, b) => (a.detected_at < b.detected_at ? 1 : a.detected_at > b.detected_at ? -1 : 0));
+  return { data, total: pages.reduce((s, p) => s + p.total, 0) };
+}
+
+/**
+ * Kamera tanlanmagan holatda ham OYNA (2026-10-26). Ilgari `alert-list` dan
+ * SERVER sahifasi (`page_size=12/24`) olinib, KEYIN klientda yashirin
+ * kameralar (tungi klub) chiqarilardi — sahifa 12 o'rniga 2 ta bilan
+ * chiqar, sahifalar soni esa filtrlanmagan `total`dan hisoblanardi
+ * (foydalanuvchi: "pagination ishlamaydi" — "Jami 28 · Ko'rsatilmoqda 4",
+ * 2–3-sahifa bo'sh). Endi 100 tadan `V2_LIST_WINDOW` gacha o'qiladi,
+ * filtr va sahifalash KLIENTDA — har sahifa to'la, sahifalar soni aniq.
+ */
+const V2_LIST_WINDOW = 500;
+const V2_PAGE = 100;
+async function fetchWindow<T>(
+  one: (page: number, pageSize: number) => Promise<{ data: T[]; total: number }>
+): Promise<{ data: T[]; total: number }> {
+  const first = await one(1, V2_PAGE);
+  const want = Math.min(first.total, V2_LIST_WINDOW);
+  const more = Math.max(0, Math.ceil(want / V2_PAGE) - 1);
+  const rest = await Promise.all(Array.from({ length: more }, (_, i) => one(i + 2, V2_PAGE).catch(() => null)));
+  return { data: [...first.data, ...rest.flatMap((r) => r?.data ?? [])], total: first.total };
+}
 
 export const NVR_CATEGORIES: NvrCategory[] = ["face", "gun", "janjal", "smoking"];
 
@@ -99,6 +143,40 @@ function sameVisit(a: NvrEvent, b: NvrEvent): boolean {
 }
 
 /**
+ * ODAM BO'YICHA YIG'ISH — 10 daqiqa (2026-10-24, UX tahlili 2-band).
+ *
+ * Server o'tishni 180 s bilan yig'adi (yuqorida), lekin o'quvchi kirish
+ * postidan 4–8 daqiqa oralig'ida yana o'tsa (chiqdi-kirdi, do'stini kutdi)
+ * bu IKKI alohida server o'tishi bo'ladi va lentada BITTA odam ketma-ket
+ * ikki-uch kartochka bo'lib chiqardi (skrinshotda o'lchandi: Nuritdinov
+ * 18:17:45 va 18:21:38, Zafarova 17:20:13 va 17:27:23 — oltita odam
+ * ikki martadan). Endi shunday o'tishlar BITTA kartochkaga yig'iladi:
+ * yozuv — ENG OXIRGI o'tish (uning `id`, kadri, `frames`i o'zgarmaydi,
+ * dossiye ham o'shaniki), `passes` — nechta o'tish, `passes_from` —
+ * birinchisining vaqti. Kartochka "Oxirgi 18:21 · +1 o'tish" deb yozadi.
+ *
+ * ⚠️ `VISIT_GAP_MS` ga TEGILMADI — u serverning kadr-yig'ish mezoni
+ * bilan teng bo'lishi shart (yuqoridagi izoh). Bu alohida, KARTOCHKA
+ * darajasidagi qoida; `frames` (kadr soni) o'tishlar bo'ylab QO'SHILMAYDI
+ * — "11 kadr" hamon oxirgi o'tishniki, `listVisit()` bilan mos.
+ */
+const PASS_GAP_MS = 10 * 60_000;
+
+function samePass(a: NvrEvent, b: NvrEvent): boolean {
+  const k = visitKey(a);
+  if (!k || k !== visitKey(b)) return false;
+  /* Notanishlar bitta "unknown" kalitga tushadi — ularni 10 daqiqa bo'yicha
+     yig'ish TURLI odamlarni bitta kartochkaga qo'shib yuborardi. Faqat
+     ANIQ shaxs (`face_id` yoki ism) yig'iladi. */
+  if (a.face_id == null && !a.name) return false;
+  const [aF, aT] = span(a);
+  const [bF, bT] = span(b);
+  return Math.max(aF, bF) - Math.min(aT, bT) <= PASS_GAP_MS;
+}
+
+const passStart = (e: NvrEvent) => e.passes_from ?? e.visit_from ?? e.time;
+
+/**
  * Eng yangisi boshida bo'lgan, TAKRORSIZ ro'yxat.
  *
  * Ikki xil takror bo'ladi:
@@ -113,7 +191,7 @@ function sameVisit(a: NvrEvent, b: NvrEvent): boolean {
  *    odamning o'tishi ro'yxatda o'nlab qator bo'lib qaytadi. Shuning uchun
  *    kamera + shaxs + 45 soniya mezoni bo'yicha ham tekshiriladi.
  */
-function merge(group: boolean, ...lists: NvrEvent[][]): NvrEvent[] {
+export function merge(group: boolean, ...lists: NvrEvent[][]): NvrEvent[] {
   const seen = new Set<number>();
   const out: NvrEvent[] = [];
   for (const ev of lists.flat()) {
@@ -158,6 +236,21 @@ function merge(group: boolean, ...lists: NvrEvent[][]): NvrEvent[] {
         };
         continue;
       }
+      /* Bir xil ODAM, boshqa o'tish, 10 daqiqa ichida — ENG OXIRGISI vakil
+         bo'ladi (jonli oqim tarixdan oldin keladi, lekin tartibga
+         ishonmaymiz — vaqt bo'yicha tanlanadi). */
+      const j = out.findIndex((x) => samePass(x, ev));
+      if (j >= 0) {
+        const old = out[j];
+        const newer = ms(ev.time) > ms(old.time) ? ev : old;
+        const first = Math.min(ms(passStart(old)), ms(passStart(ev)));
+        out[j] = {
+          ...newer,
+          passes: (old.passes ?? 1) + (ev.passes ?? 1),
+          passes_from: new Date(first).toISOString(),
+        };
+        continue;
+      }
     }
     out.push(ev);
   }
@@ -168,6 +261,12 @@ export interface NvrFeed {
   events: NvrEvent[];
   total: number;
   loading: boolean;
+  /** Kalit (tab/sana/sahifa) ALMASHDI va yangi so'rov hali kelmadi —
+   *  `events` ESKI kalitning placeholder'i (`keepPreviousData`). Sahifa shu
+   *  paytda eski ro'yxatni ko'rsatmasdan `PanelLoader` chizadi (2026-10-23,
+   *  foydalanuvchi: "qurol/janjal/chekish bir-biriga o'tganda eskisida
+   *  qotib qolyapti"). */
+  switching: boolean;
   error: string | null;
   /** SSE ulangan (jonli). */
   live: boolean;
@@ -208,12 +307,18 @@ export interface NvrEventsOptions {
    * ishlagan bo'lsa, "Janjal" 2-versiyasi ham AYNI naqshda (alohida
    * server, `janjal2Api.ts`).
    */
-  source?: "nvr" | "weapon2" | "janjal2";
+  /** `"v2all"` — 2-versiya "Hammasi": qurol (weapon2) + janjal (janjal2) birga */
+  source?: "nvr" | "weapon2" | "janjal2" | "v2all";
+  /** 2-versiyada FAQAT shu kameralar (`useV2Cameras`); bo'sh — hammasi. */
+  v2Cameras?: V2Cameras;
 }
 
 /** Sahifalash — server `offset`/`limit` va `total` beradi, ya'ni ANIQ. */
 export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions = {}): NvrFeed {
-  const { dateFrom, dateTo, group = true, source = "nvr" } = opts;
+  const { dateFrom, dateTo, group = true, source = "nvr", v2Cameras } = opts;
+  const weapon2Cams = v2Cameras?.weapon2 ?? [];
+  const janjal2Cams = v2Cameras?.janjal2 ?? [];
+  const camsKey = `${weapon2Cams.join(",")}|${janjal2Cams.join(",")}`;
   const cat = queryCategory(tab);
   const [page, setPageRaw] = useState(1);
   const [liveEvents, setLiveEvents] = useState<NvrEvent[]>([]);
@@ -233,16 +338,17 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
      ishlaydi va oradagi renderda noto'g'ri so'rov ketardi. */
   const tabRef = useRef(tab);
   // ⚠️ `source` ham SHU KALITDA — "2-versiya" yoqilsa/o'chsa ham 1-sahifaga qaytiladi.
-  const rangeRef = useRef(`${dateFrom ?? ""}:${dateTo ?? ""}:${group}:${pageSize}:${source}`);
+  // `camsKey` ham — 2-versiya kamera tanlovi o'zgarsa 1-sahifaga qaytiladi.
+  const rangeRef = useRef(`${dateFrom ?? ""}:${dateTo ?? ""}:${group}:${pageSize}:${source}:${camsKey}`);
   useEffect(() => {
-    const range = `${dateFrom ?? ""}:${dateTo ?? ""}:${group}:${pageSize}:${source}`;
+    const range = `${dateFrom ?? ""}:${dateTo ?? ""}:${group}:${pageSize}:${source}:${camsKey}`;
     if (tabRef.current !== tab || rangeRef.current !== range) {
       tabRef.current = tab;
       rangeRef.current = range;
       setLiveEvents([]);
       setPageRaw(1);
     }
-  }, [tab, dateFrom, dateTo, group, pageSize, source]);
+  }, [tab, dateFrom, dateTo, group, pageSize, source, camsKey]);
 
   /* ⚠️ `offset` sahifa TIKLANGUNCHA ham to'g'ri bo'lsin: `pageSize`
      o'zgargan renderda `page` hali eski qiymatda turadi (yuqoridagi
@@ -282,7 +388,11 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
            birinchi 10 tasini fonda tayyorlab qo'yadi — dossiye
            ochilganda video ko'pincha ALLAQACHON `"ready"` bo'ladi,
            ya'ni 5 soniyalik qayta-qayta so'rov sikli ishga tushmaydi. */
-        prefetch: 10,
+        /* 🔴 `prefetch: 10` OLIB TASHLANDI (2026-10-26): har sahifa/filtr
+           almashishida server 10 videoni fonda konvertatsiya qilardi va
+           keyingi so'rovlar sekinlashardi (server bazaga so'rovlarni navbat
+           bilan bajaradi). Kuzatuv postining o'z paneli prefetch'siz. Video
+           dossiye ochilganda tayyorlanadi (`EventVideo` 5 s so'rov sikli). */
       });
       return { events: merge(group, p.events), total: p.total };
     },
@@ -331,6 +441,13 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
    * kuzatuv postining o'z ma'lumotiga hech qachon JIM almashtirilmaydi.
    */
   const weapon2Relevant = tab === "hammasi" || tab === "gun";
+  /* 2-versiya "Hammasi" — ikkala server birga, har biridan sahifaning
+     YARMI (2026-10-21, foydalanuvchi so'rovi: "2-versiyada hammasi, janjal
+     va qurol"). Ikki serverni vaqt bo'yicha aniq birlashtirib sahifalash
+     uchun umumiy `offset` yo'q — shuning uchun har sahifada ikkalasining
+     o'z N-sahifasi olinadi va vaqt bo'yicha saralanadi. */
+  const v2all = source === "v2all";
+  const weapon2On = (source === "weapon2" || v2all) && weapon2Relevant;
   /* 🔴 2026-09-18, foydalanuvchi so'rovi: "yuz tanish, chek va telefonda
      2-versiya uchun bo'sh turishi kerak va hech qanday so'rov kerak
      emas". Ilgari bu yerda `weapon2Relevant` YO'Q edi — faqat
@@ -344,21 +461,34 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
   const weapon2CamerasQ = useQuery({
     queryKey: ["weapon2-cameras"],
     queryFn: () => listWeapon2Cameras(),
-    enabled: source === "weapon2" && weapon2Relevant,
+    enabled: weapon2On,
     staleTime: 5 * 60_000,
   });
+  /* Kamera tanlangan bo'lsa — oyna BIR MARTA olinadi (kalitda sahifa yo'q),
+     sahifalash quyida klientda (`fetchByCameras` izohi). */
+  const weapon2ByCam = weapon2Cams.length > 0;
+  /* Oyna BIR MARTA olinadi (kalitda sahifa yo'q) — filtr va sahifalash
+     klientda (`fetchWindow` izohi). */
   const weapon2Q = useQuery({
-    queryKey: ["weapon2-alerts", safePage, pageSize],
-    queryFn: () => listWeapon2Alerts(safePage, pageSize),
-    enabled: source === "weapon2" && weapon2Relevant,
+    queryKey: ["weapon2-alerts-window", weapon2Cams.join(",")],
+    queryFn: () =>
+      weapon2ByCam ? fetchByCameras(weapon2Cams, listWeapon2CameraAlerts) : fetchWindow(listWeapon2Alerts),
+    enabled: weapon2On,
     staleTime: 15_000,
     placeholderData: keepPreviousData,
   });
   const weapon2CameraLabel = useMemo(() => {
     const m = new Map<number, string>();
-    for (const c of weapon2CamerasQ.data ?? []) m.set(c.id, c.location || c.name);
+    for (const c of weapon2CamerasQ.data ?? []) if (!c.hidden) m.set(c.id, c.location || c.name);
     return m;
   }, [weapon2CamerasQ.data]);
+  /* Yashirin (tungi klub kabi) kameralarning hodisalari ro'yxatga tushmaydi
+     (`v2CameraFilter.ts`). Kamera ro'yxati hali kelmagan bo'lsa to'plam bo'sh
+     — hech narsa yashirilmaydi (noma'lum kamera ≠ yashirin kamera). */
+  const weapon2Hidden = useMemo(
+    () => new Set((weapon2CamerasQ.data ?? []).filter((c) => c.hidden).map((c) => c.id)),
+    [weapon2CamerasQ.data]
+  );
   /**
    * ⚠️ **`weapon2Relevant` BU YERDA HAM SHART** (2026-09-18, foydalanuvchi
    * xabar qildi: "u oyna bo'sh bo'lsin, u yerda hozir qurolniki
@@ -370,16 +500,30 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
    * Query'ning o'zi shunday ishlaydi). So'rov to'g'ri o'chirilgan bo'lsa
    * ham, shu tekshiruvsiz "Qurol" tabidagi eski hodisalar boshqa
    * (mos kelmagan) tabda ko'rinaverardi. */
-  const weapon2Events = useMemo(
+  /* Ruxsat ro'yxati (`WEAPON2_ALLOWED_ALERT_IDS` — faqat 2 hodisa) va yashirin
+     kameralar SAHIFALASHDAN OLDIN qo'llanadi — aks holda ruxsatli hodisa
+     2-sahifaga tushib, 1-sahifa bo'sh ko'rinardi. Kamera rejimida (`byCam`,
+     qurolda doim) butun oyna qo'lda, ya'ni `total` ham filtrdan keyingi son. */
+  const weapon2Rows = useMemo(
+    () =>
+      (weapon2Q.data?.data ?? []).filter((a) => !weapon2Hidden.has(a.camera_id) && isAllowedWeapon2Alert(a.id)),
+    [weapon2Q.data, weapon2Hidden]
+  );
+  /** Filtrlangan BUTUN oyna (sahifalanmagan) — "Hammasi"da janjal bilan birlashadi. */
+  const weapon2All = useMemo(
     () =>
       !weapon2Relevant
         ? []
-        : (weapon2Q.data?.data ?? []).map((a) =>
-            weapon2ToNvrEvent(a, weapon2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)
-          ),
-    [weapon2Q.data, weapon2CameraLabel, weapon2Relevant]
+        : weapon2Rows.map((a) => weapon2ToNvrEvent(a, weapon2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)),
+    [weapon2Rows, weapon2CameraLabel, weapon2Relevant]
   );
-  const weapon2Total = weapon2Relevant ? weapon2Q.data?.total ?? 0 : 0;
+  const weapon2Events = useMemo(
+    () => weapon2All.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [weapon2All, safePage, pageSize]
+  );
+  /* `total` — FILTRDAN KEYINGI son: sahifalar soni ham, "Jami topildi" ham
+     ekranda ko'rinadigan kartochkalar bilan mos. */
+  const weapon2Total = weapon2All.length;
   const weapon2TotalPages = Math.max(1, Math.ceil(weapon2Total / pageSize));
 
   /**
@@ -393,7 +537,8 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
    * FAQAT o'sha tab uchun `"janjal2"` qiladi (`weapon2Relevant` bilan
    * AYNI himoya — mos kelmagan tabda so'rov UMUMAN yuborilmaydi).
    */
-  const janjal2Relevant = tab === "janjal";
+  const janjal2Relevant = tab === "janjal" || (v2all && tab === "hammasi");
+  const janjal2On = (source === "janjal2" || v2all) && janjal2Relevant;
   /* `weapon2CamerasQ` bilan AYNI himoya (yuqoridagi izohga qarang) —
      amalda `source` faqat "janjal" tabida "janjal2" bo'ladi, lekin
      ikkala shart bir joyda ANIQ ko'rinib tursin, tasodifan
@@ -401,34 +546,45 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
   const janjal2CamerasQ = useQuery({
     queryKey: ["janjal2-cameras"],
     queryFn: () => listJanjal2Cameras(),
-    enabled: source === "janjal2" && janjal2Relevant,
+    enabled: janjal2On,
     staleTime: 5 * 60_000,
   });
+  const janjal2ByCam = janjal2Cams.length > 0;
   const janjal2Q = useQuery({
-    queryKey: ["janjal2-alerts", safePage, pageSize],
-    queryFn: () => listJanjal2Alerts(safePage, pageSize),
-    enabled: source === "janjal2" && janjal2Relevant,
+    queryKey: ["janjal2-alerts-window", janjal2Cams.join(",")],
+    queryFn: () =>
+      janjal2ByCam ? fetchByCameras(janjal2Cams, listJanjal2CameraAlerts) : fetchWindow(listJanjal2Alerts),
+    enabled: janjal2On,
     staleTime: 15_000,
     placeholderData: keepPreviousData,
   });
   const janjal2CameraLabel = useMemo(() => {
     const m = new Map<number, string>();
-    for (const c of janjal2CamerasQ.data ?? []) m.set(c.id, c.location || c.name);
+    for (const c of janjal2CamerasQ.data ?? []) if (!c.hidden) m.set(c.id, c.location || c.name);
     return m;
   }, [janjal2CamerasQ.data]);
+  const janjal2Hidden = useMemo(
+    () => new Set((janjal2CamerasQ.data ?? []).filter((c) => c.hidden).map((c) => c.id)),
+    [janjal2CamerasQ.data]
+  );
   /* `weapon2Events`dagi bilan AYNI himoya (yuqoridagi izohga qarang) —
      amalda `source==="janjal2"` faqat "Janjal" tabida bo'ladi, lekin
      eski keshdan tasodifan sizib chiqmasin deb ANIQ tekshiriladi. */
-  const janjal2Events = useMemo(
+  /* Yashirin kameralar SAHIFALASHDAN OLDIN chiqariladi (qurol bilan AYNI). */
+  const janjal2All = useMemo(
     () =>
       !janjal2Relevant
         ? []
-        : (janjal2Q.data?.data ?? []).map((a) =>
-            janjal2ToNvrEvent(a, janjal2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)
-          ),
-    [janjal2Q.data, janjal2CameraLabel, janjal2Relevant]
+        : (janjal2Q.data?.data ?? [])
+            .filter((a) => !janjal2Hidden.has(a.camera_id))
+            .map((a) => janjal2ToNvrEvent(a, janjal2CameraLabel.get(a.camera_id) ?? `Kamera #${a.camera_id}`)),
+    [janjal2Q.data, janjal2CameraLabel, janjal2Hidden, janjal2Relevant]
   );
-  const janjal2Total = janjal2Relevant ? janjal2Q.data?.total ?? 0 : 0;
+  const janjal2Events = useMemo(
+    () => janjal2All.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [janjal2All, safePage, pageSize]
+  );
+  const janjal2Total = janjal2All.length;
   const janjal2TotalPages = Math.max(1, Math.ceil(janjal2Total / pageSize));
 
   const total = query.data?.total ?? 0;
@@ -451,6 +607,7 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
       events: weapon2Events,
       total: weapon2Total,
       loading: weapon2Q.isLoading,
+      switching: weapon2Q.isPlaceholderData && weapon2Q.isFetching,
       error: weapon2Q.error ? String((weapon2Q.error as Error).message ?? weapon2Q.error) : null,
       live: false,
       page: safePage,
@@ -459,11 +616,33 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
       setPage: (p) => setPageRaw(Math.min(Math.max(1, p), weapon2TotalPages)),
     };
   }
+  if (v2all) {
+    /* Ikki oyna BIRLASHTIRILIB vaqt bo'yicha saralanadi, KEYIN sahifalanadi —
+       ilgari har serverdan sahifaga 12 tadan olinib, filtrdan keyin 4 ta
+       qolardi, sahifalar soni esa xom `total`dan edi. */
+    const all = [...weapon2All, ...janjal2All].sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0));
+    const pages = Math.max(1, Math.ceil(all.length / pageSize));
+    const merged = all.slice((Math.min(safePage, pages) - 1) * pageSize, Math.min(safePage, pages) * pageSize);
+    const err = weapon2Q.error ?? janjal2Q.error;
+    return {
+      events: merged,
+      total: weapon2Total + janjal2Total,
+      loading: weapon2Q.isLoading || janjal2Q.isLoading,
+      switching: (weapon2Q.isPlaceholderData && weapon2Q.isFetching) || (janjal2Q.isPlaceholderData && janjal2Q.isFetching),
+      error: err ? String((err as Error).message ?? err) : null,
+      live: false,
+      page: safePage,
+      pageSize,
+      totalPages: pages,
+      setPage: (p) => setPageRaw(Math.min(Math.max(1, p), pages)),
+    };
+  }
   if (source === "janjal2") {
     return {
       events: janjal2Events,
       total: janjal2Total,
       loading: janjal2Q.isLoading,
+      switching: janjal2Q.isPlaceholderData && janjal2Q.isFetching,
       error: janjal2Q.error ? String((janjal2Q.error as Error).message ?? janjal2Q.error) : null,
       live: false,
       page: safePage,
@@ -477,6 +656,7 @@ export function useNvrEvents(tab: NvrTab, pageSize = 24, opts: NvrEventsOptions 
     events,
     total,
     loading: query.isLoading,
+    switching: query.isPlaceholderData && query.isFetching,
     error: query.error ? String((query.error as Error).message ?? query.error) : null,
     live: connected,
     page: safePage,

@@ -279,7 +279,6 @@ export type InvestorCopy = DeckCopyBase & {
     sub: string;
     points: string[];
     ctaTalk: string;
-    ctaDeck: string;
     ctaSite: string;
     foot: string;
   };

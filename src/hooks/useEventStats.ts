@@ -24,7 +24,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getEventStats, listFaces, liveInterval, type NvrEventStats } from "@/lib/nvr/nvrApi";
+import { getEventStats, getSeenPeopleStats, listFaces, liveInterval, type NvrEventStats } from "@/lib/nvr/nvrApi";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 
 export interface StatsRange {
@@ -176,4 +176,19 @@ export function useFacesCount({ from, to, enabled = true }: StatsRange = {}) {
     isLoading: q.isLoading,
     error: q.error,
   };
+}
+
+/**
+ * Oraliqda TANILGAN odamlar (takrorsiz, bazadagi shaxslar) — `getSeenPeopleStats`.
+ * "AI tahlil" → "Tanilgan odamlar" kartochkasi (2026-10-26). `null` — manba
+ * javob bermadi (son o'ylab topilmaydi).
+ */
+export function useSeenPeople({ from, to, enabled = true }: StatsRange = {}) {
+  const q = useQuery({
+    queryKey: ["nvr-seen-people", from ?? "", to ?? ""],
+    queryFn: () => getSeenPeopleStats(from, to),
+    enabled,
+    ...timing(Boolean(from || to)),
+  });
+  return { data: q.data ?? null, isLoading: q.isLoading, error: q.error };
 }

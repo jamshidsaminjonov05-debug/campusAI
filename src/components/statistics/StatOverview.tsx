@@ -7,9 +7,6 @@
  * Har bir panel o'z manbasining JONLI/DEMO yorlig'ini ko'rsatadi.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from "recharts";
 /* Phosphor duotone — ma'noga qarab: kuzatuv kamerasi (fotoapparat emas),
    o'qituvchi — doska oldida, davomat — belgilangan kalendar. */
 import {
@@ -25,21 +22,27 @@ import type { PersonType } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import type { DashboardView } from "@/hooks/useDashboardData";
 import { Donut3D } from "@/components/common/Donut3D";
-import { DataBadge } from "@/components/dashboard/DataBadge";
-import { AXIS, ClickableDot, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
+import { KpiTile, StatPanel, fmt } from "@/components/common/panels";
 import { localDay } from "@/hooks/useTodayArrivals";
-import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
+import { useEventStats } from "@/hooks/useEventStats";
 import { useAttendanceBoard } from "@/hooks/useAttendanceBoard";
-import { useNvrAttendance } from "@/hooks/useNvrAttendance";
-import { useWeeklyByType } from "@/hooks/useWeeklyByType";
-import { TodayArrivalsModal } from "@/components/people/TodayArrivalsModal";
-import { Missing, Val } from "@/components/common/Missing";
-import { dayMonthLabel } from "@/lib/dateLabel";
+import { Missing } from "@/components/common/Missing";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
 import { StatPeriodPanel } from "./StatPeriodPanel";
-import { StatDensity } from "./StatDensity";
+import { DailyAttendancePanel } from "./DailyAttendancePanel";
 import { StatDetailDrawer, type StatDetailContent } from "./StatDetailDrawer";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
+
+/**
+ * "Kayfiyat taqsimoti" — VAQTINCHA YASHIRILGAN (2026-10-23, foydalanuvchi
+ * so'rovi: "kayfiyat umuman qo'shilmaydi, chetga olib qo'y, kerak bo'lsa
+ * aytaman"). Serverda kayfiyat moduli yo'q, panel doim bo'sh turardi.
+ * Qaytarish — shu bayroqni `true` qilish kifoya: halqa, bo'sh holat va
+ * "Davomat dinamikasi" yonidagi o'z joyiga qaytadi. "Kamera qamrovi"
+ * bo'limi esa 2026-10-23 da BUTUNLAY olib tashlandi.
+ */
+const SHOW_MOOD = false;
+
 
 export function StatOverview({
   dash,
@@ -57,14 +60,10 @@ export function StatOverview({
   const setActivePage = useAppStore((s) => s.setActivePage);
   const setInstitutionsTab = useAppStore((s) => s.setInstitutionsTab);
 
-  /* "Bugun kelganlar" KPI'si — ATAYLAB BUGUNGI kun (kartochka nomi shunday
-     va u davrga ergashmasligi kerak). */
-  /* 🔴 2026-09-15: xom skan o'rniga server hisobi — odamlar `/faces` `total`,
-     qaydlar `/events/stats` `total` (`hooks/useEventStats.ts`). */
+  /* "Bugun qayd etilganlar" KPI'si — ATAYLAB BUGUNGI kun, davrga ergashmaydi.
+     Manba — `/events/stats` `total` (server hisobi, bitta yengil so'rov). */
   const today = localDay();
   const dayStats = useEventStats({ from: today, to: today });
-  const dayFaces = useFacesCount({ from: today, to: today });
-  const [showArrivals, setShowArrivals] = useState(false);
 
   /**
    * "Xodimlar" va "Bugungi davomat" — `useAttendanceBoard()` dan.
@@ -110,82 +109,6 @@ export function StatOverview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.categories, board.totals]);
 
-  /* Toifa kesimidagi HAQIQIY haftalik davomat (`/persons` + `/attendance`).
-     Faqat aniq rejimda chiziladi — namoyishda backend bo'sh bo'lgani uchun
-     uchala chiziq ham nolda yotib qolardi. */
-  const realWeekly = useWeeklyByType(period.from, period.to);
-
-  /* Haftalik davomat — UCH TOIFA uchun ALOHIDA chiziq.
-     ⚠️ Ilgari bitta umumiy chiziq bor edi va u kimning davomati ekani
-     noaniq qolardi; qiymatlar yaqin bo'lgani uchun grafik tekis
-     ko'rinardi. Endi o'quvchi/o'qituvchi/xodim ajratilgan.
-
-     Yorliq LUG'ATDAN (`dayIndex`) — aks holda brauzer inglizcha
-     qisqartma qaytaradi (`useDashboardData` izohiga qarang). */
-
-  /**
-   * Kunma-kun toifa kesimi — HAQIQIY davomatdan (`useWeeklyByType`).
-   *
-   * ⚠️ **NAMOYISH QATORI OLIB TASHLANDI** (2026-09-05): ilgari
-   * backend `trend` faqat umumiy foizni bergani uchun uchala toifa
-   * `Math.sin` bilan SUN'IY ajratilardi — ya'ni grafikdagi uch chiziq
-   * to'qilgan edi. Qayd bo'lmagan kun endi NOL bo'lib qoladi.
-   */
-  const dailySeries = useMemo(
-    () =>
-      realWeekly.days.map((d) => ({
-        day:
-          realWeekly.days.length > 8
-            ? dayMonthLabel(new Date(`${d.key}T00:00:00`), t)
-            : t.chart.weekdays[d.dayIndex],
-        [student.plural]: d.student,
-        [t.board.type.teacher]: d.teacher,
-        [t.board.type.staff]: d.staff,
-      })),
-    /* `t` TO'LIQ dep — `dayMonthLabel()` oy nomlarini lug'atdan oladi. */
-    [realWeekly.days, t, student.plural]
-  );
-
-  /**
-   * 🔵 **"BUGUN"DA — SOAT KESIMIDA** (2026-09-10, foydalanuvchi so'rovi).
-   * Sabab: "Bugun" tanlanganda `dailySeries` BITTA kunlik nuqtaga
-   * tushadi — chiziq chizish uchun kamida 2 nuqta kerak
-   * (`StatDensity.tsx`dagi AYNI izohga qarang). Shu SOAT kesimi esa
-   * DOIM 24 nuqtaga ega. Manba — `useNvrAttendance(period.to)`:
-   * `period.to === attDay()` bo'lgani uchun (id="today"da) bu
-   * `useAttendanceBoard()`ning ICHKI so'rovi bilan BIR XIL React Query
-   * keshiga tushadi — qo'shimcha tarmoq so'rovi YO'Q.
-   */
-  const todayAtt = useNvrAttendance(period.to);
-  const hourlySeries = useMemo(() => {
-    const buckets: Record<string, number>[] = Array.from({ length: 24 }, () => ({
-      [student.plural]: 0,
-      [t.board.type.teacher]: 0,
-      [t.board.type.staff]: 0,
-    }));
-    for (const r of todayAtt.rows) {
-      if (!r.time) continue; // kelmagan — vaqti yo'q
-      const h = Number(r.time.split(":")[0]);
-      if (!Number.isFinite(h) || h < 0 || h > 23) continue;
-      /* kuzatuv posti `role`da faqat student/teacher bor — xodim doim 0 qoladi
-         (qolgan bo'limlardagi bilan AYNI cheklov). */
-      const key = r.role === "teacher" ? t.board.type.teacher : student.plural;
-      buckets[h][key] = (buckets[h][key] ?? 0) + 1;
-    }
-    return buckets.map((b, h) => ({ day: `${String(h).padStart(2, "0")}:00`, ...b }));
-  }, [todayAtt.rows, student.plural, t]);
-
-  const weekly = period.id === "today" ? hourlySeries : dailySeries;
-
-  /** Chiziq ranglari — Shaxslar bo'limidagi toifa ranglari bilan AYNI. */
-  const LINES = useMemo(
-    () => [
-      { key: student.plural, color: "#34D399" },
-      { key: t.board.type.teacher, color: "#85E0FF" },
-      { key: t.board.type.staff, color: "#F59E0B" },
-    ],
-    [t.board.type, student.plural]
-  );
 
   /* ⚠️ **"Yetakchi hududlar" paneli OLIB TASHLANDI** (2026-09-05):
      u `REGION_ROWS` — 14 viloyat uchun GENERATSIYA qilingan trevoga
@@ -209,20 +132,6 @@ export function StatOverview({
    * kartochkaning o'zi unga olib bormasdi).
    */
   /**
-   * Grafikda FAQAT bitta toifa — yuqoridagi yorliq bosilganda.
-   *
-   * `null` — uchalasi ham chizilади. Yorliq (recharts `Legend`) bosilsa
-   * o'sha toifa YAKKA qoladi, qayta bosilsa hammasi qaytadi: uch chiziq
-   * ustma-ust tushganda bittasini ajratib ko'rish uchun.
-   */
-  const [onlyLine, setOnlyLine] = useState<string | null>(null);
-  /* Til almashsa yorliq kaliti ham o'zgaradi — eski tanlov osilib
-     qolmasin (aks holda grafik bo'sh ko'rinardi). */
-  useEffect(() => {
-    setOnlyLine(null);
-  }, [t.board.type]);
-
-  /**
    * ── YAGONA O'NG PANEL (2026-09-10, foydalanuvchi so'rovi) ──
    * "Davomat dinamikasi", "Kayfiyat taqsimoti" (shu fayl) va
    * "Davr kesimi"/"Kun davomidagi zichlik" (`StatPeriodPanel`/
@@ -234,31 +143,6 @@ export function StatOverview({
   const [detail, setDetail] = useState<StatDetailContent | null>(null);
   const openDetail = (c: StatDetailContent) => setDetail((cur) => (cur?.key === c.key ? null : c));
   useEffect(() => setDetail(null), [period.from, period.to, period.id]);
-
-  /** "Davomat dinamikasi" nuqtasi bosilganda — o'sha kun/soatning toifa kesimi. */
-  function openAttPointDetail(payload: unknown) {
-    const p = payload as Record<string, string | number>;
-    openDetail({
-      key: `att-point:${p.day}`,
-      title: `${p.day} — davomat`,
-      tone: "#8FB8FF",
-      body: (
-        <div className="space-y-1.5">
-          {LINES.map((ln) => (
-            <div key={ln.key} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
-              <span className="flex items-center gap-1.5 truncate text-[11px] text-slate-300">
-                <span className="h-2 w-2 flex-none rounded-full" style={{ background: ln.color }} />
-                {ln.key}
-              </span>
-              <span className="flex-none font-mono text-[12px] font-bold" style={{ color: ln.color }}>
-                {n(Number(p[ln.key] ?? 0))}
-              </span>
-            </div>
-          ))}
-        </div>
-      ),
-    });
-  }
 
   const weeklyRef = useRef<HTMLDivElement>(null);
   const [highlightWeekly, setHighlightWeekly] = useState(false);
@@ -296,6 +180,7 @@ export function StatOverview({
           Icon={ChalkboardTeacher}
           label={t.stats.kpi.teachers}
           value={n(kpi.teachers)}
+          loading={board.isLoading}
           hint={perTeacher === null ? undefined : t.stats.hint.perTeacher(perTeacher)}
           tone="#A78BFA"
           onClick={onSelectType ? () => onSelectType("teacher") : undefined}
@@ -309,15 +194,18 @@ export function StatOverview({
           Icon={Briefcase}
           label={t.stats.kpi.staff}
           value={staffSupported ? n(staffCat.total) : <Missing source="kuzatuv posti /attendance · role=staff" />}
+          loading={board.isLoading}
           hint={staffSupported ? t.stats.hint.present(n(staffCat.present)) : undefined}
           tone="#F59E0B"
-          onClick={onSelectType ? () => onSelectType("staff") : undefined}
-          title={t.stats.hint.openTab(t.stats.people.typeStaff)}
+          /* Bosilmaydi — xodimlar bo'yicha manba yo'q (2026-10-26) */
+          onClick={staffSupported && onSelectType ? () => onSelectType("staff") : undefined}
+          title={staffSupported ? t.stats.hint.openTab(t.stats.people.typeStaff) : undefined}
         />
         <KpiTile
           Icon={Student}
           label={student.plural}
           value={n(kpi.students)}
+          loading={board.isLoading}
           hint={t.stats.hint.present(n(kpi.studentsPresent))}
           tone="#34D399"
           onClick={onSelectType ? () => onSelectType("student") : undefined}
@@ -327,204 +215,70 @@ export function StatOverview({
           Icon={CalendarCheck}
           label={t.stats.kpi.attendance}
           value={`${kpi.rate}%`}
+          loading={board.isLoading}
           hint={t.stats.hint.absent(n(kpi.absent))}
           tone="#22D3EE"
           onClick={openWeekly}
           title={t.stats.hint.openWeekly}
         />
 
-        {/* ── BUGUN KELGANLAR ──
-            Yagona HAQIQIY manba — kuzatuv posti yuz hodisalari (kunning HAMMASI
-            o'qiladi). Backend bu sonni BERMAYDI: o'lchandi — `/persons`
-            da 3 ta yozuv, `/attendance?date=<bugun>` esa 2026-07-15 dagi
-            ikkita eski qatorni qaytaradi (sana filtri ishlamaydi). Shuning
-            uchun kartochka `DataBadge` siz, lekin son REAL.
-
-            🔴 **`/faces` HOZIR BUZILGAN — 2026-09-17, `BACKEND.md` 14-band.**
-            Foydalanuvchi: "Bugun kelganlar nima sababdan 0 turibdi". O'lchandi:
-            `GET /faces` (parametrsiz, SANA FILTRISIZ ham) DOIM `{total:0}`
-            qaytaradi — xom oqimda o'sha kuni minglab yozuv bo'lsa ham
-            (`/events/stats` shuni tasdiqlaydi). Bu — server tomondagi yuz-
-            agregatsiya nosozligi, frontendda TUZATIB BO'LMAYDI (`/faces`
-            2026-09-15 da xom skanning O'RNIGA ATAYLAB qo'yilgan — sabab shu
-            faylning o'zida, tepada).
-
-            Shuning uchun oddiy qora "0" YOZILMAYDI — u "bugun hech kim
-            kelmadi" degan YOLG'ON xulosa bo'lardi, holbuki `dayStats.total`
-            (hodisalar) shu kuni ANIQ musbat. `dayStats.total > 0 &&
-            dayFaces.total === 0` — bu KONTRADIKSIYA (hodisa bor-u odam
-            yo'q bo'lishi mumkin emas), demak `0` "o'lchangan natija" emas,
-            "manba uzilgan" degani — loyihaning `Missing`/`Val` naqshi shu
-            holat uchun ANIQ shu maqsadda yozilgan. Backend tuzatilgan
-            zahoti `dayFaces.total` musbat qaytadi va shart o'zi yolg'on
-            bo'lib qoladi — komponentga QAYTA tegish shart emas. */}
+        {/* ── BUGUN QAYD ETILGANLAR ── (2026-10-26, foydalanuvchi: "bugun
+            kelganlar bo'limini olib tashla, bugun qayd etilganlar qil").
+            Ilgari "Bugun kelganlar" — `/faces` takrorsiz odam soni edi, server
+            tomonda u DOIM `total:0` qaytaradi (`BACKEND.md` 14-band), kartochka
+            "0 · 7 841 qayd" bo'lib turardi. Endi asosiy son — kamera
+            qaydlari (`/events/stats` `total`), izohda xavflilari (janjal +
+            qurol). Bosilsa "Aniqlanganlar" bo'limi ochiladi — u yerda qaydlar
+            kartochka bo'lib, dossiye bilan ko'rinadi. `TodayArrivalsModal`
+            (shu `/faces`ga qurilgan) bu yerdan olib tashlandi. */}
         <button
           type="button"
-          onClick={() => setShowArrivals(true)}
-          title="Bugun kelganlar ro'yxatini ochish"
+          onClick={() => setActivePage("Aniqlanganlar")}
+          title={t.stats.kpi.recordsTodayGo}
           className="text-left"
         >
           <KpiTile
             Icon={UserFocus}
-            label={t.stats.kpi.arrivalsToday}
-            value={
-              !dayFaces.isLoading && !dayStats.isLoading && dayStats.total > 0 && dayFaces.total === 0 ? (
-                <Missing source="GET /faces" />
-              ) : (
-                n(dayFaces.total)
-              )
-            }
-            hint={
-              dayFaces.isLoading || dayStats.isLoading
-                ? "sanalmoqda…"
-                : `${n(dayStats.total)} qayd`
-            }
+            label={t.stats.kpi.recordsToday}
+            value={n(dayStats.total)}
+            hint={t.stats.kpi.recordsTodayHint(n(dayStats.danger))}
+            loading={dayStats.isLoading}
             tone="#22C55E"
           />
         </button>
        
       </div>
-      {showArrivals && (
-        <TodayArrivalsModal onClose={() => setShowArrivals(false)} />
-      )}
 
       {/* ── DAVR KESIMI: kunlik / haftalik / oylik / oraliq + halqa ── */}
-      <StatPeriodPanel period={period} onOpenDetail={openDetail} />
+      <StatPeriodPanel period={period} />
 
       {/* ── Davomat dinamikasi + kayfiyat ── */}
-      <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
+      <div className={`grid gap-3 ${SHOW_MOOD ? "xl:grid-cols-[1.5fr_1fr]" : ""}`}>
         {/* `ref` — "O'rtacha davomat" kartochkasi bosilganda shu yerga
             suziladi (`openWeekly`); `StatPanel` o'zi ref forward qilmaydi,
             shuning uchun tashqi o'rovchi kerak. Qisqa highlight — foydalanuvchi
             "aynan shu panelga o'tdim" deb bilsin. */}
         <div
           ref={weeklyRef}
-          className={`rounded-2xl transition-shadow duration-500 ${
+          className={`h-full rounded-2xl transition-shadow duration-500 ${
             highlightWeekly ? "shadow-[0_0_0_2px_rgba(133,224,255,0.55)]" : ""
           }`}
         >
-        <StatPanel
-          /* ⚠️ Sarlavha endi "haftalik" emas: oraliq tepadagi YAGONA davr
-             tanlovidan keladi (`useStatPeriod`). */
-          title={t.stats.panel.weekly}
-          hint={period.label}
-          right={<DataBadge live={dash.live} />}
-          className="min-h-[220px]"
-          delay={0.04}
-        >
-          {/* ── FUTURISTIK yorliq tugmalari — recharts `Legend` O'RNIGA
-              (2026-09-10, foydalanuvchi so'rovi). Ilgari `<Legend>`
-              recharts SVG QATLAMIDA edi va hover paytida chiqadigan
-              `<Tooltip>` uni QOPLAB, bosib bo'lmay qolardi ("hover
-              chiqqan joyida bosib bo'lmayabdi"). Endi bular ODDIY HTML
-              tugma — chartning USTIDA, butunlay boshqa qatlamda,
-              gradient+blur bilan — hech qachon tooltip tomonidan
-              berkitilmaydi. */}
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            {LINES.map((l) => {
-              const active = onlyLine === l.key;
-              const dimmed = onlyLine != null && !active;
-              return (
-                <button
-                  key={l.key}
-                  type="button"
-                  onClick={() => setOnlyLine((cur) => (cur === l.key ? null : l.key))}
-                  title={active ? t.stats.panel.legendAll : t.stats.panel.legendOnly(l.key)}
-                  style={{ ["--c" as string]: l.color }}
-                  className={`relative flex items-center gap-1.5 overflow-hidden rounded-full border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-md transition-all duration-300 ${
-                    active
-                      ? "border-[color:var(--c)]/70 text-white shadow-[0_0_18px_-3px_var(--c)]"
-                      : dimmed
-                        ? "border-white/[0.06] text-slate-600 opacity-50"
-                        : "border-white/10 text-slate-300 hover:border-[color:var(--c)]/45 hover:text-white hover:shadow-[0_0_12px_-4px_var(--c)]"
-                  }`}
-                >
-                  {active && (
-                    <span
-                      aria-hidden
-                      className="absolute inset-0 -z-10"
-                      style={{
-                        background: `linear-gradient(120deg, color-mix(in srgb, var(--c) 45%, transparent), color-mix(in srgb, var(--c) 10%, transparent) 70%)`,
-                      }}
-                    />
-                  )}
-                  <span className="h-2 w-2 flex-none rounded-full" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}` }} />
-                  {l.key}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ── Istalgan nuqta BOSILADI — umumiy o'ng panelda shu
-              kun/soatning toifa kesimi ochiladi (2026-09-10) ── */}
-          <div className="h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weekly} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                <defs>
-                  {LINES.map((l, i) => (
-                    <linearGradient key={l.key} id={`stat-att-${i}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={l.color} stopOpacity={0.28} />
-                      <stop offset="100%" stopColor={l.color} stopOpacity={0.02} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid stroke="rgba(120,150,200,0.08)" vertical={false} />
-                {/* interval={0} — aks holda recharts birinchi/oxirgi kunni yashiradi */}
-                <XAxis
-                  dataKey="day"
-                  tick={AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  /* Qisqa oraliqda HAMMA kun ko'rsatiladi, uzunida
-                     recharts o'zi siyraklashtiradi. */
-                  interval={weekly.length > 8 ? "preserveStartEnd" : 0}
-                  minTickGap={16}
-                />
-                {/* ⚠️ Aniq rejimda o'q NOLDAN: qiymatlar past (yoki 0)
-                    bo'lishi mumkin, `60..100` oralig'ida ular umuman
-                    ko'rinmay qolardi. */}
-                <YAxis
-                  tick={AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  width={Y_AXIS_W}
-                  domain={[0, 100]}
-                />
-                <Tooltip contentStyle={TOOLTIP} />
-                {/* ⚠️ `map` dan chiqarib tashlamaymiz, `null` qaytaramiz —
-                    gradient id'lari (`stat-att-${i}`) INDEKSGA bog'langan,
-                    ro'yxat qisqarsa ranglar almashib ketardi. */}
-                {LINES.map((l, i) =>
-                  onlyLine && onlyLine !== l.key ? null : (
-                    <Area
-                      key={l.key}
-                      type="monotone"
-                      dataKey={l.key}
-                      stroke={l.color}
-                      strokeWidth={2}
-                      fill={`url(#stat-att-${i})`}
-                      dot={<ClickableDot tone={l.color} onPick={openAttPointDetail} />}
-                      /* ⚠️ `activeDot` ham `ClickableDot` — oddiy `{r,fill}`
-                         obyekt bo'lsa, HOVER paytida chiqadigan "aktiv"
-                         doira aynan bosilmoqchi bo'lingan nuqtani to'sib
-                         qo'yardi (yuqoridagi `ClickableDot` izohiga qarang). */
-                      activeDot={<ClickableDot tone={l.color} r={4.5} onPick={openAttPointDetail} />}
-                    />
-                  )
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </StatPanel>
+        {/* KUNLIK DAVOMAT — umumiy komponent (`DailyAttendancePanel`): Davomat
+            tabida ham AYNI panel; Qatorlar/Grafik ko'rinishini foydalanuvchi tanlaydi. */}
+        <DailyAttendancePanel period={period} onOpenDetail={openDetail} delay={0.04} />
         </div>
 
+        {/* "Kamera qamrovi" OLIB TASHLANDI (2026-10-23, foydalanuvchi so'rovi);
+            kayfiyat paneli faqat `SHOW_MOOD` bilan. */}
+        {SHOW_MOOD && (
         <StatPanel
           title={t.stats.panel.emotion}
-          right={<DataBadge live={dash.live} />}
-          className="min-h-[220px]"
+          className="min-h-[260px]"
+          bodyClass="flex flex-col"
           delay={0.08}
         >
-          <div className="flex h-full flex-col justify-center gap-3">
+          <div className="flex flex-1 flex-col gap-3">
             {/* ⚠️ Qayd bo'lmasa halqa chizilmaydi va SABABI yoziladi:
                 serverda kayfiyat moduli yo'q (`ultralytics`) — o'lchandi,
                 `/statistics/emotions/daily` 30 kunda 0 ta qayd beradi.
@@ -532,7 +286,8 @@ export function StatOverview({
                 (2026-09-10, foydalanuvchi so'rovi) — ma'lumot bo'lmasa
                 ham SABAB shu "sidebar" ko'rinishida ochiladi, boshqa
                 diagrammalar bilan BIR XIL naqsh. */}
-            <div className="flex justify-center">
+            {SHOW_MOOD && (
+            <div className="flex flex-1 justify-center">
               {dash.emotions.total > 0 ? (
                 /* Hodisa turlari bilan AYNI ko'rinish — hover'da bo'lak
                    kattalashadi va markazda o'sha toifa yoziladi. */
@@ -581,7 +336,8 @@ export function StatOverview({
                       ),
                     })
                   }
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-3 text-center transition-colors hover:border-amber-400/30 hover:bg-amber-400/[0.05]"
+                  /* `flex-1` + markaz — ramka bo'sh joyni TO'LDIRADI, matn o'rtada. */
+                  className="flex w-full flex-1 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-3 text-center transition-colors hover:border-amber-400/30 hover:bg-amber-400/[0.05]"
                 >
                   <p className="text-[11.5px] font-semibold text-amber-300/90">Kayfiyat ma&apos;lumoti yo&apos;q</p>
                   <p className="mt-1 text-[10.5px] leading-snug text-slate-500">
@@ -590,43 +346,15 @@ export function StatOverview({
                 </button>
               )}
             </div>
-            <div className="dv-slot">
-              <p className="text-[9px] uppercase tracking-[0.16em] text-ice-cyan/60">{t.stats.panel.cameras}</p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${dash.cameras.rate ?? 0}%`,
-                      background: rateTone(dash.cameras.rate ?? 0),
-                    }}
-                  />
-                </div>
-                <span className="flex-none font-mono text-[11px] text-slate-300">
-                  <Val v={dash.cameras.rate} source="/statistics/dashboard · kuzatuv posti /channels" format={(v) => `${v}%`} />
-                </span>
-              </div>
-              <p className="mt-1 text-[9.5px] text-slate-500">
-                {dash.cameras.active === null || dash.cameras.total === null ? (
-                  <Missing source="kuzatuv posti /channels" />
-                ) : (
-                  t.stats.hint.cameras(n(dash.cameras.active), n(dash.cameras.total))
-                )}
-              </p>
-            </div>
+            )}
           </div>
         </StatPanel>
+        )}
       </div>
 
-      {/* ── Kun davomidagi zichlik — soat kesimida ──
-          🔴 TOPILDI VA TUZATILDI (2026-09-10): `StatDensity.tsx`
-          to'liq yozilgan va hujjatlashtirilgan edi, lekin shu slot
-          BO'SH qolib ketgan — komponent hech qayerdan chaqirilmagan
-          (repo bo'ylab tekshirildi, boshqa import yo'q). Foydalanuvchi
-          "Bugun bosilganda davr kesimida chiziq chizilmaydi" deb
-          xabar berganda aynan shu tuzilgan-lekin-ulanmagan panel
-          topildi va qaytarildi. */}
-      <StatDensity period={period} onOpenDetail={openDetail} />
+      {/* "Kun davomidagi zichlik" (`StatDensity`) OLIB TASHLANDI — 2026-10-24,
+          foydalanuvchi so'rovi ("statistika qismidan olib tashla"); fayl ham
+          o'chirildi (chaqiruvchisi qolmadi), kerak bo'lsa git tarixidan. */}
 
       {/* ⚠️ IKKINCHI "Hodisa turlari" paneli OLIB TASHLANDI — yuqoridagi
           "Davr kesimi" qatorida halqa diagramma AYNI shu kesimni

@@ -19,15 +19,11 @@ import { Brand, EASE, LangSwitch, Pill, TELEGRAM_ORDER_URL, ThemeToggle, WRAP } 
  */
 
 type MenuId = "product" | "campus";
-type TopKey = "product" | "campus" | "presentation" | "investor" | "about" | "pricing";
+type TopKey = "product" | "campus" | "investor" | "about" | "pricing";
 
 const TOP: { key: TopKey; href: string; menu?: MenuId }[] = [
   { key: "product", href: "/mahsulot", menu: "product" },
   { key: "campus", href: "/campus-qoriqlash", menu: "campus" },
-  /* ⚠️ Mahsulot taqdimoti menyudan VAQTINCHA olib turilgan — havola
-     orqali `/taqdimot` baribir ochiladi. Qaytarish uchun quyidagi qatorni
-     izohdan chiqaring (matn kaliti `landing.nav.presentation` joyida):
-       { key: "presentation", href: "/taqdimot" }, */
   /* Investor taqdimoti — to'liq ekranli shou. Sahifa `noindex`
      (moliyaviy hisob bor), lekin menyudan ochilishi mumkin. */
   { key: "investor", href: "/investor" },

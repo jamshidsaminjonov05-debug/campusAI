@@ -45,11 +45,16 @@ export interface DetectionFilters {
   channel?: string;
   /** HAR BIR kategoriyadan so'raladigan yozuvlar soni. */
   limit?: number;
+  /** Sahifalash — server `offset` (xom qatorlar bo'yicha, `useNvrEvents` dagi kabi). */
+  offset?: number;
   /** `true` (default) — birlashtirilgan ro'yxat `limit` gacha kesiladi. */
   trim?: boolean;
   /** Takroriy kadrlarni yig'ish — DEFAULT YOQIQ (`FRONTEND.md` 4-A). */
   group?: boolean;
 }
+
+/** Sana berilmagan GURUHLI so'rovga qo'yiladigan oyna (kun) — izoh `useDetections` ichida. */
+const DEFAULT_WINDOW_DAYS = 7;
 
 /** `YYYY-MM-DD` — server `date_from` shu formatni kutadi. */
 function isoDate(d: Date): string {
@@ -66,14 +71,26 @@ export function useDetections(f: DetectionFilters) {
 
   const q: NvrQuery = useMemo(() => {
     const base: NvrQuery = { limit, camera: f.channel, group };
+    if (f.offset) base.offset = f.offset;
     if (f.dateFrom || f.dateTo) {
       if (f.dateFrom) base.date_from = f.dateFrom;
       if (f.dateTo) base.date_to = f.dateTo;
     } else if (f.last24h) {
       base.date_from = isoDate(new Date(Date.now() - 24 * 3600_000));
+    } else if (group) {
+      /* 🔴 SANASIZ `group=true` — PANEL QOTISHINING ASOSIY SABABI (o'lchandi
+         2026-10-26, 249 347 hodisa): server HAR so'rovda butun tarixni qayta
+         guruhlaydi — `limit`/`offset`dan qat'i nazar 7.3 s, ikkitasi parallel
+         kelsa 19 s (navbatda bajaradi). Sana filtri bilan: bugun 0.4 s,
+         7 kun 1.5 s. Qo'ng'iroq/ogohlantirishlar/xarita `limit ≤ 100` oladi —
+         ish kunida 100 hodisa bir necha soatda to'ladi, ya'ni 7 kunlik oyna
+         ularga YETARLI. Butun tarix kerak bo'lsa chaqiruvchi `group:false`
+         yoki o'z sanasini beradi. `date_from` KUN aniqligida — soniya
+         aniqligida bo'lsa har renderda kalit o'zgarib kesh ishlamasdi. */
+      base.date_from = isoDate(new Date(Date.now() - DEFAULT_WINDOW_DAYS * 24 * 3600_000));
     }
     return base;
-  }, [limit, f.channel, f.last24h, f.dateFrom, f.dateTo, group]);
+  }, [limit, f.offset, f.channel, f.last24h, f.dateFrom, f.dateTo, group]);
 
   const query = useQuery({
     queryKey: ["detections", cat, q],

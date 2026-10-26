@@ -45,7 +45,7 @@ export const SERVICES = {
     proxyPath: "/api",
     upstreamPath: "/api",
     publicEnv: "NEXT_PUBLIC_API_ORIGIN", // 2026-09-15 dan proxysiz — `src/config/endpoints.ts` izohiga qarang
-    probe: "/v1/cameras",
+    probe: "/status", // `/api/status` — JSON (2026-10-26; `/v1/cameras` endi hodisa statistikasi, "OK" yolg'on edi)
     expect: [200, 401], // 401 ham "tirik" — auth talab qilyapti
   },
   media: {

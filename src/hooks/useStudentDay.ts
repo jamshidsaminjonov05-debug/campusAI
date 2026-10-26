@@ -56,11 +56,12 @@ export function useStudentDay(personType: PersonType, date = isoDate()): Student
   const cameras = useCameras();
 
   return useMemo(() => {
-    const realPersons = persons.data?.items ?? [];
-    const realRecords = attendance.data ?? [];
+    /* Massiv kafolati — yangi server boshqa shaklda javob bersa ham yiqilmasin */
+    const realPersons = Array.isArray(persons.data?.items) ? persons.data.items : [];
+    const realRecords = Array.isArray(attendance.data) ? attendance.data : [];
     const live = realPersons.length >= MIN_REAL_PERSONS || realRecords.length > 0;
     const map = new Map(
-      (cameras.data ?? []).map((c) => [c.id, c.location ? `${c.name} · ${c.location}` : c.name])
+      (Array.isArray(cameras.data) ? cameras.data : []).map((c) => [c.id, c.location ? `${c.name} · ${c.location}` : c.name])
     );
     const cameraName = (id: string | null) => (id ? map.get(id) ?? null : null);
 

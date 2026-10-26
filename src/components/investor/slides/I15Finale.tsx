@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Globe, MonitorPlay } from "lucide-react";
+import { ArrowRight, Check, Globe } from "lucide-react";
 import { useCopy } from "../copy";
 import { EASE } from "@/components/deck/ui";
 import type { SlideProps } from "@/components/deck/types";
@@ -91,13 +91,6 @@ export default function I15Finale({ active, t, fresh, at }: SlideProps) {
         >
           {c.ctaTalk}
           <ArrowRight size={15} className="transition-transform duration-300 group-hover:translate-x-1" />
-        </a>
-        <a
-          href="/taqdimot"
-          className="inline-flex items-center gap-2 rounded-full border border-white/[0.14] px-6 py-3.5 text-[13.5px] text-slate-300 transition-colors duration-300 hover:border-ice/50 hover:text-ice"
-        >
-          <MonitorPlay size={14} />
-          {c.ctaDeck}
         </a>
         <a
           href="/"

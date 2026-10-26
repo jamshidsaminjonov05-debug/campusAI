@@ -81,9 +81,13 @@ export const CAMERA_PLACEMENTS: Record<string, CameraPlacement> = {
   "28": { lat: 41.29526328507964, lng: 69.20836841104384, campusId: "edu-mk-179" },
   "29": { lat: 41.29564890189323, lng: 69.20720212908975, campusId: "edu-mk-179" },
   "30": { lat: 41.29526843809228, lng: 69.2072029631567, campusId: "edu-mk-179" },
-  /* 31 — KIRISH POSTI. `public/geojson/campus/mk-179.json` dagi
-     "Kirish posti" binosi AYNI shu nuqtaga markazlangan. */
-  "31": { lat: 41.295264008089816, lng: 69.2086363381, campusId: "edu-mk-179", note: "Kirish posti" },
+  /* 31 — MAKTAB BINOSINING KIRISH ESHIGI (2026-10-26, foydalanuvchi: "31-kamerani
+     kirish eshigiga qo'yishimiz kerak"). Ilgari "Kirish posti" (qorovulxona)
+     nuqtasida edi. Joy QO'LDA emas, GEOMETRIYADAN: `mk179_generator.py`
+     `entrance()` — o'rta korpusning sharqqa qaragan fasadi, eshik markazi
+     x = −5.45 m, y = 22.75 m (janubga, `mk-179.json` `center`dan); nuqta
+     fasaddan 0.5 m tashqarida. Metr → daraja `campusAreas.ts` formulasi bilan. */
+  "31": { lat: 41.295476514, lng: 69.207784815, campusId: "edu-mk-179", note: "Kirish eshigi" },
   "32": { lat: 41.295268229358015, lng: 69.20859560412754, campusId: "edu-mk-179", note: "Kirish posti yonida" },
 };
 

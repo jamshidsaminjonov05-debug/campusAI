@@ -1,4 +1,5 @@
 import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
+import { tr } from "@/i18n/store";
 
 /**
  * KUZATUV KAMERALARI — MapLibre QATLAMI (DOM marker o'rniga, 2026-09-25).
@@ -49,6 +50,55 @@ const LED: Record<string, string> = {
   offline: "#ef4444",
 };
 
+const esc = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * KAMERA KARTASI — belgi ustiga kelganda chiqadigan popup (2026-10-23,
+ * foydalanuvchi: "#28 · 316° (taxminiy)" oddiy matn edi, dizaynga mos emas).
+ * Uchala xarita sahifasi (Boshqaruv paneli, Geo Analitika, Hodisalar HUD)
+ * SHU funksiyadan — ko'rinish bir xil. Uslub: `index.css` `.hik-cam-tip*`.
+ * Matn LUG'ATDAN (`tr()` — React'siz), ya'ni til almashsa karta ham almashadi.
+ */
+export function cameraHintHtml(c: {
+  channel: string | number;
+  /** Odam o'qiydigan joy (`cameraPlaceLabel`). */
+  place: string;
+  status?: "online" | "offline" | "warning";
+  /** Ko'rish yo'nalishi (gradus) — bo'lmasa qator chizilmaydi. */
+  deg?: number;
+  approx?: boolean;
+  /** Hodisa soni (HUD) — 0 bo'lsa chizilmaydi. */
+  events?: number;
+}): string {
+  const t = tr();
+  const st = c.status ?? "online";
+  const stText = st === "offline" ? t.common.offline : t.common.online;
+  const rows: string[] = [];
+  if (typeof c.deg === "number") {
+    rows.push(
+      `<div class="hik-cam-tip-row"><span class="hik-cam-tip-k">${esc(t.cameraTip.heading)}</span>` +
+        `<span class="hik-cam-tip-v"><i class="hik-cam-tip-compass" style="transform:rotate(${Math.round(c.deg)}deg)"></i>${Math.round(c.deg)}°` +
+        (c.approx ? `<em class="hik-cam-tip-approx">${esc(t.cameraTip.approx)}</em>` : "") +
+        `</span></div>`
+    );
+  }
+  if (c.events && c.events > 0) {
+    rows.push(`<div class="hik-cam-tip-row hik-cam-tip-events">${esc(t.cameraTip.events(c.events))}</div>`);
+  }
+  return (
+    `<div class="hik-cam-tip">` +
+    `<div class="hik-cam-tip-head">` +
+    `<span class="hik-cam-tip-ic"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="2" y="6.4" width="12.6" height="10.2" rx="2.6"/><path d="M15.7 10.1 21.3 6.8c.82-.49 1.86.1 1.86 1.06v8.28c0 .96-1.04 1.55-1.86 1.06l-5.6-3.3Z"/></svg></span>` +
+    `<span class="hik-cam-tip-title">${esc(c.place)}</span>` +
+    `<span class="hik-cam-tip-ch">#${esc(String(c.channel))}</span>` +
+    `</div>` +
+    `<div class="hik-cam-tip-row"><span class="hik-cam-tip-dot is-${st}"></span><span class="hik-cam-tip-v">${esc(stText)}</span></div>` +
+    rows.join("") +
+    `</div>`
+  );
+}
+
 /** Ikonka nomi — rang/holat/tanlov birikmasiga bitta rasm. */
 export function camIconName(c: Pick<CamPoint, "color" | "status" | "selected">): string {
   return `cam-ic-${c.color.replace(/[^0-9a-z]/gi, "")}-${c.status ?? "x"}-${c.selected ? 1 : 0}`;
@@ -61,7 +111,14 @@ export function camIconName(c: Pick<CamPoint, "color" | "status" | "selected">):
  */
 function drawCamIcon(c: CamPoint): ImageData | null {
   if (typeof document === "undefined") return null;
-  const S = 56; // 28 px @2x — soya/porlash uchun joy bilan
+  /* 🔵 FOYDALANUVCHI NAMUNASI BO'YICHA (2026-10-23, IKKINCHI rasm bilan:
+     "back gradient, icon white"): KO'K GRADIENT yumaloq kvadrat (yuqori-chap
+     och ko'k → pastki-o'ng to'q ko'k), ichida OQ kamkorder silueti — boshqa
+     hech narsa. Ilgari (shu kunning birinchi namunasi) to'q navy fon + cyan
+     siluet edi. Holat chirog'i FAQAT muammo bo'lganda (oflayn — qizil,
+     ogohlantirish — sariq) pastki-o'ng burchakda; tanlangan kamera — cyan
+     porlash va halqa. */
+  const S = 60; // 30 px @2x — porlash uchun joy bilan
   const cv = document.createElement("canvas");
   cv.width = S;
   cv.height = S;
@@ -69,61 +126,66 @@ function drawCamIcon(c: CamPoint): ImageData | null {
   if (!g) return null;
 
   const w = 40;
-  const h = 36;
+  const h = 40;
   const x = (S - w) / 2;
   const y = (S - h) / 2;
   const r = 10;
-
   const body = () => {
     g.beginPath();
-    g.moveTo(x + r, y);
-    g.arcTo(x + w, y, x + w, y + h, r);
-    g.arcTo(x + w, y + h, x, y + h, r);
-    g.arcTo(x, y + h, x, y, r);
-    g.arcTo(x, y, x + w, y, r);
-    g.closePath();
+    g.roundRect(x, y, w, h, r);
   };
 
-  // Porlash (tanlanganda ko'k, aks holda so'nik kulrang)
+  // Korpus — ko'k gradient (namunadagi kabi), yengil soya (tanlanganda cyan porlash)
+  const grad = g.createLinearGradient(x, y, x + w, y + h);
+  grad.addColorStop(0, "#5b9dff");
+  grad.addColorStop(0.55, "#2f6fe8");
+  grad.addColorStop(1, "#1d4ed8");
   g.save();
-  g.shadowColor = c.selected ? "rgba(5,5,190,0.95)" : "rgba(118,119,119,0.55)";
-  g.shadowBlur = c.selected ? 12 : 8;
-  g.fillStyle = "rgba(31,83,40,0.37)";
+  g.shadowColor = c.selected ? "rgba(34,211,238,0.95)" : "rgba(0,0,0,0.5)";
+  g.shadowBlur = c.selected ? 14 : 6;
+  g.shadowOffsetY = c.selected ? 0 : 2;
+  g.fillStyle = grad;
   body();
   g.fill();
   g.restore();
 
-  // Rang chizig'i — chaqiruvchi bergan `color` yo'qolib ketmasin
-  g.strokeStyle = c.color;
-  g.globalAlpha = 0.9;
-  g.lineWidth = 2;
+  // Chegara — yengil oq yaltirash; tanlanganda cyan
+  g.strokeStyle = c.selected ? "#22d3ee" : "rgba(255,255,255,0.35)";
+  g.lineWidth = c.selected ? 2.5 : 1.25;
   body();
   g.stroke();
-  g.globalAlpha = 1;
 
-  // Kamkorder silueti (24×24 viewBox → 30 px maydonga, DOM'dagi path bilan bir xil)
-  const k = 30 / 24;
+  // Kamkorder — OQ (24×24 viewBox → 24 px), markazda
+  const size = 24;
+  const k = size / 24;
   g.save();
-  g.translate((S - 30) / 2, (S - 30) / 2);
+  g.translate((S - size) / 2, (S - size) / 2);
   g.scale(k, k);
-  g.fillStyle = "#fcfffc";
+  g.fillStyle = "#ffffff";
   g.beginPath();
-  g.roundRect(2, 6.4, 12.6, 10.2, 2.6);
+  g.roundRect(1.6, 6, 13.4, 11.2, 2.8);
   g.fill();
-  g.fillStyle = "#172c66";
-  g.beginPath();
-  g.arc(6.9, 11.5, 3.15, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = "#fcfffc";
-  const p = new Path2D("M15.7 10.1 21.3 6.8c.82-.49 1.86.1 1.86 1.06v8.28c0 .96-1.04 1.55-1.86 1.06l-5.6-3.3Z");
-  g.fill(p);
+  g.fill(new Path2D("M16.4 9.9 21.6 6.9c.82-.49 1.86.1 1.86 1.06v7.3c0 .96-1.04 1.55-1.86 1.06l-5.2-3Z"));
   g.restore();
 
-  // Holat nuqtasi (LED) — yuqori-o'ng burchak
-  g.fillStyle = LED[c.status ?? "online"] ?? LED.online;
-  g.beginPath();
-  g.arc(x + w - 2, y + 2, 5, 0, Math.PI * 2);
-  g.fill();
+  // Holat — faqat muammo bo'lsa (onlayn kamera namunadagidek toza qoladi)
+  const st = c.status ?? "online";
+  if (st !== "online") {
+    const led = LED[st] ?? LED.offline;
+    g.save();
+    g.shadowColor = led;
+    g.shadowBlur = 6;
+    g.fillStyle = led;
+    g.beginPath();
+    g.arc(x + w - 6, y + h - 6, 3.6, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(x + w - 6, y + h - 6, 3.6, 0, Math.PI * 2);
+    g.stroke();
+  }
 
   return g.getImageData(0, 0, S, S);
 }
@@ -212,14 +274,16 @@ export function syncCameraLayers(map: MlMap, cams: CamPoint[], font: string[]): 
       "text-field": ["get", "label"],
       "text-font": font,
       "text-size": 10,
-      "text-offset": [1.15, -1.05],
+      "text-offset": [1.3, -1.15],
       "text-allow-overlap": true,
       "text-ignore-placement": true,
     },
     paint: {
+      /* Hodisa soni rozetkasi — ilgari pushti halo edi (dizaynga yot);
+         endi to'q fon + oq raqam, ikonka bilan bir uslubda. */
       "text-color": "#ffffff",
-      "text-halo-color": "#f43f5e",
-      "text-halo-width": 4,
+      "text-halo-color": "#0b1220",
+      "text-halo-width": 3,
     },
   });
 }

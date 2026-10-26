@@ -130,9 +130,10 @@ export function AttendanceBoard({
             weekend={board.isWeekend}
             active={activeType === type}
             compact
-            onPick={onPickType ? () => onPickType(type) : undefined}
+            /* Xodimlar (manbasi yo'q) — bosilmaydi (2026-10-26) */
+            onPick={onPickType && c.supported ? () => onPickType(type) : undefined}
             pickHint={t.board.openList}
-            onMarkAbsence={c.absent > 0 ? () => setMarking(type) : undefined}
+            onMarkAbsence={c.supported && c.absent > 0 ? () => setMarking(type) : undefined}
           />
         );
       })}

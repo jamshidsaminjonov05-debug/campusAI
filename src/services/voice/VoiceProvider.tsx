@@ -2,7 +2,7 @@ import { createContext, useEffect, useReducer, useRef, useState, type ReactNode 
 import { useAppStore } from "@/store/useAppStore";
 import { INSTITUTIONS } from "@/config/institutions";
 import { fullRegionName } from "@/lib/nvr/institutionRows";
-import { api } from "@/lib/api";
+import { listPeople } from "@/lib/nvr/nvrApi";
 import { voiceApi } from "./VoiceService";
 import { InsecureContextError, MicPermissionDeniedError, VoiceRecorder } from "./VoiceRecorder";
 import { VOICE_ERROR } from "./VoiceCommands";
@@ -153,7 +153,6 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setVoiceRegionTarget: s.setVoiceRegionTarget,
       setVoiceMapAction: s.setVoiceMapAction,
       setVoiceCameraCommand: s.setVoiceCameraCommand,
-      setVoiceEventFilter: s.setVoiceEventFilter,
       setVoicePersonSearch: s.setVoicePersonSearch,
     };
   }
@@ -182,8 +181,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     const q = query.trim();
     if (q.length < 2) return [];
     try {
-      const res = await api.listPersons({ search: q, page_size: 4 });
-      return res.items.map((p) => ({ full_name: p.full_name, person_type: p.person_type }));
+      const res = await listPeople({ search: q, limit: 4 });
+      return res.people.map((p) => ({ full_name: p.full_name, person_type: p.role }));
     } catch {
       return [];
     }

@@ -39,10 +39,8 @@ export const PAGE_SLUGS: Record<string, string> = {
   Aniqlanganlar: "aniqlanganlar",
   Shaxslar: "shaxslar",
   Muassasalar: "muassasalar",
-  Hodisalar: "hodisalar",
   "Geo Analitika": "geo",
   Kameralar: "kameralar",
-  Hisobotlar: "hisobotlar",
   Sozlamalar: "sozlamalar",
 };
 

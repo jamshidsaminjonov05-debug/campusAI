@@ -24,6 +24,7 @@ import {
   facadeToGeoJson,
   loadCampusAreas,
   treesToGeoJson,
+  groundToGeoJson,
 } from "@/lib/nvr/campusAreas";
 import {
   MAP_MAX_ZOOM,
@@ -36,6 +37,7 @@ import {
   UZ_ZOOM,
 } from "@/config/mapConfig";
 import { CAMPUS_MODELS, campusModelFor, campusModelLayerId } from "@/config/campusModels";
+import { CAMPUS_GROUND_PLANS, campusGroundFor } from "@/config/campusGround";
 import { createGlbModelLayer } from "./glbModelLayer";
 import { cameraIdAt, removeCameraLayers, syncCameraLayers, type CamPoint } from "./cameraLayer";
 
@@ -120,15 +122,9 @@ export interface MapProps {
   selectedCampusId?: string | null;
   onSelectCampus?: (id: string) => void;
   /**
-   * BITTA bino poligoni bosilganda (`app-campus-buildings`, ya'ni
-   * kampus HOVLISI emas, bino KONTURI) — 2026-09-08, foydalanuvchi
-   * so'rovi: "binoni bosganimizda... ichki ko'rinishini ko'rish mumkin
-   * bo'lsin". Argument — `buildingsToGeoJson()` bergan `key`
-   * (`"${campusId}-${buildingIndex}"`, `lib/campusAreas.ts`), chaqiruvchi
-   * shundan bino massividagi indeksni topadi. Berilmasa binolar
-   * bosilmaydigan — faqat hovli (`onSelectCampus`) ishlaydi, avvalgidek.
+   * `onBuildingClick` (bino ichki ko'rinishi) 2026-10-26 da OLIB TASHLANDI —
+   * `Map3D.tsx` izohiga qarang. Bino bosilsa `onSelectCampus` ishlaydi.
    */
-  onBuildingClick?: (key: string) => void;
   /**
    * `campusAreas="all"` da xarita yuklanishda kadrni KAMPUSLARGA moslaydimi.
    *
@@ -260,7 +256,11 @@ const SRC_CAMPUS_BLD = "app-campus-buildings";
 const SRC_CAMPUS_TREE = "app-campus-trees-src";
 const SRC_CAMPUS_FACADE = "app-campus-facade-src";
 /** 3D modeli bor kampus binolari — ko'rinmas, faqat BOSISHNI ushlaydi. */
-const SRC_CAMPUS_MODEL_HIT = "app-campus-model-hit-src";
+/** Faqat MODELSIZ kampuslar — yashil maydoncha shularga (`app-campus-3d`). */
+const SRC_CAMPUS_PLAIN = "app-campus-areas-plain";
+/** MODELLI kampuslar — ko'rinmas "urilish" sirti (tanlash) va yer rejasi. */
+const SRC_CAMPUS_MODEL_GROUND = "app-campus-model-ground-src";
+const SRC_CAMPUS_GROUND = "app-campus-ground-src";
 const SRC_MASK = "app-mask";
 const SRC_ROUTE = "app-route";
 
@@ -304,6 +304,9 @@ const roofColorExpr: any = ["case", ["!=", ["get", "name"], ""], CAMPUS_ROOF_NAM
 /** Kampus qatlamlari — filtr hammasiga birdek qo'llanadi. */
 const CAMPUS_LAYERS = [
   "app-campus-3d",
+  "app-campus-hit",
+  "app-campus-ground",
+  "app-campus-ground-line",
   "app-campus-glow",
   "app-campus-line",
   "app-campus-bld-edge",
@@ -312,7 +315,6 @@ const CAMPUS_LAYERS = [
   "app-campus-building-label",
   "app-campus-trees",
   "app-campus-facade",
-  "app-campus-model-hit",
 ] as const;
 
 /**
@@ -347,12 +349,6 @@ function syncCampusModels(map: MlMap, mode: "all" | "selected", selectedId: stri
     map.setLayoutProperty(id, "visibility", show ? "visible" : "none");
   }
 }
-
-/** Kampus binolari bosiladigan qatlamlar — faqat MAVJUDLARI (`setCampusFilter` izohiga qarang). */
-function buildingHitLayers(map: MlMap): string[] {
-  return ["app-campus-buildings", "app-campus-model-hit"].filter((id) => map.getLayer(id));
-}
-
 
 /**
  * **DARAXT IKONKASI — canvas'da chiziladi** (2026-09-05).
@@ -676,10 +672,13 @@ function markerElement(m: YMarker): HTMLElement {
          to'q kulrang ham) aniq o'qiladi. Butun ilovada BITTA ikonka
          (Geo Analitika, Hodisalar HUD, Boshqaruv paneli) — rang esa har
          sahifaning O'ZI beradi (`m.color`), shakl umumiy. */
-      '<svg viewBox="0 0 24 24" width="15" height="15" fill="#fcfffc" aria-hidden>' +
-      '<rect x="2" y="6.4" width="12.6" height="10.2" rx="2.6" />' +
-      '<circle cx="6.9" cy="11.5" r="3.15" fill="#172c66" fill-opacity="1" />' +
-      '<path d="M15.7 10.1 21.3 6.8c.82-.49 1.86.1 1.86 1.06v8.28c0 .96-1.04 1.55-1.86 1.06l-5.6-3.3Z" />' +
+      /* 🔵 2026-10-23: canvas qatlamidagi (`cameraLayer.ts` `drawCamIcon`)
+         bilan BIR XIL ko'rinish — to'q navy korpus, TO'LIQ cyan kamkorder
+         (linza doirasi yo'q). Bu DOM marker faqat sudraladigan (joylashtirish
+         rejimi) kameralarda qoladi — ikki uslub yonma-yon turmasin. */
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="#2dd4ee" aria-hidden>' +
+      '<rect x="1.6" y="6" width="13.4" height="11.2" rx="2.8" />' +
+      '<path d="M16.4 9.9 21.6 6.9c.82-.49 1.86.1 1.86 1.06v7.3c0 .96-1.04 1.55-1.86 1.06l-5.2-3Z" />' +
       "</svg>" +
       '<i class="ymk-cam-led"></i>' +
       "</span>" +
@@ -749,7 +748,6 @@ export const MapLibreMap = memo(function MapLibreMap({
   campusAreas,
   selectedCampusId = null,
   onSelectCampus,
-  onBuildingClick,
   fitCampusBounds = true,
   forceCitySkyline3D = false,
   overviewFitsCountry = false,
@@ -836,8 +834,6 @@ export const MapLibreMap = memo(function MapLibreMap({
   onSelectRef.current = onSelectRegion;
   const onSelectCampusRef = useRef(onSelectCampus);
   onSelectCampusRef.current = onSelectCampus;
-  const onBuildingClickRef = useRef(onBuildingClick);
-  onBuildingClickRef.current = onBuildingClick;
   /* Qatlam BIR MARTA quriladi, keyin faqat `paint` yangilanadi — shuning uchun
      joriy rang jadvali ref'da (qatlam qurilish effekti unga bog'lanmasin). */
   const regionColorsRef = useRef(regionColors);
@@ -1248,20 +1244,30 @@ export const MapLibreMap = memo(function MapLibreMap({
         if (cancelled || !areas.length || map.getSource(SRC_CAMPUS)) return;
         /* 3D MODELI bor kampus (`config/campusModels.ts`) binolari
            `fill-extrusion` bilan CHIZILMAYDI va fasad ham qo'shilmaydi — ular
-           model bilan ustma-ust tushardi. Ular ko'rinmas `app-campus-model-hit`
-           qatlamiga o'tadi: bosish (ichki ko'rinish) avvalgidek ishlaydi,
-           `key` esa o'sha-o'sha (`${campusId}-${index}`). */
+           model bilan ustma-ust tushardi. (Ko'rinmas `app-campus-model-hit`
+           bosish qatlami 2026-10-26 da ichki ko'rinish bilan birga olib
+           tashlandi — bino bosilsa `app-campus-hit` orqali kampus tanlanadi.) */
         const plainAreas = areas.filter((a) => !campusModelFor(a.id));
         const modelAreas = areas.filter((a) => campusModelFor(a.id));
         map.addSource(SRC_CAMPUS, { type: "geojson", data: areasToGeoJson(areas) });
+        /* 🔴 MODELLI KAMPUSDA YASHIL MAYDONCHA YO'Q (2026-10-23, foydalanuvchi:
+           "tagidagi yashil belgini olib tashla"). `app-campus-3d` endi faqat
+           MODELSIZ kampuslarga; modelli kampus yerga (0 m) o'tiradi, uning
+           ustiga sun'iy yo'ldosh suratidan chizilgan YER REJASI
+           (`config/campusGround.ts`: asfalt/plitka/maysa/bog') tushadi, tanlash
+           uchun esa ko'rinmas `app-campus-hit`. */
+        map.addSource(SRC_CAMPUS_PLAIN, { type: "geojson", data: areasToGeoJson(plainAreas) });
+        map.addSource(SRC_CAMPUS_MODEL_GROUND, { type: "geojson", data: areasToGeoJson(modelAreas) });
+        map.addSource(SRC_CAMPUS_GROUND, { type: "geojson", data: groundToGeoJson(modelAreas, CAMPUS_GROUND_PLANS) });
         map.addSource(SRC_CAMPUS_BLD, { type: "geojson", data: buildingsToGeoJson(plainAreas) });
-        map.addSource(SRC_CAMPUS_MODEL_HIT, { type: "geojson", data: buildingsToGeoJson(modelAreas) });
         /* Yorliqlar ALOHIDA nuqta manbasida — poligon manbasida katta bino
            ikki taylga tushib, nomi IKKI MARTA chizilardi. */
         map.addSource(SRC_CAMPUS_LBL, { type: "geojson", data: buildingLabelsToGeoJson(areas) });
         /* Daraxtlar — kampusning YASHIL hududiga (`treesToGeoJson`:
            kampus ichi − binolar − chetdagi yo'lak). */
-        map.addSource(SRC_CAMPUS_TREE, { type: "geojson", data: treesToGeoJson(areas) });
+        /* Protsedural daraxt IKONKALARI — faqat MODELSIZ kampuslarda; modelli
+           kampus daraxtlari 3D nusxa (`glbModelLayer` `trees`). */
+        map.addSource(SRC_CAMPUS_TREE, { type: "geojson", data: treesToGeoJson(plainAreas) });
         /* 179-maktab fasadi — protsedural derazalar/poydevor/lentalar.
            FAQAT `n === "179-maktab"` binosi uchun (`facadeToGeoJson`). */
         map.addSource(SRC_CAMPUS_FACADE, { type: "geojson", data: facadeToGeoJson(plainAreas) });
@@ -1275,12 +1281,50 @@ export const MapLibreMap = memo(function MapLibreMap({
           {
             id: "app-campus-3d",
             type: "fill-extrusion",
-            source: SRC_CAMPUS,
+            source: SRC_CAMPUS_PLAIN,
             paint: {
               "fill-extrusion-color": CAMPUS_GROUND,
               "fill-extrusion-height": CAMPUS_EXTRUSION_H,
               "fill-extrusion-base": 0,
               "fill-extrusion-opacity": 0.62,
+            },
+          },
+          beforeId
+        );
+        // 1b) Modelli kampus — ko'rinmas tanlash sirti + YER REJASI
+        map.addLayer(
+          {
+            id: "app-campus-hit",
+            type: "fill",
+            source: SRC_CAMPUS_MODEL_GROUND,
+            paint: { "fill-color": "#000000", "fill-opacity": 0 },
+          },
+          beforeId
+        );
+        map.addLayer(
+          {
+            id: "app-campus-ground",
+            type: "fill",
+            source: SRC_CAMPUS_GROUND,
+            minzoom: 14,
+            paint: { "fill-color": ["get", "color"], "fill-opacity": 0.96 },
+          },
+          beforeId
+        );
+        /* Yo'lka/hovli chetlari — yupqa to'q chiziq, aks holda bir xil tusdagi
+           sirtlar bir-biriga qo'shilib ketardi. Maysa halqasiga chizilmaydi. */
+        map.addLayer(
+          {
+            id: "app-campus-ground-line",
+            type: "line",
+            source: SRC_CAMPUS_GROUND,
+            minzoom: 16,
+            /* ⚠️ Statik `filter` EMAS — `setCampusFilter` "selected" rejimida
+               filtrni QAYTA YOZADI; maysa halqasi chizilmasligi rang orqali. */
+            paint: {
+              "line-color": "#1b1f24",
+              "line-width": 0.8,
+              "line-opacity": ["case", ["==", ["get", "kind"], "grass"], 0, 0.5],
             },
           },
           beforeId
@@ -1421,31 +1465,18 @@ export const MapLibreMap = memo(function MapLibreMap({
            binolar ham shu sathdan boshlanadi. Modelda hovli/maysa/daraxt
            YO'Q: ularni xaritaning o'zi chizadi (daraxt ikonkalari model
            ostida qolib ketmasin — `mk179_generator.py` `export_glb` izohi). */
-        map.addLayer(
-          {
-            id: "app-campus-model-hit",
-            type: "fill-extrusion",
-            source: SRC_CAMPUS_MODEL_HIT,
-            paint: {
-              /* opacity 0 — chizilmaydi, lekin `queryRenderedFeatures`
-                 uni topadi (bino bosilganda ichki ko'rinish ochiladi). */
-              "fill-extrusion-color": "#000000",
-              "fill-extrusion-opacity": 0,
-              "fill-extrusion-base": CAMPUS_EXTRUSION_H,
-              "fill-extrusion-height": ["+", CAMPUS_EXTRUSION_H, ["to-number", ["get", "h"]]],
-            },
-          },
-          beforeId
-        );
         for (const a of modelAreas) {
           const model = campusModelFor(a.id);
           if (!model) continue;
+          const ground = campusGroundFor(a.id);
           map.addLayer(
             createGlbModelLayer({
               id: campusModelLayerId(a.id),
               url: model.url,
               origin: a.origin,
-              altitude: CAMPUS_EXTRUSION_H,
+              altitude: 0,
+              recolor: ground?.recolor,
+              trees: ground ? { url: ground.treeModel, instances: ground.trees } : undefined,
             }),
             beforeId
           );
@@ -1584,20 +1615,10 @@ export const MapLibreMap = memo(function MapLibreMap({
     const onClick = (e: MapMouseEvent) => {
       // Kamera bosilgan bo'lsa — bino/hovli tanlanmasin (kamera o'z ishlovchisida)
       if (cameraIdAt(map, e.point)) return;
-      // Bino BINOLAR qatlami hovli qatlami ustida turadi — avval o'shani
-      // tekshiramiz, aks holda bino bosilganda hovli (onSelectCampus)
-      // ishga tushib qolardi.
-      const hitLayers = buildingHitLayers(map);
-      const bf =
-        onBuildingClickRef.current && hitLayers.length
-          ? map.queryRenderedFeatures(e.point, { layers: hitLayers })[0]
-          : undefined;
-      const key = bf?.properties?.key as string | undefined;
-      if (key) {
-        onBuildingClickRef.current?.(key);
-        return;
-      }
-      const f = map.queryRenderedFeatures(e.point, { layers: ["app-campus-3d"] })[0];
+      // Bino bosilsa ham hovli bosilgandek — kampus tanlanadi (ichki
+      // ko'rinish 2026-10-26 da olib tashlandi).
+      const groundLayers = ["app-campus-3d", "app-campus-hit"].filter((l) => map.getLayer(l));
+      const f = map.queryRenderedFeatures(e.point, { layers: groundLayers })[0];
       const id = f?.properties?.id as string | undefined;
       if (id) onSelectCampusRef.current?.(id);
     };
@@ -1609,9 +1630,9 @@ export const MapLibreMap = memo(function MapLibreMap({
     map.on("mouseleave", "app-campus-3d", leave);
     map.on("mouseenter", "app-campus-buildings", enter);
     map.on("mouseleave", "app-campus-buildings", leave);
-    map.on("click", "app-campus-model-hit", onClick);
-    map.on("mouseenter", "app-campus-model-hit", enter);
-    map.on("mouseleave", "app-campus-model-hit", leave);
+    map.on("click", "app-campus-hit", onClick);
+    map.on("mouseenter", "app-campus-hit", enter);
+    map.on("mouseleave", "app-campus-hit", leave);
 
     return () => {
       cancelled = true;
@@ -1621,9 +1642,11 @@ export const MapLibreMap = memo(function MapLibreMap({
       map.off("mouseleave", "app-campus-3d", leave);
       map.off("mouseenter", "app-campus-buildings", enter);
       map.off("mouseleave", "app-campus-buildings", leave);
-      map.off("click", "app-campus-model-hit", onClick);
-      map.off("mouseenter", "app-campus-model-hit", enter);
-      map.off("mouseleave", "app-campus-model-hit", leave);
+
+      map.off("click", "app-campus-hit", onClick);
+      map.off("mouseenter", "app-campus-hit", enter);
+      map.off("mouseleave", "app-campus-hit", leave);
+
     };
   }, [campusAreas, status, styleEpoch]);
 

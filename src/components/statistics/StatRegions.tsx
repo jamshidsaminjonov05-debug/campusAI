@@ -22,7 +22,8 @@
  * "Xaritada ochish" tugmasi bilan.
  */
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { REGION_COLORS } from "@/config/mapConfig";
 import { DownloadSimple } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
@@ -31,7 +32,8 @@ import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { Missing } from "@/components/common/Missing";
 import type { Metric } from "@/lib/nvr/institutionRows";
 import { DataBadge } from "@/components/dashboard/DataBadge";
-import { AXIS, CellBar, StatPanel, StatusPill, TOOLTIP, Th, fmt, rateTone } from "@/components/common/panels";
+import { AXIS, CellBar, StatPanel, StatusPill, TOOLTIP, Th, fmt, PanelLoader, rateTone } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Manbasi bo'lmagan katak — QIZIL belgi, nol EMAS. */
 function Cell({ v, format }: { v: Metric; format?: (n: number) => string }) {
@@ -44,10 +46,21 @@ type SortKey = "regionFull" | "institutes" | "students" | "teachers" | "attendan
 export function StatRegions({
   query,
   onSelectRegion,
+  range,
+  loaderDays = 1,
+  allTime = false,
+  resolving = false,
 }: {
   query: string;
   /** Hudud qatori bosilganda — to'liq nom (`RegionAnalytics.region`) beriladi. */
   onSelectRegion: (region: string) => void;
+  /** Sahifaning DAVR tanlovi — davomat va signallar shu oraliqdan. */
+  range?: { from: string; to: string };
+  /** Slayder taxmini uchun (`PanelLoader`) — davr kunlari va "Butun tarix". */
+  loaderDays?: number;
+  allTime?: boolean;
+  /** Davr hali aniqlanmoqda ("Butun tarix" boshlanish sanasi kelmagan). */
+  resolving?: boolean;
 }) {
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
@@ -66,7 +79,7 @@ export function StatRegions({
     }
   };
 
-  const { regions, live } = useLiveInstitutions();
+  const { regions, live, loading } = useLiveInstitutions(range);
   /* ⚠️ Signal soni DAVRGA ko'paytirilMAYDI. Ilgari qatorlar bir kunlik
      mock edi va uzun oraliq uchun `alerts * period.days` qilinardi —
      ya'ni son o'ylab topilardi. Hozir `alerts` jonli oqimdan (oxirgi
@@ -79,21 +92,31 @@ export function StatRegions({
 
   const totals = useMemo(() => sumRegions(rows), [rows]);
 
-  /* Diagrammaga FAQAT soni ma'lum bo'lgan hududlar tushadi — noma'lumni
-     nol ustun qilib chizish yolg'on ko'rinish berardi. */
-  const chart = useMemo(
-    () =>
-      rows
-        .filter((r) => r.students !== null)
-        .sort((a, b) => (b.students ?? 0) - (a.students ?? 0))
-        .slice(0, 10)
-        .map((r) => ({
+  /* 🔵 2026-10-26 — BARCHA 14 HUDUD (foydalanuvchi: "qolgan hamma viloyat
+     bo'lishi kerak, aniq"). Ilgari faqat soni ma'lum hududlar va eng ko'pi
+     10 tasi chizilardi — kuzatuv hozircha bitta maktabda bo'lgani uchun
+     diagrammada YAGONA "Toshkent shahri" ustuni turardi. Endi ro'yxat
+     xaritadagi hududlar jadvalidan (`REGION_COLORS` — 12 viloyat +
+     Qoraqalpog'iston + Toshkent shahri), qiymati jadval qatorlaridan.
+     Manbasi yo'q hudud `0` ustun bo'lib turadi, ustida "—" (son o'ylab
+     topilmaydi), tooltip'da sababi. Saralash: son bo'yicha, keyin alifbo. */
+  const chart = useMemo(() => {
+    const byRegion = new Map(regions.map((r) => [r.regionFull, r.students]));
+    return Object.keys(REGION_COLORS)
+      .map((full) => {
+        const v = byRegion.get(full) ?? null;
+        return {
           // Uzun nom o'qda sig'maydi — "viloyati" so'zi olib tashlanadi
-          region: r.regionFull.replace(/\s*(viloyati|Respublikasi)$/i, ""),
-          [student.one]: r.students as number,
-        })),
-    [rows, student.one]
-  );
+          region: full.replace(/\s*(viloyati|Respublikasi)$/i, ""),
+          known: v !== null,
+          [student.one]: v ?? 0,
+        };
+      })
+      .sort(
+        (a, b) =>
+          (b[student.one] as number) - (a[student.one] as number) || a.region.localeCompare(b.region, t.locale)
+      );
+  }, [regions, student.one, t.locale]);
 
   const exportCsv = () => {
     const csv = toCsv(
@@ -124,6 +147,12 @@ export function StatRegions({
     );
     downloadCsv(csvName("statistika-hududlar"), csv);
   };
+
+  /* Ma'lumot kelguncha bo'sh jadval/nol o'rniga SLAYDER — Statistikadagi
+     `PanelLoader` bilan AYNI (2026-10-26). */
+  if (loading || resolving) {
+    return <PanelLoader days={loaderDays} allTime={allTime} className="hik-glass-blue min-h-[360px] rounded-2xl" />;
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -162,9 +191,7 @@ export function StatRegions({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-slate-500">
-                  {t.stats.nothing}
-                </td>
+                <td colSpan={8} className="py-6 text-center text-slate-500"><EmptyState compact title={t.stats.nothing} /></td>
               </tr>
             )}
             {rows.map((r) => {
@@ -280,8 +307,22 @@ export function StatRegions({
                 width={42}
                 tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
               />
-              <Tooltip contentStyle={TOOLTIP} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-              <Bar dataKey={student.one} fill="#8FB8FF" radius={[3, 3, 0, 0]} />
+              <Tooltip
+                contentStyle={TOOLTIP}
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                formatter={(v: number, name: string, item: { payload?: { known?: boolean } }) =>
+                  item.payload?.known ? [n(v), name] : [t.stats.panel.regionNoData, name]
+                }
+              />
+              <Bar dataKey={student.one} fill="#8FB8FF" radius={[3, 3, 0, 0]} minPointSize={2}>
+                <LabelList
+                  dataKey={student.one}
+                  position="top"
+                  fontSize={9}
+                  fill="#94A3B8"
+                  formatter={(v: number) => (v > 0 ? n(v) : "—")}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

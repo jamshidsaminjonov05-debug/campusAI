@@ -22,15 +22,19 @@ import {
   useNvrAttendanceRange,
   useNvrAttendanceRows,
   type PersonPeriodRow,
+  attDay,
 } from "@/hooks/useNvrAttendance";
 import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { EventDossier } from "@/components/detections/EventDossier";
 import type { NvrAttendanceRow, NvrAttendanceStatus, NvrPersonRole } from "@/lib/nvr/nvrApi";
-import { AXIS, KpiTile, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
+import { AXIS, KpiTile, PanelLoader, StatPanel, TOOLTIP, fmt, rateTone, Y_AXIS_W } from "@/components/common/panels";
 import { useT } from "@/i18n";
+import { weekdayLabel } from "@/lib/dateLabel";
+import { TodayStateHeading } from "./TodayStateHeading";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
+import { EmptyState } from "@/components/common/EmptyState";
 
 const STATUS_TEXT: Record<NvrAttendanceStatus, { label: string; cls: string }> = {
   early: { label: "Erta keldi", cls: "border-emerald-400/25 bg-emerald-400/12 text-emerald-300" },
@@ -151,7 +155,14 @@ export function StatPeopleNvr({
   const range = useNvrAttendanceRange(period.from, period.to);
   const rowsQ = useNvrAttendanceRows(period.from, period.to, role ?? undefined);
   /* Oxirgi kun — "bugungi holat" nishonchasi va dam olish kuni izohi uchun. */
-  const lastDay = useNvrAttendance(period.to);
+  /* 🔴 TUZATILDI (2026-10-23, foydalanuvchi: "bugungi kun ekanini bilishi
+     kerak"). "Bugungi holat" KPI'lari `period.to` dan o'qilardi — "Oraliq"
+     tanlanganda bu TANLANGAN OXIRGI KUN bo'lib, qator "bugun" deb boshqa
+     kunni ko'rsatardi. Endi HAQIQIY bugun (`attDay()` — server soati
+     bo'yicha); odatiy davrlarda `period.to` ham bugun, ya'ni kesh bir xil. */
+  const todayKey = attDay();
+  const lastDay = useNvrAttendance(todayKey);
+  const todayDate = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey]);
 
   /** Toifalar taqqoslashi — uchala ustun (xodim doim nol). */
   const byType = useMemo(
@@ -362,8 +373,17 @@ export function StatPeopleNvr({
   return (
     <div className="flex flex-col gap-3">
       {/* ── KPI: DOIM BUGUN (yuqoridagi izohga qarang) ── */}
-      <p className="flex-none text-[9.5px] uppercase tracking-wider text-ice-cyan/50">Bugungi holat</p>
-      <div className="-mt-1.5 grid grid-cols-2 gap-2 md:grid-cols-4">
+      {/* Sarlavha — `TodayStateHeading` (Davomat tabi bilan AYNI komponent,
+          2026-10-23): jonli nuqta + "BUGUN" nishoni + sana/hafta kuni — bu
+          qator davr tanloviga bog'liq emas, foydalanuvchi "qaysi kun" ekanini
+          darhol ko'rsin. */}
+      <TodayStateHeading isWeekend={lastDay.isWeekend} />
+      {/* Yuklanish — "Umumiy" tabidagi slayder (2026-10-23); ilgari `0` turardi */}
+      {lastDay.isLoading ? (
+        /* KPI to'ri mobilda 2 qator — yuklanish ham shu balandlikda */
+        <PanelLoader days={1} className="h-[128px] rounded-xl md:h-[62px]" />
+      ) : (
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <KpiTile
           Icon={CheckCircle}
           label="Kelganlar"
@@ -389,10 +409,11 @@ export function StatPeopleNvr({
           Icon={UsersThree}
           label="Jami"
           value={n(own.total)}
-          hint={period.to}
+          hint={`${weekdayLabel(todayDate, t)}, ${todayKey}`}
           tone="#85E0FF"
         />
       </div>
+      )}
 
       {/* ── 1. Kelganlar / Kechikkanlar / Kelmaganlar — KUNMA-KUN ──
           ⚠️ **USTUNLI DIAGRAMMA CHIZIQLARGA ALMASHTIRILDI** (2026-09-04).
@@ -406,6 +427,13 @@ export function StatPeopleNvr({
           Endi grafik JORIY TOIFANING kunma-kun dinamikasini beradi —
           "Davomat dinamikasi" paneli bilan AYNI naqsh: yorliq bosilsa
           chiziq yakka qoladi, tooltip'da son ham, FOIZ ham. */}
+      {/* 🔵 TARTIB (2026-10-26, foydalanuvchi: "kelish soati bilan teng qilib,
+          kesimni yuqoriga cho'zamiz"): CHAP — "Kelganlar…" va "Kelish soatlari"
+          ustma-ust, ikkalasi ham 210 px; O'NG — kesim paneli ikkalasining
+          balandligi bo'ylab (`fill`, `absolute inset-0` — o'z ro'yxati qatorni
+          cho'zib yubormasin, ichida scroll). */}
+      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="flex min-w-0 flex-col gap-3">
       <StatPanel
         title="Kelganlar / Kechikkanlar / Kelmaganlar"
         hint={
@@ -420,9 +448,10 @@ export function StatPeopleNvr({
                 key={r.id}
                 type="button"
                 onClick={() => onSelectType?.(r.id)}
-                disabled={!onSelectType}
-                title={`${r.label}: ${n(r.total)} kun-shaxs yozuvi`}
-                className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:cursor-default ${
+                /* Xodimlar — manba yo'q, bosilmaydi (2026-10-26) */
+                disabled={!onSelectType || r.id === "staff"}
+                title={r.id === "staff" ? "Xodimlar bo'yicha ma'lumot hozircha yo'q" : `${r.label}: ${n(r.total)} kun-shaxs yozuvi`}
+                className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:cursor-default ${r.id === "staff" ? "opacity-40 " : ""}${
                   r.id === personType
                     ? "border-ice/40 bg-ice/15 text-ice-bright"
                     : "border-white/10 bg-white/[0.03] text-slate-400 hover:text-slate-200"
@@ -434,12 +463,13 @@ export function StatPeopleNvr({
           </div>
         }
       >
-        {chartData.length === 0 ? (
-          <p className="py-12 text-center text-[11.5px] text-slate-500">
-            {singleDay ? "Bu kunda hali kelish qaydi yo'q" : "Bu davrda davomat yozuvi yo'q"}
-          </p>
+        {range.isLoading || (singleDay && lastDay.isLoading) ? (
+          <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[210px]" />
+        ) : chartData.length === 0 ? (
+          /* Balandlik grafik bilan BIR XIL (210 px) — panel sakramaydi */
+          <EmptyState className="h-[210px]" title={singleDay ? "Bu kunda hali kelish qaydi yo'q" : "Bu davrda davomat yozuvi yo'q"} />
         ) : (
-          <div className="h-[240px]">
+          <div className="h-[210px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" vertical={false} />
@@ -488,16 +518,15 @@ export function StatPeopleNvr({
         </p>
       </StatPanel>
 
-      <div className="grid gap-3 xl:grid-cols-2">
         {/* ── 2. Kelish soatlari ── */}
         <StatPanel
           title="Kelish soatlari"
           hint={rowsQ.trimmedDays > 0 ? `oxirgi ${rowsQ.days.length} kun` : "har soatda nechta odam kelgan"}
         >
-          {rowsQ.byHour.every((h) => h.total === 0) ? (
-            <p className="py-12 text-center text-[11.5px] text-slate-500">
-              {lastDay.isWeekend ? "Bu kun dam olish kuni" : "Bu davrda kelish qaydi yo'q"}
-            </p>
+          {rowsQ.isLoading ? (
+            <PanelLoader days={rowsQ.days.length || period.days} className="h-[210px]" />
+          ) : rowsQ.byHour.every((h) => h.total === 0) ? (
+            <EmptyState className="h-[210px]" title={lastDay.isWeekend ? "Bu kun dam olish kuni" : "Bu davrda kelish qaydi yo'q"} />
           ) : (
             <div className="h-[210px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -521,8 +550,16 @@ export function StatPeopleNvr({
             ko&apos;rsatilmaydi — kirish va chiqishni ajratadigan alohida kamera yo&apos;q.
           </p>
         </StatPanel>
+      </div>
 
         {/* ── 3. Sinflar kesimi — BUGUNGI holat + chuqurlashuv ── */}
+        <div className="relative h-[520px] min-w-0 xl:h-auto">
+        <div className="absolute inset-0 flex flex-col">
+        {lastDay.isLoading || rowsQ.isLoading ? (
+          <StatPanel title={role === "teacher" ? "O'qituvchilar kesimi" : "Sinflar kesimi"} className="h-full">
+            <PanelLoader days={rowsQ.days.length || period.days} className="h-full" />
+          </StatPanel>
+        ) : (
         <ClassBreakdown
           classes={classes}
           todayRows={lastDay.rows}
@@ -532,7 +569,11 @@ export function StatPeopleNvr({
           isWeekend={lastDay.isWeekend}
           n={n}
           onPickPerson={setPersonPanelId}
+          fill
         />
+        )}
+        </div>
+        </div>
       </div>
 
       {/* ── 4. Kun kesimi — har bir shaxs ── */}
@@ -600,6 +641,7 @@ function ClassBreakdown({
   isWeekend,
   n,
   onPickPerson,
+  fill = false,
 }: {
   classes: ClassRow[];
   todayRows: NvrAttendanceRow[];
@@ -609,6 +651,9 @@ function ClassBreakdown({
   isWeekend: boolean;
   n: (v: number) => string;
   onPickPerson: (personId: number) => void;
+  /** Ota balandligini to'liq egallaydi (ro'yxat ichida scroll) — yonidagi
+   *  grafiklar ustuni bo'ylab cho'ziladi (2026-10-26). */
+  fill?: boolean;
 }) {
   /* Saralash tugmalari matni — davomat taxtasi bilan AYNI kalitlar. */
   const u = useT().dashboard.ui.att;
@@ -619,6 +664,7 @@ function ClassBreakdown({
    * kartochkalari va ro'yxat bemalol joylashadi.
    */
   const [full, setFull] = useState(false);
+  const grow = full || fill;
   /* ⚠️ To'liq ekranda `Esc` yopadi — modal odatiga mos. */
   useEffect(() => {
     if (!full) return;
@@ -636,7 +682,7 @@ function ClassBreakdown({
   /** Sinf ichidagi ro'yxat tartibi: holat bo'yicha yoki DAVOMAT foizi. */
   const [rosterSort, setRosterSort] = useState<"status" | "rate">("status");
   const [rosterDesc, setRosterDesc] = useState(true);
-  const [open, setOpen] = useState<string | null>(null);
+  const [picked, setOpen] = useState<string | null>(null);
   /**
    * 🔴 **O'QITUVCHILARDA "SINF" SO'ZI YO'Q** (2026-09-17, foydalanuvchi
    * so'rovi). Kuzatuv postida o'qituvchining `note`si bo'sh, ya'ni
@@ -648,6 +694,11 @@ function ClassBreakdown({
    * bilan) hammasi avvalgidek qoladi.
    */
   const isTeacherRole = role === "teacher";
+  /* 🔵 O'qituvchilarda guruh DOIM bitta ("Uqituvchilar") — ro'yxat DARHOL
+     ochiladi, kartani bosib kirish shart emas (2026-10-26, foydalanuvchi
+     so'rovi). "Orqaga" tugmasi ham yo'q — qaytadigan joy yo'q. */
+  const autoOpen = isTeacherRole && classes.length === 1 ? classes[0].klass : null;
+  const open = picked ?? autoOpen;
 
   const sorted = useMemo(() => {
     const list = [...classes];
@@ -734,16 +785,27 @@ function ClassBreakdown({
     <StatPanel
       title={isTeacherRole ? "O'qituvchilar kesimi" : "Sinflar kesimi"}
       hint={open ? `${open} · bugungi ro'yxat` : `${n(classes.length)} ta guruh · bugun`}
+      /* 🔵 2026-10-26, foydalanuvchi: "modal full tagiga ham tushishi
+         kerak" — to'liq ekranda panel balandligi ilgari ichidagi
+         `max-h-[calc(100vh-330px)]` panjaraga bog'liq edi va ekran
+         pastida bo'sh joy qolardi (kartalar yarmi kesilib). Endi panel
+         flex bilan overlay'ning TAGIGACHA cho'ziladi, panjara/ro'yxat esa
+         `flex-1 min-h-0` bilan qolgan joyni to'ldirib ICHIDA scroll
+         bo'ladi. */
+      className={full ? "flex-1" : fill ? "h-full" : ""}
+      bodyClass={grow ? "flex flex-col" : ""}
       right={
         open ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setOpen(null)}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
-            >
-              {isTeacherRole ? "◀ Orqaga" : "◀ Sinflar"}
-            </button>
+            {!autoOpen && (
+              <button
+                type="button"
+                onClick={() => setOpen(null)}
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/[0.08]"
+              >
+                {isTeacherRole ? "◀ Orqaga" : "◀ Sinflar"}
+              </button>
+            )}
             <ViewToggle mode={view} onChange={setView} />
             <FullBtn full={full} onClick={() => setFull((v) => !v)} />
           </div>
@@ -780,12 +842,10 @@ function ClassBreakdown({
       }
     >
       {classes.length === 0 ? (
-        <p className="py-12 text-center text-[11.5px] text-slate-500">
-          {isWeekend ? "Dam olish kuni — davomat hisoblanmaydi" : "Bugun uchun davomat yozuvi yo'q"}
-        </p>
+        <EmptyState className="min-h-[210px]" title={isWeekend ? "Dam olish kuni — davomat hisoblanmaydi" : "Bugun uchun davomat yozuvi yo'q"} />
       ) : open && cur ? (
         /* ── SINF ICHIDA: bugungi ro'yxat ── */
-        <div className="flex min-h-0 flex-col gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
             <span className="text-[13px] font-bold text-white">{cur.klass}</span>
             <span className={`font-mono text-[15px] font-extrabold ${rateTone(cur.rate)}`}>{cur.rate}%</span>
@@ -851,13 +911,15 @@ function ClassBreakdown({
               guruhda kechikkan yo'q) BO'SH panjara o'rniga SABABI
               yoziladi — jim bo'sh joy qoldirilmaydi. */}
           {filteredRoster.length === 0 ? (
-            <p className="py-10 text-center text-[11.5px] text-slate-500">
-              Bu holatda hech kim yo'q.
-            </p>
+            <EmptyState className="py-10" title="Bu holatda hech kim yo'q." />
           ) : view === "card" ? (
             <div
               className={`grid gap-2 overflow-y-auto pr-0.5 ${
-                full ? "max-h-[calc(100vh-330px)] grid-cols-4 md:grid-cols-6 xl:grid-cols-8" : "max-h-[210px] grid-cols-3 sm:grid-cols-4"
+                full
+                  ? "min-h-0 flex-1 content-start grid-cols-4 md:grid-cols-6 xl:grid-cols-8"
+                  : grow
+                    ? "min-h-0 flex-1 content-start grid-cols-3 sm:grid-cols-4"
+                    : "max-h-[210px] grid-cols-3 sm:grid-cols-4"
               }`}
             >
               {filteredRoster.map(({ r, period }) => {
@@ -893,7 +955,7 @@ function ClassBreakdown({
               })}
             </div>
           ) : (
-          <div className={`overflow-y-auto pr-0.5 ${full ? "max-h-[calc(100vh-330px)]" : "max-h-[210px]"}`}>
+          <div className={`overflow-y-auto pr-0.5 ${grow ? "min-h-0 flex-1" : "max-h-[210px]"}`}>
             <ul className="flex flex-col gap-1">
               {filteredRoster.map(({ r, period }) => {
                 const st = STATUS_TEXT[r.status];
@@ -933,7 +995,11 @@ function ClassBreakdown({
         /* ── KARTOCHKALAR: BUGUNGI holat ── */
         <div
           className={`grid gap-2 overflow-y-auto pr-0.5 ${
-            full ? "max-h-[calc(100vh-260px)] grid-cols-3 md:grid-cols-4 xl:grid-cols-6" : "max-h-[248px] grid-cols-2 sm:grid-cols-3"
+            full
+              ? "min-h-0 flex-1 content-start grid-cols-3 md:grid-cols-4 xl:grid-cols-6"
+              : grow
+                ? "min-h-0 flex-1 content-start grid-cols-2 sm:grid-cols-3"
+                : "max-h-[248px] grid-cols-2 sm:grid-cols-3"
           }`}
         >
           {sorted.map((c) => (

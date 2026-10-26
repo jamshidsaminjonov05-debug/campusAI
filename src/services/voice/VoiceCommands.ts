@@ -11,8 +11,7 @@ export type PageName =
   | "Kameralar"
   | "Shaxslar"
   | "Geo Analitika"
-  | "Hodisalar"
-  | "Hisobotlar"
+  | "Statistika"
   | "Sozlamalar";
 
 export type EventTypeCode =
@@ -53,10 +52,6 @@ export interface VoiceCameraCommand {
   action?: "play" | "pause" | "fullscreen";
 }
 
-export interface VoiceEventFilter {
-  eventType: EventTypeCode | null;
-}
-
 export interface VoicePersonSearch {
   query: string;
   personType: PersonType;
@@ -77,8 +72,7 @@ export const PAGE_FEEDBACK: Record<PageName, string> = {
   Kameralar: "Kameralar sahifasi ochildi.",
   Shaxslar: "Shaxslar bo'limi ochildi.",
   "Geo Analitika": "Geo analitika ochildi.",
-  Hodisalar: "Hodisalar sahifasi ochildi.",
-  Hisobotlar: "Davomat sahifasi ochildi.",
+  Statistika: "Statistika ochildi.",
   Sozlamalar: "Sozlamalar ochildi.",
 };
 

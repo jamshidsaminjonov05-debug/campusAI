@@ -35,8 +35,8 @@ function normalizeSearch(s: string): string {
  * `GET /api/v1/people/events` endi **`200`** + bo'sh ro'yxat +
  * `"deprecated": true` qaytaradi (2026-09-02 da tuzatildi — ilgari
  * `/people/{id}` yo'liga tushib `422` berardi). Bu manzil baribir
- * ISHLATILMAYDI: odam sanash endi HAQIQIY manba bilan — pastdagi
- * `/counting/...` funksiyalari (`FRONTEND.md` 10-A bo'lim).
+ * ISHLATILMAYDI. `/counting/...` (odam sanash) funksiyalari ham 2026-10-26
+ * da loyihadan olib tashlandi.
  */
 export type NvrCategory = "face" | "gun" | "janjal" | "smoking";
 
@@ -114,8 +114,18 @@ export interface NvrEvent {
    * solishtirish mumkin.
    */
   person?: {
-    in_library: boolean;
-    person_id: number;
+    in_library?: boolean;
+    person_id?: number;
+    /**
+     * ⚠️ RO'YXAT javobida (`/{category}/events`, 2026-09-11 dan) `person`
+     * BOSHQA, qisqa shaklda keladi: `{id, full_name, role, role_label,
+     * class}` (o'lchandi 2026-10-24, `id:399 … class:"6-A"`). Shuning
+     * uchun `person_id`/`in_library` ixtiyoriy, `id`/`class` esa shu
+     * yerda. Kodda ikkalasini `eventPerson()` bilan o'qing — maydon
+     * nomini qo'lda tanlamang.
+     */
+    id?: number;
+    class?: string | null;
     full_name: string;
     role?: string;
     role_label?: string;
@@ -127,6 +137,14 @@ export interface NvrEvent {
     library_photo_url?: string;
     detail?: string;
   } | null;
+  /**
+   * FAQAT KLIENTDA (`useNvrEvents` `merge()`, 2026-10-24): shu odam shu
+   * kameradan 10 daqiqa ichida NECHA MARTA o'tgani — alohida server
+   * o'tishlari (`group=true`, 180 s) bitta kartochkaga yig'iladi, yozuv
+   * o'zi ENG OXIRGI o'tish. `passes_from` — birinchi o'tish vaqti.
+   */
+  passes?: number;
+  passes_from?: string;
   /** Operator hukmi: `"ok"` | `"wrong"` | `""` (hali hukm yo'q). */
   verdict?: string;
   /**
@@ -207,10 +225,15 @@ export async function listEvents(category: NvrQueryCategory, q: NvrQuery = {}): 
     } catch (e) {
       if (!(e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError"))) throw e;
       groupBrokenUntil = Date.now() + GROUP_RETRY_MS;
-      console.warn(
-        `[kuzatuv posti] group=true ${GROUP_TIMEOUT_MS / 1000} s da javob bermadi — ` +
-          `${GROUP_RETRY_MS / 60_000} daqiqa guruhlanmagan ro'yxat ishlatiladi`
-      );
+      /* Bu xato emas, KUTILGAN zaxira (server `group=true` ni 15 s+ hisoblaydi).
+         Konsolni to'ldirmasin — tab ochiq turganda FAQAT bir marta yoziladi. */
+      if (!groupWarned) {
+        groupWarned = true;
+        console.info(
+          `[kuzatuv posti] group=true ${GROUP_TIMEOUT_MS / 1000} s da javob bermadi — ` +
+            `${GROUP_RETRY_MS / 60_000} daqiqa guruhlanmagan ro'yxat ishlatiladi`
+        );
+      }
     }
   }
 
@@ -228,10 +251,16 @@ export async function listEvents(category: NvrQueryCategory, q: NvrQuery = {}): 
    navbatda kutib qolardi ("shaxs ma'lumotlari kech keladi").
    Endi guruhlangan so'rov `GROUP_TIMEOUT_MS` da uziladi, ro'yxat
    guruhsiz qayta olinadi va `GROUP_RETRY_MS` davomida guruhlash umuman
-   so'ralmaydi. Server tuzalgach o'zi guruhlangan holatga qaytadi. */
-const GROUP_TIMEOUT_MS = 10_000;
-const GROUP_RETRY_MS = 5 * 60_000;
+   so'ralmaydi. Server tuzalgach o'zi guruhlangan holatga qaytadi.
+   🔵 10 s → 4 s, 5 min → 2 min (2026-10-26): o'lchandi — sana bilan guruhli
+   so'rov 0.4–1.5 s, sanasiz 7.3 s. 10 s bilan 7 soniyalik so'rov zaxiraga
+   TUSHMASDI (ro'yxat 7 s bo'sh turardi); endi `useDetections`/
+   "Aniqlanganlar" sanasiz guruh yubormaydi, 4 s dan oshgani — server yuk
+   ostida, guruhsiz ro'yxat tezroq. */
+const GROUP_TIMEOUT_MS = 4_000;
+const GROUP_RETRY_MS = 2 * 60_000;
 let groupBrokenUntil = 0;
+let groupWarned = false;
 
 /**
  * Diagramma sanoqlari — `GET /api/v1/events/stats` (2026-09-15 da ulandi).
@@ -261,6 +290,42 @@ export interface NvrEventStats {
 }
 
 /** `from`/`to` bo'sh — butun tarix. */
+/**
+ * TANILGAN ODAMLAR — `GET /faces/stats/classes` (2026-10-26). Oraliqda kamera
+ * TANIGAN (bazadagi) shaxslar TAKRORSIZ, o'quvchi/o'qituvchi kesimida.
+ * O'lchandi (2026-10-26): bugun 356 (340 o'quvchi + 16 o'qituvchi), 7 kun 551,
+ * butun tarix 593 — bazada 642. `GET /faces` `total`/`known` esa hozir DOIM 0
+ * qaytaradi (`BACKEND.md` 14-band) — "Har xil odam" kartochkasi shu sabab 0 edi.
+ */
+export interface NvrSeenGroup {
+  /** Bazadagi shaxslar soni */
+  total: number;
+  /** Oraliqda kamera tanigan (takrorsiz) */
+  seen_people: number;
+  never_seen: number;
+  /** `seen_people / total`, foiz */
+  coverage: number;
+  /** Shu odamlarning kadrlari soni */
+  frames: number;
+}
+export interface NvrSeenStats {
+  total: NvrSeenGroup;
+  students: NvrSeenGroup;
+  teachers: NvrSeenGroup;
+}
+export async function getSeenPeopleStats(from?: string, to?: string): Promise<NvrSeenStats> {
+  const p = new URLSearchParams();
+  if (from) p.set("date_from", from);
+  if (to) p.set("date_to", to);
+  const qs = p.toString();
+  const res = await fetch(nvrUrl(`/faces/stats/classes${qs ? `?${qs}` : ""}`), {
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Error(`kuzatuv posti faces/stats/classes: ${res.status}`);
+  return res.json();
+}
+
 export async function getEventStats(from?: string, to?: string): Promise<NvrEventStats> {
   const p = new URLSearchParams();
   if (from) p.set("from", from);
@@ -396,6 +461,24 @@ export function nvrImageUrl(ev: NvrEvent, index = 0): string | null {
 }
 
 /**
+ * KICHIK nusxa — `?size=thumb` (o'lchandi 2026-10-26: **72×128 px, 2.4 KB**
+ * — to'liq kesilgan yuz 48 KB, butun kadr 162 KB; 20 barobar yengil).
+ * Kuzatuv postining o'z paneli ro'yxatlarda AYNAN shuni ishlatadi — bizda
+ * 24 kartochka × 48 KB = 1.1 MB har sahifada ketardi. Qayerda:
+ * qo'ng'iroq/toast qatorlari (40–56 px, kattasi shart emas), kartochkada
+ * esa to'liq rasm yuklanguncha XIRA fon (blur-up) — ekranga kirmagan
+ * kartochka to'liq rasmni umuman so'ramaydi (`loading="lazy"`).
+ * ⚠️ `index` BERILMAYDI — `size=thumb&index=1` ham 2.4 KB (server
+ * thumb'ni faqat birinchi rasmdan yasaydi), `index` thumb'dan keyin
+ * kelsa to'liq rasm qaytadi — tartib muhim.
+ */
+export function nvrThumbUrl(ev: NvrEvent): string | null {
+  if (!ev.image_url) return null;
+  const url = toProxyPath(ev.image_url);
+  return `${url}${url.includes("?") ? "&" : "?"}size=thumb`;
+}
+
+/**
  * Jonli oqim — SSE (`text/event-stream`).
  *
  * WebSocket ATAYLAB ishlatilmaydi: u proxy orqali o'tmaydi (kalit serverda
@@ -404,7 +487,7 @@ export function nvrImageUrl(ev: NvrEvent, index = 0): string | null {
  * ⚠️ **BIR KATEGORIYA — BITTA ULANISH** (2026-09-21). Brauzer bir originga
  * ~6 ta HTTP/1.1 ulanish ochadi, har SSE esa bittasini abadiy band qiladi
  * (rasm/video shu qatordan o'tadi). Ilgari `App` (jonli sinxronizatsiya),
- * `RadarScreen` va `useNvrEvents` har biri o'z EventSource'ini ochardi.
+ * `useNvrEvents` va boshqa joylar har biri o'z EventSource'ini ochardi.
  * Endi obunachilar soni sanaladi: birinchi obunachi ulanishni ochadi,
  * oxirgisi ketgach (kichik kechikish bilan — sahifa almashganda uzilib-
  * ulanmasin) yopiladi.
@@ -642,8 +725,24 @@ export interface NvrChannel {
 }
 
 export async function listChannels(): Promise<NvrChannel[]> {
-  const res = await fetch(nvrUrl(`/panel/channels`), { cache: "no-store" });
-  if (!res.ok) throw new Error(`kuzatuv posti channels: ${res.status}`);
+  /* 8 s chegara: server qurilmaga 15 s kutadi (o'lchandi) — sahifa shuncha
+     spinner ko'rsatmasin, zaxira ro'yxatga tezroq o'tsin. Qurilma sog'
+     bo'lsa javob 1 s dan kam. */
+  const res = await fetch(nvrUrl(`/panel/channels`), { cache: "no-store", signal: AbortSignal.timeout(8_000) });
+  if (!res.ok) {
+    /* Kuzatuv posti qurilmaga yetolmasa `502 {detail:"NVR bilan bog'lanib
+       bo'lmadi: ...timed out"}` qaytaradi (o'lchandi 2026-10-26, 15 s). Sabab
+       ekranda ko'rinsin — "Kamera qo'shilmagan" degan yolg'on bo'sh holat
+       o'rniga. */
+    let detail = "";
+    try {
+      const j = (await res.json()) as { detail?: unknown };
+      if (typeof j.detail === "string") detail = j.detail;
+    } catch {
+      /* JSON emas — faqat status */
+    }
+    throw new Error(detail ? `${res.status}: ${detail}` : `kuzatuv posti channels: ${res.status}`);
+  }
   const j = (await res.json()) as { channels?: NvrChannel[] };
   return j.channels ?? [];
 }
@@ -694,7 +793,15 @@ export interface NvrTimezone {
   now: string;
   today: string;
 }
-export async function getNvrStatus(): Promise<{ timezone?: NvrTimezone }> {
+/** `GET /api/status` — Sozlamalar "Tizim holati" ham shundan o'qiydi (2026-10-26). */
+export interface NvrStatus {
+  nvr_ok?: boolean;
+  nvr?: { model?: string; name?: string; firmware?: string; serial?: string } | null;
+  nvr_host?: string;
+  clock?: { skew_seconds?: number; nvr_time?: string; server_time?: string };
+  timezone?: NvrTimezone;
+}
+export async function getNvrStatus(): Promise<NvrStatus> {
   const res = await fetch(panelUrl("/api/status"), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti status: ${res.status}`);
   return res.json();
@@ -995,8 +1102,29 @@ export async function verifyEvent(eventId: number, correct: boolean): Promise<Nv
 /** Odamning BAZADAGI (enrollment) surati — `<img src>` ga to'g'ridan
  *  qo'yiladi. Surati yo'q odamda server `404` beradi (`pid` bo'sh) —
  *  chaqiruvchi `onError` bilan bosh harflarga qaytishi kerak. */
-export function nvrPersonPhotoUrl(personId: number): string {
-  return nvrUrl(`/people/${personId}/photo`);
+export function nvrPersonPhotoUrl(personId: number, size?: "thumb"): string {
+  const url = nvrUrl(`/people/${personId}/photo`);
+  /* `?size=thumb` — ~128 px nusxa (`FRONTEND.md` 2026-09-11: 466 KB → 12 KB).
+     Kartochkadagi 36 px avatar uchun to'liq surat ortiqcha. */
+  return size ? `${url}${url.includes("?") ? "&" : "?"}size=${size}` : url;
+}
+
+/**
+ * Hodisadagi TANILGAN odam — IKKI javob shaklini BITTA ko'rinishga keltiradi
+ * (`NvrEvent.person` izohiga qarang): `GET /events/{id}` → `person_id`/`note`,
+ * ro'yxat → `id`/`class`. `null` — odam yo'q yoki raqami noma'lum.
+ */
+export function eventPerson(ev: NvrEvent): { id: number; name: string; roleLabel: string | null; klass: string | null } | null {
+  const p = ev.person;
+  if (!p) return null;
+  const id = p.person_id ?? p.id;
+  if (id == null) return null;
+  return {
+    id,
+    name: p.full_name || ev.name || "",
+    roleLabel: p.role_label || null,
+    klass: p.note || p.class || null,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1300,140 +1428,4 @@ export async function listFaces(q: NvrFacesQuery = {}): Promise<NvrFacePage> {
   const res = await fetch(nvrUrl(`/faces?${p}`), { cache: "no-store" });
   if (!res.ok) throw new Error(`kuzatuv posti faces: ${res.status}`);
   return res.json();
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   ODAM SANASH — kirdi / chiqdi / ichkarida (`FRONTEND.md` 10-A bo'lim)
-   ══════════════════════════════════════════════════════════════════════
-   ⚠️ Bu HODISA EMAS, O'LCHOV: to'rtta detektor kategoriyasiga (yuqoridagi
-   `NvrCategory`) kirmaydi, `all` ga tushmaydi va rasm o'rniga raqam beradi.
-   Shuning uchun butunlay alohida manzillarda (`/counting/...`) va alohida
-   funksiyalarda — mavjud `listEvents()`/`subscribeNvr()` bilan ARALASHMAYDI.
-
-   Jonli yangilanish ATAYLAB SSE/WS emas, oddiy so'rov: hujjatning o'zi ham
-   shuni tavsiya qiladi ("qurilma daqiqada bir yuboradi — 30 soniyada bir
-   yangilash yetarli"), React Query esa buni `refetchInterval` bilan qiladi
-   (`useCounting.ts`). */
-
-export interface CountingTotals {
-  enter: number;
-  exit: number;
-  pass: number;
-  reports: number;
-}
-
-export interface CountingRangeTotals extends CountingTotals {
-  /** `enter − exit`, manfiy bo'lmaydi. */
-  inside: number;
-}
-
-export interface CountingChannelStat extends CountingTotals {
-  channel_id: string;
-  channel_name: string;
-}
-
-export interface CountingHourStat extends CountingTotals {
-  /** `"00"`…`"23"`. */
-  hour: string;
-}
-
-export interface CountingDayStat extends CountingTotals {
-  /** `YYYY-MM-DD`. */
-  day: string;
-}
-
-export interface CountingStats {
-  /** Tanlangan oraliq (sana berilmasa — BUTUN TARIX) bo'yicha jami. */
-  enter: number;
-  exit: number;
-  pass: number;
-  /** ⚠️ Tanlangan oraliq bo'yicha — "hozir ichkarida" uchun `today.inside` ishlating. */
-  inside: number;
-  reports: number;
-  /** Bugungi kun — "hozir ichkarida nechta odam bor" aynan shundan. */
-  today: CountingRangeTotals;
-  /** Butun tarix, sana filtridan qat'i nazar. */
-  all_time: CountingRangeTotals;
-  by_channel: CountingChannelStat[];
-  by_hour: CountingHourStat[];
-  by_day: CountingDayStat[];
-  last_report: string | null;
-  /** Oxirgi 5 daqiqada hisobot kelganmi. */
-  live: boolean;
-}
-
-export interface CountingQuery {
-  date_from?: string;
-  date_to?: string;
-  /** Kanal raqami. */
-  camera?: string;
-}
-
-export async function getCountingStats(q: CountingQuery = {}): Promise<CountingStats> {
-  const p = new URLSearchParams();
-  if (q.date_from) p.set("date_from", q.date_from);
-  if (q.date_to) p.set("date_to", q.date_to);
-  if (q.camera) p.set("camera", q.camera);
-
-  const res = await fetch(nvrUrl(`/counting/stats?${p}`), { cache: "no-store" });
-  if (!res.ok) throw new Error(`kuzatuv posti counting/stats: ${res.status}`);
-  return res.json();
-}
-
-/** Daqiqalik hisobotlar ro'yxati — bitta oraliq (`period`) bitta yozuv. */
-export interface CountingEvent {
-  id: number;
-  category: "counting";
-  camera: string;
-  channel: string;
-  /** Hisobot kelgan payt (`period.to` bilan deyarli bir xil). */
-  time: string;
-  /** Tayyor matn — «Odamlar sanog'i: 3 kirdi, 1 chiqdi». */
-  label: string;
-  /** Shu ORALIQdagi son — jami emas. */
-  counting: { enter: number; exit: number; pass: number };
-  period: { from: string; to: string };
-  /** `true` — bu oraliqda hech kim o'tmagan. */
-  idle: boolean;
-  /** Sanoq hodisasida DOIM `null` — rasm yo'q. */
-  image_url: null;
-  image_count: 0;
-}
-
-export interface CountingEventsPage {
-  category: "counting";
-  events: CountingEvent[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-export async function listCountingEvents(
-  q: CountingQuery & { limit?: number; offset?: number } = {}
-): Promise<CountingEventsPage> {
-  const p = new URLSearchParams({ limit: String(Math.min(q.limit ?? 20, NVR_MAX_LIMIT)) });
-  if (q.offset) p.set("offset", String(q.offset));
-  if (q.camera) p.set("camera", q.camera);
-  if (q.date_from) p.set("date_from", q.date_from);
-  if (q.date_to) p.set("date_to", q.date_to);
-
-  const res = await fetch(nvrUrl(`/counting/events?${p}`), { cache: "no-store" });
-  if (!res.ok) throw new Error(`kuzatuv posti counting/events: ${res.status}`);
-  return res.json();
-}
-
-export interface CountingCamera {
-  id: string;
-  name: string;
-  count: number;
-  last: string;
-}
-
-/** Sanoq yoqilgan kameralar — ro'yxat HISOBOTLAR TARIXIDAN olinadi
- *  (qurilmada bu sozlamani o'qiydigan ishonchli manzil yo'q). */
-export async function listCountingCameras(): Promise<CountingCamera[]> {
-  const res = await fetch(nvrUrl(`/counting/cameras`), { cache: "no-store" });
-  if (!res.ok) throw new Error(`kuzatuv posti counting/cameras: ${res.status}`);
-  const j = (await res.json()) as { cameras?: CountingCamera[] };
-  return j.cameras ?? [];
 }

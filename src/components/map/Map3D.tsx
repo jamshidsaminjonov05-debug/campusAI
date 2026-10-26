@@ -1,19 +1,19 @@
 "use client";
 
 import { useT } from "@/i18n";
+import { cameraHintHtml } from "@/map/maplibre/cameraLayer";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { GlobeHemisphereEast, MapPinArea } from "@phosphor-icons/react";
 import { MapLibreMap, type YMarker } from "@/map/maplibre/MapLibreMap";
 import { useAppStore } from "@/store/useAppStore";
 import { CameraQuickView } from "@/components/cameras/CameraQuickView";
-import { BuildingInterior } from "@/components/dashboard/BuildingInterior";
 import { DEFAULT_INSTITUTION_ID, INSTITUTIONS, institutionById } from "@/config/institutions";
 import { CAMPUS_CENTER, CAMPUS_ZOOM } from "@/config/campusPoints";
-import { buildingAnchors, loadCampusAreas, type CampusArea, type CampusBuilding } from "@/lib/nvr/campusAreas";
+import { buildingAnchors, loadCampusAreas, type CampusArea } from "@/lib/nvr/campusAreas";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useDetections } from "@/hooks/useDetections";
 import { fromNvr, type DetectionEvent } from "@/lib/nvr/detectionEvents";
-import { cameraHeading, placementFor } from "@/config/cameraPlacements";
+import { cameraHeading, placementFor, cameraPlaceLabel } from "@/config/cameraPlacements";
 import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
 
 /**
@@ -26,7 +26,7 @@ import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
  * (`Campus3D.tsx`), ular tab bilan almashardi. Endi loyihada bitta 3D
  * kampus RENDERI qoldi — `MapLibreMap` ning `campusAreas` qatlami
  * (haqiqiy bino konturi, 179-maktab fasadi — tom, deraza, poydevor).
- * `EventsHudScreen.tsx` shu RENDERNI ishlatadi, bu komponent esa
+ * sobiq `EventsHudScreen.tsx` (2026-10-26 da o'chirilgan) shu RENDERNI ishlatardi, bu komponent esa
  * uning KICHRAYTIRILGAN nusxasi: HUD ramkasi, footer, "boshqa
  * hodisalar" paneli va institut NOM PLITALARI (7 ta kartochka) — HECH
  * BIRI YO'Q. Faqat:
@@ -42,7 +42,7 @@ import { DETECTION_BY_ID } from "@/lib/nvr/detectionTypes";
  * (`MapLibreMap` ning `selectedCampusId` effekti — `fitBounds`,
  * qo'shimcha `focus` prop kerak emas).
  *
- * ⚠️ **HECH QACHON "bo'sh" holatga tushmaydi** — `EventsHudScreen`
+ * ⚠️ **HECH QACHON "bo'sh" holatga tushmaydi** — sobiq `EventsHudScreen` (o'chirilgan)
  * dagi bilan AYNI zaxira zanjiri: tanlov bo'lmasa ham kuzatuvdagi
  * BIRINCHI muassasa (Chilonzor 179-maktab) ko'rsatiladi, chunki
  * kamera/hodisa oqimi faqat o'sha yerda bor.
@@ -86,19 +86,12 @@ function spread(a: { lng: number; lat: number }, i: number, lap: number) {
   return { lng: a.lng + dLng, lat: a.lat + dLat };
 }
 
-/**
- * `key` — `buildingsToGeoJson()` (`lib/campusAreas.ts`) bergan
- * `"${campusId}-${buildingIndex}"`. `campusId` o'zi ham `-` bo'lishi
- * mumkin (`edu-mk-179`), shuning uchun bo'linish OXIRGI `-` bo'yicha:
- * indeks har doim oddiy son, campusId esa nima qolsa shu.
- */
-function parseBuildingKey(key: string): { campusId: string; index: number } | null {
-  const i = key.lastIndexOf("-");
-  if (i < 0) return null;
-  const index = Number(key.slice(i + 1));
-  if (!Number.isFinite(index)) return null;
-  return { campusId: key.slice(0, i), index };
-}
+/* 🔴 BINO ICHKI KO'RINISHI (`BuildingInterior`, bino bosilganda ochiladigan
+   SVG qavat/xona sahnasi) 2026-10-26 da BUTUNLAY OLIB TASHLANDI —
+   foydalanuvchi: "bosilganda ichkarisi chiqib beryotgani kerak emas,
+   qotiryapti". Komponent, `lib/floorPlan.ts`, `config/schoolPlan.ts` va
+   `MapLibreMap`ning `onBuildingClick`/`app-campus-model-hit` qatlami
+   o'chirildi. Bino bosilsa endi hovli bosilgandek — kampus tanlanadi. */
 
 export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () => void }) {
   const tm = useT().dashboard.ui.map;
@@ -165,34 +158,6 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
   /* Oqim SHU SAHIFADA ochiladi — bo'lim almashmaydi (`CameraQuickView`). */
   const [camChannel, setCamChannel] = useState<string | null>(null);
 
-  /**
-   * Bino ichki ko'rinishi — 2026-09-08, foydalanuvchi so'rovi: "binoni
-   * bosganimizda... modal ochilishi kerak va binoning 3d modeli
-   * chiqishi kerak... qavatlar va alohida honalar kesimida ham ichki
-   * ko'rinishini ko'rish mumkin bo'lsin". `BuildingInterior` allaqachon
-   * mavjud (ilgari faqat `Campus3D.tsx`da ishlatilgan, endi o'chirilgan
-   * SVG sahna) — shu yerdan qayta ishlatiladi, `CampusBuilding.raw`
-   * (metr-fazoda `{p,h,n}`) uning kutgan shakliga aynan mos keladi.
-   */
-  const [interiorBuilding, setInteriorBuilding] = useState<{
-    building: CampusBuilding;
-    campusName?: string;
-  } | null>(null);
-
-  const handleBuildingClick = (key: string) => {
-    const parsed = parseBuildingKey(key);
-    if (!parsed) return;
-    // `loadCampusAreas()` keshlangan — bu chaqiruv qayta tarmoq so'rovi
-    // qilmaydi, `area` state (faqat TANLANGAN kampus) yetarli emas,
-    // chunki "Umumiy xarita" rejimida bosilgan bino BOSHQA kampusga
-    // tegishli bo'lishi mumkin.
-    loadCampusAreas().then((list) => {
-      const a = list.find((x) => x.id === parsed.campusId);
-      const b = a?.buildings[parsed.index];
-      if (b) setInteriorBuilding({ building: b, campusName: a?.name });
-    });
-  };
-
   const markers = useMemo<YMarker[]>(() => {
     /* Kameraning ANIQ joyi bo'lsa (`config/cameraPlacements.ts`) u
        ishlatiladi; bo'lmasa bino markazlariga taqsimlanadi
@@ -229,7 +194,13 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
         lng: p.lng,
         kind: "camera",
         color: CAMERA_ICON_COLOR,
-        tooltip: `#${ch}${dir ? ` · ${Math.round(dir.deg)}°${dir.approx ? ` (${tm.approx})` : ""}` : ""}`,
+        hintHtml: cameraHintHtml({
+          channel: ch,
+          place: cameraPlaceLabel(ch, c?.name),
+          status: c?.online ? "online" : "offline",
+          deg: dir?.deg,
+          approx: dir?.approx,
+        }),
         /* ⚠️ Yo'nalish BERILMASA konus chizilmaydi — kuzatuv posti uni bermaydi. */
         heading: dir?.deg,
         headingApprox: dir?.approx,
@@ -274,7 +245,7 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
           });
 
     return [...cam, ...alerts];
-  }, [anchors, nvr.channels, feed.events, selectedCampusId, overview, camChannel, onOpenAlerts, tm.approx]);
+  }, [anchors, nvr.channels, feed.events, selectedCampusId, overview, camChannel, onOpenAlerts]);
 
   return (
     /* ⚠️ `.nexa-card` OLIB TASHLANDI (2026-09-07, foydalanuvchi so'rovi:
@@ -295,7 +266,6 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
           setSelectedTeknikum(id);
           setOverview(false);
         }}
-        onBuildingClick={handleBuildingClick}
         /* ⚠️ **`forceCitySkyline3D` QAYTARILDI — 2026-09-07 da SINAB
            KO'RILGAN va RAD ETILGAN** (foydalanuvchi: "3d holatda 3d
            kampusimizni bino surilib ketadi... huddi shuni oldin
@@ -352,15 +322,6 @@ export const Map3D = memo(function Map3D({ onOpenAlerts }: { onOpenAlerts?: () =
 
       {/* Kamera oqimi — SHU sahifada, Boshqaruv panelidan chiqmasdan. */}
       <CameraQuickView channel={camChannel} onClose={() => setCamChannel(null)} />
-
-      {/* Bino ichki ko'rinishi — bino poligoniga bosilganda. */}
-      {interiorBuilding && (
-        <BuildingInterior
-          building={interiorBuilding.building.raw}
-          campusName={interiorBuilding.campusName}
-          onClose={() => setInteriorBuilding(null)}
-        />
-      )}
     </div>
   );
 });

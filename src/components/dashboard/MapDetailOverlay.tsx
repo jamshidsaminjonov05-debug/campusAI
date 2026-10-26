@@ -7,7 +7,7 @@ import { Info, X } from "@phosphor-icons/react";
 import { useAppStore } from "@/store/useAppStore";
 import { useLiveInstitution } from "@/hooks/useLiveInstitutions";
 import { InstitutionDetail } from "./InstitutionDetail";
-import { EmotionPanel, RecentEntriesPanel } from "./RecentEntriesPanel";
+import { RecentEntriesPanel } from "./RecentEntriesPanel";
 import { EventSidebar } from "./EventSidebar";
 import { EventAnalysisPanel } from "./EventAnalysisPanel";
 
@@ -139,9 +139,9 @@ export function MapDetailOverlay({
                 <motion.div variants={panelItemVariants} className="min-h-0 flex-1">
                   <RecentEntriesPanel />
                 </motion.div>
-                <motion.div variants={panelItemVariants} className="flex-none">
-                  <EmotionPanel />
-                </motion.div>
+                {/* "Kayfiyat tahlili" OLIB TASHLANDI (2026-10-26, foydalanuvchi:
+                    "kerak emas") — serverda kayfiyat moduli yo'q, panel doim
+                    "ma'lumot yo'q" deb turib, qo'shnilari ustiga chiqardi. */}
                 <motion.div variants={panelItemVariants} className="min-h-0 flex-[1.2]">
                   <EventSidebar />
                 </motion.div>

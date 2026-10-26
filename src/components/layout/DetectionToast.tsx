@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { AnimatePresence, motion } from "framer-motion";
 import { Checks, ImageBroken, X } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { detectSubject, nvrImageUrl, nvrTime, subscribeNvr, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { detectSubject, nvrThumbUrl, nvrTime, subscribeNvr, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { LEVEL_TONE, detectionLevel } from "@/lib/nvr/detectionLevel";
 import { isSeen, markSeen, seenVersion, subscribeSeen } from "@/lib/nvr/detectionSeen";
 import { playDetectionSound, stopSound } from "@/lib/nvr/detectionSound";
@@ -179,7 +179,7 @@ export function DetectionToast() {
       <AnimatePresence initial={false}>
         {shown.map((ev) => {
           const tone = LEVEL_TONE[detectionLevel(ev)];
-          const shot = nvrImageUrl(ev, 0);
+          const shot = nvrThumbUrl(ev);
           const subject = detectSubject(ev);
           return (
             <motion.div

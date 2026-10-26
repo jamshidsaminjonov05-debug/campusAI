@@ -36,6 +36,7 @@ import { Plus, Prohibit, X } from "@phosphor-icons/react";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { listEvents, nvrDateTime, type NvrCategory, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { CardGridSkeleton } from "@/components/common/panels";
 import {
   incidentsOf,
   incidentsVersion,
@@ -45,6 +46,7 @@ import {
   unlinkIncident,
   type PersonIncident,
 } from "@/lib/nvr/personIncidents";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Yuz TANISHDAN boshqa — "zararli" toifalar (serverda mavjud bo'lganlari). */
 const INCIDENT_CATEGORIES: NvrCategory[] = ["janjal", "gun", "smoking"];
@@ -211,13 +213,9 @@ function IncidentPicker({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5">
           {loading ? (
-            <div className="grid h-32 place-items-center">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-            </div>
+            <CardGridSkeleton count={4} />
           ) : events.length === 0 ? (
-            <p className="py-10 text-center text-[11.5px] text-slate-500">
-              {u.incidentNone}
-            </p>
+            <EmptyState className="py-10" title={u.incidentNone} />
           ) : (
             <ul className="flex flex-col gap-1.5">
               {events.map((ev) => {

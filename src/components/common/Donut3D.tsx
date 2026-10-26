@@ -101,6 +101,8 @@ export function Donut3D({
   format = (v: number) => String(v),
   labelMinPct = 4,
   onSelect,
+  flat = true,
+  ring = 0.2,
 }: {
   data: DonutSlice[];
   /** Markazdagi son (berilmasa — yig'indi). */
@@ -127,6 +129,22 @@ export function Donut3D({
    */
   labelMinPct?: number;
   onSelect?: (slice: DonutSlice) => void;
+  /**
+   * 🔵 **TEKIS (2D) HALQA — DEFAULT (2026-10-24, UX tahlili).** Dizayner:
+   * "3D diagrammalar ulushlarni vizual noto'g'ri ko'rsatadi — qizil
+   * bo'lakning pastki qalin soyasi uni aslidan kattaroq qilib ko'rsatyapti".
+   * `flat` bo'lsa pastki QALINLIK qatlami va vertikal gradient CHIZILMAYDI,
+   * bo'laklar orasida ingichka fon rangidagi oraliq qoladi (zamonaviy
+   * ko'rinish); hover'da bo'lak avvalgidek markazdan chiqadi. Eski hajmli
+   * ko'rinish `flat={false}` bilan qaytadi — komponent nomi tarixiy.
+   */
+  flat?: boolean;
+  /**
+   * Halqa radiusi — enning ulushi (default `0.2`, yorliqlarga joy qoladi).
+   * Yorliqlari qisqa joyda kattaroq halqa uchun oshiriladi (Davomat tabi —
+   * `0.26`, 2026-10-26). Balandlik chegarasi (`H * 0.33`) baribir saqlanadi.
+   */
+  ring?: number;
 }) {
   const uid = useId().replace(/:/g, "");
   const [hover, setHover] = useState<number | null>(null);
@@ -143,9 +161,9 @@ export function Donut3D({
   const H = Math.round(size * 0.78);
   const cx = W / 2;
   const cy = H / 2 - 4;
-  const rOut = Math.min(W * 0.2, H * 0.33);
+  const rOut = Math.min(W * ring, H * 0.33);
   const rIn = rOut * 0.58;
-  const DEPTH = Math.max(6, Math.round(rOut * 0.12));
+  const DEPTH = flat ? 0 : Math.max(6, Math.round(rOut * 0.12));
   /** Yorliq chiziqchasining uchi va matn boshlanadigan joy. */
   const LEAD = rOut + 16;
 
@@ -160,6 +178,12 @@ export function Donut3D({
   }, [rows, sum]);
 
   const active = hover != null ? slices[hover] : null;
+  /* Markazdagi son — teshikka sig'adigan o'lcham (pastdagi izohga qarang) */
+  const centerText = format(active ? active.value : total);
+  const centerFontSize = Math.max(
+    11,
+    Math.min(active ? 20 : 22, Math.floor((2 * rIn - 10) / (Math.max(1, centerText.length) * 0.62)))
+  );
 
   /** Yorliqlar — HTML qatlami uchun (foizda joylashtiriladi). */
   const labels = useMemo(
@@ -190,7 +214,8 @@ export function Donut3D({
           ))}
         </defs>
 
-        {/* ── 1) QALINLIK: har bo'lakning pastga siljitilgan nusxasi ── */}
+        {/* ── 1) QALINLIK: har bo'lakning pastga siljitilgan nusxasi (faqat 3D rejimda) ── */}
+        {!flat && (
         <g opacity={0.55} style={{ pointerEvents: "none" }}>
           {slices.map((s) => {
             const on = hover === s.i;
@@ -204,6 +229,7 @@ export function Donut3D({
             );
           })}
         </g>
+        )}
 
         {/* ── 2) YUZA ──
                ⚠️ `pointer-events: none` — sichqoncha hodisalari pastdagi
@@ -219,9 +245,11 @@ export function Donut3D({
               <motion.path
                 key={s.i}
                 d={ringPath(cx, cy, on ? rIn + 4 : rIn, on ? rOut + 10 : rOut, s.a0, s.a1)}
-                fill={`url(#${uid}-g${s.i})`}
-                stroke="rgba(4,7,15,0.65)"
-                strokeWidth={1.5}
+                /* Tekis rejimda sof rang va bo'laklar orasida 2.5 px oraliq */
+                fill={flat ? s.color : `url(#${uid}-g${s.i})`}
+                stroke={flat ? "rgba(8,16,31,0.9)" : "rgba(4,7,15,0.65)"}
+                strokeWidth={flat ? 2.5 : 1.5}
+                strokeLinejoin="round"
                 animate={{ x: dx, y: dy }}
                 transition={{ type: "spring", stiffness: 380, damping: 28 }}
                 style={{ filter: on ? `drop-shadow(0 0 10px ${s.color})` : undefined }}
@@ -250,18 +278,23 @@ export function Donut3D({
           })}
         </g>
 
-        {/* ── 4) MARKAZ: jami yoki tanlangan bo'lak ── */}
+        {/* ── 4) MARKAZ: jami yoki tanlangan bo'lak ──
+               ⚠️ Son halqa TESHIGIGA sig'ishi shart (2026-10-23, foydalanuvchi
+               skrinshoti: "10 403" halqa chetidan chiqib ketgan). Monospace
+               belgi eni ≈ 0.62·fontSize — shundan teshik diametriga (bir oz
+               chekka bilan) sig'adigan eng katta o'lcham hisoblanadi; qisqa
+               son avvalgidek 22 px, uzuni o'zi kichrayadi. */}
         <text
           x={cx}
           y={cy - 2}
           textAnchor="middle"
-          fontSize={active ? 20 : 22}
+          fontSize={centerFontSize}
           fontWeight={800}
           fill={active ? active.color : "#F1F5F9"}
           fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
           style={{ pointerEvents: "none" }}
         >
-          {format(active ? active.value : total)}
+          {centerText}
         </text>
         <text
           x={cx}

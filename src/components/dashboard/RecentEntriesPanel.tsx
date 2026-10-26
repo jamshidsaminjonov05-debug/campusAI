@@ -1,14 +1,15 @@
 import { useT } from "@/i18n";
 import { useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
-import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDetections } from "@/hooks/useDetections";
 import { useAppStore } from "@/store/useAppStore";
 import { detectSubject, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { FaceHistoryModal } from "@/components/people/FaceHistoryModal";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
-import { DashPanel, DonutChart } from "./DashPanel";
+import { DashPanel } from "./DashPanel";
+import { ListSkeleton } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Panelga sig'adigan qatorlar — Dashboard ustuni tor, ro'yxat uzun bo'lmasin. */
 const SHOWN = 4;
@@ -55,15 +56,13 @@ export function RecentEntriesPanel() {
       <div className="flex h-full flex-col">
         <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
           {q.isLoading && rows.length === 0 && (
-            <li className="grid h-20 place-items-center">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
+            <li>
+              <ListSkeleton rows={4} />
             </li>
           )}
           {!q.isLoading && rows.length === 0 && (
             /* Sabab OCHIQ yoziladi — bo'sh panel nosozlik deb o'qilmasin */
-            <li className="py-6 text-center text-[10.5px] leading-snug text-slate-500">
-              {u.entries.empty}
-            </li>
+            <li className="py-6 text-center text-[10.5px] leading-snug text-slate-500"><EmptyState compact title={u.entries.empty} /></li>
           )}
           {rows.map((ev) => (
             <li key={ev.id}>
@@ -128,49 +127,5 @@ function Row({ ev, onOpen }: { ev: NvrEvent; onOpen: () => void }) {
         />
       </span>
     </button>
-  );
-}
-
-/**
- * Kayfiyat taqsimoti — ijobiy/neytral/salbiy, halqa diagramma.
- *
- * ⚠️ **BOSH HALQA SABABI OCHIQ YOZILADI.** O'lchandi (2026-09-02):
- * `/statistics/emotions/daily?days=30` o'ttiz kunni qaytaradi, lekin
- * JAMI qayd **0**; `/admin/status` esa kayfiyat dvigateli o'rnatilmaganini
- * aytadi (`ModuleNotFoundError: No module named 'ultralytics'`). Ya'ni
- * bo'sh halqa xato emas — serverda modul yo'q.
- */
-export function EmotionPanel() {
-  const u = useT().dashboard.ui.mood;
-  const d = useDashboardData();
-  const { positive, neutral, negative } = d.emotions;
-  const total = positive + neutral + negative;
-  const sum = Math.max(1, total);
-
-  const segments = [
-    { label: u.positive, value: positive, color: "#34D399" },
-    { label: u.neutral, value: neutral, color: "#85E0FF" },
-    { label: u.negative, value: negative, color: "#F43F5E" },
-  ];
-
-  return (
-    <DashPanel
-      title={u.title}
-      subtitle={u.sub}
-      delay={0.2}
-      className="flex-none"
-      surface="map-glass-card"
-    >
-      {total > 0 ? (
-        <DonutChart segments={segments} total={Math.round((positive / sum) * 100)} caption={u.caption} />
-      ) : (
-        <div className="px-1 py-4 text-center">
-          <p className="text-[11.5px] font-semibold text-amber-300/90">{u.none}</p>
-          <p className="mt-1 text-[10.5px] leading-snug text-slate-500">
-            {u.noneHint}
-          </p>
-        </div>
-      )}
-    </DashPanel>
   );
 }

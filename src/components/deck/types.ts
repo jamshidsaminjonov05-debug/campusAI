@@ -3,14 +3,12 @@ import type { Context, ReactNode } from "react";
 /**
  * TAQDIMOT DVIJOGINING UMUMIY TIPLARI.
  *
- * Bu papkada bitta dvijok turadi, uning ustida esa bir nechta taqdimot
- * ishlaydi:
- *   `presentation/` → `/taqdimot`  — mahsulot imkoniyatlari
- *   `investor/`     → `/investor`  — investor uchun biznes-hisob
+ * Bu papkada taqdimot dvijogi turadi. Hozir uning ustida BITTA taqdimot
+ * ishlaydi: `investor/` → `/investor`. (Mahsulot taqdimoti `/taqdimot`
+ * 2026-10-21 da olib tashlandi — kerak bo'lsa git tarixidan tiklanadi.)
  *
- * Har bir taqdimot o'z slaydlari, matni va ovoziga ega, lekin vaqt o'qi,
- * ovoz shinasi, boshqaruv va UI bloklari BITTA. Shu yerda tuzatilgan narsa
- * ikkala taqdimotga ham tushadi.
+ * Taqdimot slaydlari, matni va ovozi o'zida; vaqt o'qi, ovoz shinasi,
+ * boshqaruv va UI bloklari shu dvijokda.
  */
 
 export type DeckLang = "uz" | "en";

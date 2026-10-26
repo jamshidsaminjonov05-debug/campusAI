@@ -10,9 +10,10 @@
  * (Ilgari `components/statistics/parts.tsx` edi va faqat Statistika
  * bo'limiga tegishli edi.)
  */
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { CaretDown, CaretUp, type Icon } from "@phosphor-icons/react";
+import { useT } from "@/i18n";
 import { GifIcon } from "@/components/common/GifIcon";
 import type { RegionHealth } from "@/lib/nvr/institutionRows";
 import type { SortDir } from "@/lib/statistics";
@@ -42,6 +43,11 @@ export const TOOLTIP = {
   borderRadius: 8,
   fontSize: 11,
 } as const;
+/* ⚠️ Recharts qator rangini SERIYA rangidan oladi (`stroke`/`fill`); `Cell`
+   bilan bo'yalgan ustunda u yo'q va matn QORA chiqardi (o'lchandi 2026-10-24:
+   "Soni : 10 454" qorong'i fonda ko'rinmasdi). Shu ikkisini HAR tooltipga bering. */
+export const TOOLTIP_ITEM = { color: "#CBD5E1", fontWeight: 600 } as const;
+export const TOOLTIP_LABEL = { color: "#F1F5F9", fontWeight: 700, marginBottom: 2 } as const;
 
 export const STATUS_TONE: Record<RegionHealth, string> = {
   normal: "#22C55E",
@@ -95,6 +101,176 @@ export function StatPanel({
   );
 }
 
+/**
+ * YUKLANAYOTGAN joy egallovchisi — pulsatsiyali plita (2026-10-23).
+ *
+ * ⚠️ FAQAT so'rov haqiqatan KUTILAYOTGANDA (`isLoading`) ko'rsatiladi.
+ * Soxta progress yoki "N soniya qoldi" YO'Q — server qancha vaqt olishini
+ * bilmaymiz. O'lchamni chaqiruvchi beradi (panel shakliga mos), shunda
+ * ma'lumot kelganda panel balandligi sakramaydi.
+ */
+export function Skeleton({
+  className = "",
+  spinner = false,
+  timer = false,
+}: {
+  className?: string;
+  spinner?: boolean;
+  /**
+   * Kutilayotgan vaqt — "3 s", "4 s"… (ochilgan paytdan OLDINGA sanaydi).
+   * ⚠️ Teskari hisob ("10s…1s") ATAYLAB YO'Q: server qachon javob berishini
+   * bilmaymiz, to'qilgan muddat yolg'on va'da bo'lardi.
+   */
+  timer?: boolean;
+}) {
+  /* 🔴 `relative` ATAYLAB YO'Q (2026-10-23 da topildi): chaqiruvchi grafik
+     ustiga `absolute inset-0` beradi, Tailwind CSS'ida esa `relative`
+     `absolute`dan KEYIN turadi va yutadi — skelet balandligi 0 bo'lib,
+     umuman ko'rinmasdi. Shuning uchun `relative` FAQAT chaqiruvchi
+     `absolute`/`fixed` bermaganda qo'shiladi (to'lqin `::after` uchun
+     joylashgan ota kerak). CSS'da ham `position` yozilmaydi — u Tailwind
+     utility'laridan KEYIN keladi va `absolute`ni bosib ketardi. */
+  const positioned = /(^|\s)(absolute|fixed)(\s|$)/.test(className);
+  return (
+    <div
+      aria-busy="true"
+      className={`skeleton-shimmer ${positioned ? "" : "relative"} grid place-items-center overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.05] ${className}`}
+    >
+      {(spinner || timer) && (
+        <span className="flex flex-col items-center gap-1.5">
+          {spinner && <span className="h-6 w-6 rounded-full border-2 border-ice/30 border-t-ice motion-safe:animate-spin" />}
+          {timer && <ElapsedSeconds />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Ochilgan paytdan beri o'tgan soniyalar — "Yuklanmoqda · 4 s". */
+export function ElapsedSeconds({ label = "Yuklanmoqda" }: { label?: string }) {
+  const [sec, setSec] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const id = window.setInterval(() => setSec(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <span className="font-mono text-[10.5px] text-slate-400">
+      {label} · <b className="text-ice-bright">{sec} s</b>
+    </span>
+  );
+}
+
+/**
+ * KATTA panel yuklanishi (2026-10-23, foydalanuvchi maketi bo'yicha):
+ * aylanuvchi halqa ichida ma'lumotlar bazasi ikonkasi, "N kunlik ma'lumotlar
+ * hisoblanmoqda…", progress chizig'i va TESKARI soniya hisobi.
+ *
+ * ⚠️ Muddat — TAXMINIY (davr uzunligidan: bugun ~3 s, oy ~10 s, butun tarix
+ * ~15 s). Server javob vaqtini oldindan aytmaydi, shuning uchun:
+ *   · progress 95% dan oshmaydi (ma'lumot kelmaguncha "tugadi" deb ko'rsatmaydi);
+ *   · hisob 0 ga yetsa manfiyga o'tmaydi — "biroz ko'proq…" yoziladi.
+ * Yorliq "Taxminiy vaqt" deb OCHIQ yozilgan — va'da emas.
+ */
+export function PanelLoader({
+  days,
+  allTime = false,
+  className = "",
+}: {
+  /** Davrdagi kunlar soni (`period.days`). */
+  days: number;
+  /** "Butun tarix" tanlangan. */
+  allTime?: boolean;
+  className?: string;
+}) {
+  const t = useT().loader;
+  const est = allTime ? 15 : Math.min(15, Math.max(3, Math.round(2 + days * 0.28)));
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const id = window.setInterval(() => setElapsed((Date.now() - started) / 1000), 250);
+    return () => window.clearInterval(id);
+  }, []);
+  /* 🔵 SEKINLASHUVCHI hisob (2026-10-23, foydalanuvchi so'rovi: "sanab
+     bo'linsa «..» bo'lib qolyapti"). Ulush `f = t / (t + est)` — boshida
+     tez, keyin borgan sari sekin o'sadi va 1 ga HECH QACHON yetmaydi.
+     Qolgan soniya `2·est·(1 − f)` dan: boshida `2·est`, `est` soniyada
+     yarmi, keyin sekinlashib 1 da to'xtab turadi. Ma'lumot kelgach
+     komponent o'zi yo'qoladi — "tugadi" deb yolg'on ko'rsatmaydi. */
+  const f = elapsed / (elapsed + est);
+  const left = Math.max(1, Math.ceil(2 * est * (1 - f)));
+  const pct = Math.min(97, f * 100);
+  /* 🔵 SODDA (2026-10-23, foydalanuvchi so'rovi): faqat chiziq + teskari son.
+     Ikonka/halqa, sarlavha, izoh, "Taxminiy vaqt" yorlig'i va skelet fon
+     OLIB TASHLANDI. Matnlar (`t.loader.title` …) lug'atda qoldi. */
+  return (
+    <div aria-busy="true" aria-label={allTime ? t.allTime : t.title(days)} className={`grid place-items-center ${className}`}>
+      <div className="flex w-full max-w-[420px] items-center gap-3 px-6">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full transition-[width] duration-300 ease-linear"
+            style={{ width: `${pct}%`, background: "linear-gradient(90deg, #22d3ee, #818cf8)" }}
+          />
+        </div>
+        <span className="w-9 flex-none text-right font-mono text-[12px] font-bold text-cyan-300">
+          {left} s
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * KARTOCHKALAR TO'RI yuklanishi (2026-10-26, foydalanuvchi: "backenddan
+ * kelayotgan bo'lsa skeleton yoki slider loading bo'lib tursin, DOIM").
+ * "Hisoblanmoqda…" kabi yolg'iz matn o'rniga — kartochka shaklidagi
+ * pulsatsiyali plitalar: kelgan to'r AYNI joyni egallaydi, sakrash yo'q.
+ * `cols` — `.nvr-grid` `--cols` bilan bir xil; `media` — rasm nisbati.
+ */
+export function CardGridSkeleton({
+  count = 8,
+  cols = 4,
+  media = "aspect-video",
+  className = "",
+}: {
+  count?: number;
+  cols?: number;
+  media?: string;
+  className?: string;
+}) {
+  return (
+    <div aria-busy="true" className={`nvr-grid ${className}`} style={{ ["--cols" as string]: cols }}>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+          <Skeleton className={`${media} w-full rounded-none border-0`} />
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-2.5 w-1/2" />
+            <Skeleton className="h-2.5 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** RO'YXAT yuklanishi — qator shaklidagi plitalar (ikonka + ikki satr). */
+export function ListSkeleton({ rows = 5, className = "" }: { rows?: number; className?: string }) {
+  return (
+    <div aria-busy="true" className={`space-y-2 ${className}`}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-lg border border-white/[0.05] bg-white/[0.02] p-2">
+          <Skeleton className="h-8 w-8 flex-none rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-2.5 w-3/5" />
+            <Skeleton className="h-2 w-2/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function KpiTile({
   Icon,
   label,
@@ -104,6 +280,7 @@ export function KpiTile({
   onClick,
   title,
   demo = false,
+  loading = false,
 }: {
   Icon: Icon;
   label: string;
@@ -122,6 +299,8 @@ export function KpiTile({
    * KARTOCHKADA alohida turadi.
    */
   demo?: boolean;
+  /** Manba hali kelmagan — qiymat va izoh o'rnida skelet (yorliq/ikonka turaveradi). */
+  loading?: boolean;
 }) {
   const body = (
     <>
@@ -138,10 +317,20 @@ export function KpiTile({
           </span>
         )}
       </div>
-      <p className="font-mono text-[20px] font-bold leading-none text-white">{value}</p>
-      {/* Izoh joyi HAR DOIM band — aks holda qatordagi kartochkalar turli
-          balandlikda bo'lib, KPI panjarasi tishli ko'rinadi */}
-      <p className="mt-1 h-[12px] truncate text-[9.5px] leading-none text-slate-500">{hint ?? ""}</p>
+      {loading ? (
+        <>
+          <Skeleton className="h-[20px] w-14" />
+          <Skeleton className="mt-1 h-[12px] w-24 rounded" />
+        </>
+      ) : (
+        <>
+          <p className="font-mono text-[20px] font-bold leading-none text-white">{value}</p>
+          {/* Izoh joyi HAR DOIM band — aks holda qatordagi kartochkalar turli
+              balandlikda bo'lib, KPI panjarasi tishli ko'rinadi.
+              `slate-400` (2026-10-23) — `slate-500` qorong'i sirtda o'qilmasdi. */}
+          <p className="mt-1 h-[12px] truncate text-[9.5px] leading-none text-slate-400">{hint ?? ""}</p>
+        </>
+      )}
     </>
   );
 
@@ -245,10 +434,13 @@ export function TabPill({
   children,
   tone,
   title,
+  disabled = false,
 }: {
   group: string;
   active: boolean;
   onClick: () => void;
+  /** Bosilmaydigan tab (masalan "Xodimlar" — manba yo'q, 2026-10-26). */
+  disabled?: boolean;
   Icon?: Icon;
   /**
    * GIF ikonka manzili — `Icon` O'RNIGA. Aktiv/hover holatda o'ynaydi,
@@ -266,10 +458,11 @@ export function TabPill({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       title={title}
       style={tone ? { ["--c" as string]: tone } : undefined}
-      className={`relative flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${
-        active ? "text-white" : "text-slate-400 hover:text-slate-200"
+      className={`relative flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        active ? "text-white" : "text-slate-400 enabled:hover:text-slate-200"
       }`}
     >
       {active && (

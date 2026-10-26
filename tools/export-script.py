@@ -22,11 +22,6 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 # Ikkita taqdimot — `tools/build-narration.py` dagi ro'yxat bilan bir xil
 DECKS = {
-    "product": {
-        "dir": ("src", "components", "presentation"),
-        "title": "Campus AI — mahsulot taqdimoti ssenariysi",
-        "out": "TAQDIMOT-SSENARIY.md",
-    },
     "investor": {
         "dir": ("src", "components", "investor"),
         "title": "Campus AI — investor taqdimoti ssenariysi",
@@ -99,7 +94,7 @@ def mmss(sec: float) -> str:
 def main() -> None:
     global COPY, AUDIO_TS
     ap = argparse.ArgumentParser()
-    ap.add_argument("--deck", choices=sorted(DECKS), default="product", help="qaysi taqdimot ssenariysi")
+    ap.add_argument("--deck", choices=sorted(DECKS), default="investor", help="qaysi taqdimot ssenariysi")
     ap.add_argument("--out", help="chiqish fayli (standart — taqdimotga qarab)")
     a = ap.parse_args()
 

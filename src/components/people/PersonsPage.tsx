@@ -1,25 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { GraduationCap, IdentificationCard, UserCircle, Users, UsersFour } from "@phosphor-icons/react";
+import { GraduationCap, IdentificationCard, Users, UsersFour } from "@phosphor-icons/react";
 import type { PersonType } from "@/lib/api";
-import { PeoplePage } from "./PeoplePage";
-import { AllPeoplePage } from "./AllPeoplePage";
 import { FaceDatabasePage } from "./FaceDatabasePage";
 import { TabPill } from "@/components/common/panels";
 
-type Tab = "all" | PersonType | "facedb";
+type Tab = "all" | PersonType;
 
 const TABS: { id: Tab; label: string; Icon: typeof Users }[] = [
   { id: "all", label: "Hammasi", Icon: Users },
   { id: "teacher", label: "O'qituvchilar", Icon: GraduationCap },
   { id: "staff", label: "Xodimlar", Icon: IdentificationCard },
   { id: "student", label: "O'quvchilar", Icon: UsersFour },
-  { id: "facedb", label: "Yuz bazasi", Icon: UserCircle },
 ];
 
 /**
- * "Shaxslar" — beshta kesim, Statistikadagi kabi yuqori pilyula qatori.
+ * "Shaxslar" — to'rtta kesim, Statistikadagi kabi yuqori pilyula qatori.
+ *
+ * 🔴 **2026-10-23, foydalanuvchi so'rovi: "Hammasi"ning ichidagini olib
+ * tashla, "Yuz bazasi"ning hamma ma'lumotini "Hammasi"ga o'tkaz.**
+ * "Hammasi" endi kuzatuv postining O'Z yuz bazasi (`FaceDatabasePage` —
+ * toifa kartochkalari → sinflar → ro'yxat, qo'shish/o'chirish); alohida
+ * "Yuz bazasi" tabi YO'Q. Kamerada ko'ringan har bir odam ro'yxati
+ * (`AllPeoplePage`, `GET /faces`) olib tashlandi va fayl o'chirildi —
+ * o'sha odamlar "Aniqlanganlar" bo'limida va dossiyedan ochiladigan
+ * shaxs tarixida ko'rinaveradi. Quyidagi tarixiy izoh eski tuzilmani
+ * tasvirlaydi.
  *
  * ⚠️ **"Bugungi davomat" va "Haftalik davomat dinamikasi" OLIB TASHLANDI**
  * (2026-09-06). `AttendanceBoard` Boshqaruv panelida ALLAQACHON bor
@@ -53,7 +60,9 @@ const TABS: { id: Tab; label: string; Icon: typeof Users }[] = [
  * `activePage` id'si — hali ham **"Shaxslar"** (o'zgartirilmagan, butun
  * kodga bog'langan: ovozli buyruq, global qidiruv, dashboard kartochkasi).
  */
-export function PersonsPage({ initialTab = "student" }: { initialTab?: PersonType }) {
+/* 2026-10-26 — standart tab "Hammasi" (foydalanuvchi: "shaxslarni bosganda
+   default hammasida turishi kerak"). Ilgari "O'quvchilar" edi. */
+export function PersonsPage({ initialTab = "all" }: { initialTab?: Tab }) {
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
@@ -61,7 +70,16 @@ export function PersonsPage({ initialTab = "student" }: { initialTab?: PersonTyp
       <div className="flex-none">
         <div className="hik-glass-blue inline-flex flex-wrap gap-1 rounded-xl p-1">
           {TABS.map((x) => (
-            <TabPill key={x.id} group="persons-tab" active={tab === x.id} onClick={() => setTab(x.id)} Icon={x.Icon}>
+            <TabPill
+              key={x.id}
+              group="persons-tab"
+              active={tab === x.id}
+              onClick={() => setTab(x.id)}
+              Icon={x.Icon}
+              /* Xodimlar — manba yo'q, bosilmaydi (2026-10-26) */
+              disabled={x.id === "staff"}
+              title={x.id === "staff" ? "Xodimlar bo'yicha ma'lumot hozircha yo'q" : undefined}
+            >
               {x.label}
             </TabPill>
           ))}
@@ -69,16 +87,15 @@ export function PersonsPage({ initialTab = "student" }: { initialTab?: PersonTyp
       </div>
 
       <div className="min-h-0 flex-1">
-        {tab === "all" ? (
-          <AllPeoplePage />
-        ) : tab === "facedb" ? (
-          <FaceDatabasePage />
-        ) : tab === "teacher" || tab === "student" ? (
-          <FaceDatabasePage key={tab} lockedRole={tab} />
-        ) : (
-          /* Faqat "Xodimlar" shu yo'ldan qoladi (yuqoridagi izohga qarang). */
-          <PeoplePage key={tab} initialTab={tab} onTabChange={setTab} />
-        )}
+        {/* 🔴 "Xodimlar" ham `FaceDatabasePage` (2026-10-23, foydalanuvchi:
+            "xodimlar bossam xatolik chiqyapti"). Ilgari u eski backend
+            (`PeoplePage` → `/persons`, `/attendance`, `/cameras`) ga qarardi;
+            `NEXT_PUBLIC_API_ORIGIN` endi kuzatuv posti serveriga qaragani
+            uchun o'sha yo'llar BOSHQA shaklda javob beradi (`/cameras` →
+            `{cameras:[…]}`, `/attendance` → kunlik obyekt, `/persons` → HTML)
+            va bo'lim `.map` da yiqilardi. Kuzatuv postida «xodim» toifasi
+            yo'q — halol bo'sh holat ko'rsatiladi, hech narsa o'ylab topilmaydi. */}
+        {tab === "all" ? <FaceDatabasePage /> : <FaceDatabasePage key={tab} lockedRole={tab} />}
       </div>
     </div>
   );

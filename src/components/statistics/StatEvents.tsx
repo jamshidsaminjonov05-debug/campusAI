@@ -13,9 +13,7 @@
  * Endi:
  * · **KPI, soatlik zichlik, kunlar, turlar, kameralar** — server bazada
  *   sanagan sonlar (bitta so'rov, bir necha KB);
- * · **"So'nggi hodisalar" jadvali** — faqat KO'RINADIGAN sahifa
- *   (`limit=20` + `offset`, server sahifalashi);
- * · **CSV** — faqat tugma bosilganda sahifalab yig'iladi (`CSV_MAX` gacha).
+ * · "So'nggi hodisalar" jadvali va CSV eksporti 2026-10-26 da OLIB TASHLANDI.
  *
  * ⚠️ Turlar — SERVER kategoriyalari. "Jiddiylik" (kritik/yuqori/o'rta)
  * klient tushunchasi edi va har hodisani ko'rishni talab qilardi —
@@ -24,33 +22,23 @@
  *
  * ⚠️ Davr — sahifaning YAGONA tanlovi (`StatisticsPage` → `useStatPeriod`).
  */
-import { useMemo, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 /* Phosphor duotone: signal — AI oqimi, qalqon — xavfli hodisa, soat — pik
    soat, sirena — eng ko'p uchragan tur. */
-import { Broadcast, Clock, DownloadSimple, ShieldWarning, Siren } from "@phosphor-icons/react";
+import { Broadcast, Clock, ShieldWarning, Siren } from "@phosphor-icons/react";
 import { useT } from "@/i18n";
 import { dayMonthLabel, dayMonthLongLabel } from "@/lib/dateLabel";
-import { csvName, downloadCsv, toCsv } from "@/lib/statistics";
 import { useEventStats } from "@/hooks/useEventStats";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
 import type { StatPeriod } from "@/hooks/useStatPeriod";
-import { NVR_MAX_LIMIT, listEvents, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import { NVR_COLOR } from "@/components/detections/DetectionCard";
 import { DonutChart } from "@/components/dashboard/DashPanel";
 import { DataBadge } from "@/components/dashboard/DataBadge";
-import { Pagination } from "@/components/common/Pagination";
-import { AXIS, KpiTile, StatPanel, TOOLTIP, fmt, Y_AXIS_W } from "@/components/common/panels";
+import { AXIS, KpiTile, PanelLoader, StatPanel, TOOLTIP, fmt, Y_AXIS_W } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
-/** Jadvaldagi bitta sahifa. */
-const PAGE_SIZE = 20;
-/** CSV'ga ko'pi bilan shuncha yozuv (10 ta `limit=500` so'rov). */
-const CSV_MAX = 5_000;
-
-/** "Xavfli" — janjal + qurol (`DetectionKpiModals.isDangerEvent` bilan AYNI). */
-const isDanger = (ev: NvrEvent) => ev.category === "janjal" || ev.category === "gun";
 
 /** `YYYY-MM-DD` → mahalliy yarim tun (vaqt zonasi siljimasin). */
 const dayDate = (day: string) => new Date(`${day}T00:00:00`);
@@ -107,69 +95,18 @@ export function StatEvents({ period }: { period: StatPeriod }) {
 
   const cameras = s.byChannel.slice(0, 8);
 
-  /* ── So'nggi hodisalar — SERVER sahifalashi ── */
-  const [page, setPage] = useState(1);
-  /* Davr almashsa 1-sahifaga qaytiladi (render paytida — oradagi renderda
-     eski `offset` bilan noto'g'ri so'rov ketmasin). */
-  const rangeKey = `${period.from}|${period.to}`;
-  const [seenRange, setSeenRange] = useState(rangeKey);
-  if (seenRange !== rangeKey) {
-    setSeenRange(rangeKey);
-    setPage(1);
-  }
-  const recentQ = useQuery({
-    queryKey: ["stat-events-page", period.from, period.to, page],
-    queryFn: () =>
-      listEvents("all", {
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-        date_from: period.from,
-        date_to: period.to,
-      }),
-    placeholderData: keepPreviousData,
-    staleTime: 30_000,
-  });
-  const rows = recentQ.data?.events ?? [];
-  const totalRows = recentQ.data?.total ?? s.total;
-  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-
-  /* ── CSV — faqat bosilganda, sahifalab ── */
-  const [exporting, setExporting] = useState(false);
-  const exportCsv = async () => {
-    if (exporting) return;
-    setExporting(true);
-    try {
-      const all: NvrEvent[] = [];
-      for (let offset = 0; offset < CSV_MAX; offset += NVR_MAX_LIMIT) {
-        const p = await listEvents("all", {
-          limit: NVR_MAX_LIMIT,
-          offset,
-          date_from: period.from,
-          date_to: period.to,
-        });
-        const got = p.events ?? [];
-        all.push(...got);
-        if (got.length < NVR_MAX_LIMIT || all.length >= (p.total ?? 0)) break;
-      }
-      const csv = toCsv(
-        [t.stats.col.date, t.stats.col.time, t.stats.col.type, t.stats.col.camera, t.stats.col.severity],
-        all.map((ev) => [
-          ev.time.slice(0, 10),
-          nvrTime(ev.time),
-          t.detect.category[ev.category] ?? ev.category_label,
-          cameraPlaceLabel(ev.channel, ev.camera),
-          isDanger(ev) ? t.common.dangerous : "",
-        ])
-      );
-      downloadCsv(csvName("statistika-hodisalar"), csv);
-    } finally {
-      setExporting(false);
-    }
-  };
+  /* 🔴 "So'nggi hodisalar" jadvali (va uning CSV eksporti) OLIB TASHLANDI
+     (2026-10-26, foydalanuvchi: "bu kerak emas") — bir xil "Shaxsni aniqlash ·
+     Kirish posti" qatorlari hech narsa bermasdi; har hodisani ko'rish uchun
+     "Aniqlanganlar" bo'limi bor. */
 
   return (
     <div className="flex flex-col gap-3">
-      {/* ── Asosiy ko'rsatkichlar ── */}
+      {/* ── Asosiy ko'rsatkichlar ──
+          Yuklanish — "Umumiy" tabidagi slayder (2026-10-23); ilgari `0` turardi. */}
+      {s.isLoading ? (
+        <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[74px] rounded-xl" />
+      ) : (
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
         <KpiTile
           Icon={Broadcast}
@@ -200,6 +137,7 @@ export function StatEvents({ period }: { period: StatPeriod }) {
           tone="#A78BFA"
         />
       </div>
+      )}
 
       {s.anomalies.length > 0 && (
         <div className="hik-glass-blue flex flex-wrap items-center gap-2 rounded-xl px-3 py-2">
@@ -220,6 +158,9 @@ export function StatEvents({ period }: { period: StatPeriod }) {
           right={<DataBadge live={live} />}
           className="min-h-[210px]"
         >
+          {s.isLoading ? (
+            <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[170px]" />
+          ) : (
           <div className="h-[170px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourly} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -236,6 +177,7 @@ export function StatEvents({ period }: { period: StatPeriod }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </StatPanel>
 
         <StatPanel
@@ -245,10 +187,10 @@ export function StatEvents({ period }: { period: StatPeriod }) {
           className="min-h-[210px]"
           delay={0.04}
         >
-          {daily.length === 0 ? (
-            <p className="py-6 text-center text-[11.5px] text-slate-500">
-              {s.isLoading ? t.common.loading : t.stats.emptyEvents}
-            </p>
+          {s.isLoading ? (
+            <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[170px]" />
+          ) : daily.length === 0 ? (
+            <EmptyState compact className="py-6" title={t.stats.emptyEvents} />
           ) : (
             <div className="h-[170px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -269,16 +211,20 @@ export function StatEvents({ period }: { period: StatPeriod }) {
       {/* ── Turlar + kameralar ── */}
       <div className="grid gap-3 xl:grid-cols-[1fr_1.4fr]">
         <StatPanel title={t.dashboard.byCategory} className="min-h-[180px]" delay={0.08}>
-          {segments.length === 0 ? (
-            <p className="py-6 text-center text-[11.5px] text-slate-500">{t.stats.emptyEvents}</p>
+          {s.isLoading ? (
+            <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[120px]" />
+          ) : segments.length === 0 ? (
+            <EmptyState compact className="py-6" title={t.stats.emptyEvents} />
           ) : (
             <DonutChart size={104} total={s.total} caption={t.stats.kpi.detections} segments={segments} />
           )}
         </StatPanel>
 
         <StatPanel title={t.stats.panel.cameraTop} hint={t.stats.panel.cameraTopHint} className="min-h-[180px]" delay={0.12}>
-          {cameras.length === 0 ? (
-            <p className="py-6 text-center text-[11.5px] text-slate-500">{t.stats.emptyEvents}</p>
+          {s.isLoading ? (
+            <PanelLoader days={period.days} allTime={period.id === "all"} className="h-[120px]" />
+          ) : cameras.length === 0 ? (
+            <EmptyState compact className="py-6" title={t.stats.emptyEvents} />
           ) : (
             <ul className="space-y-1.5">
               {cameras.map((c) => (
@@ -296,80 +242,6 @@ export function StatEvents({ period }: { period: StatPeriod }) {
           )}
         </StatPanel>
       </div>
-
-      {/* ── So'nggi hodisalar — sahifalangan jadval ── */}
-      <StatPanel
-        title={t.stats.panel.recent}
-        hint={`${t.stats.panel.recentHint(PAGE_SIZE)} · ${n(totalRows)}`}
-        right={
-          <span className="flex items-center gap-2">
-            <DataBadge live={live} />
-            <button
-              type="button"
-              onClick={exportCsv}
-              disabled={exporting}
-              title={t.stats.exportHint}
-              className="hik-chip px-2 py-1 text-[10px] text-slate-300 transition-colors hover:text-ice-bright disabled:opacity-50"
-            >
-              <DownloadSimple size={12} weight="bold" />
-              {exporting ? t.common.loading : t.stats.exportCsv}
-            </button>
-          </span>
-        }
-        delay={0.16}
-        bodyClass="overflow-x-auto"
-      >
-        <table className="w-full min-w-[560px] border-collapse text-[11.5px]">
-          <thead className="text-[9.5px] uppercase tracking-wide text-slate-500">
-            <tr className="border-b border-white/[0.08]">
-              <th className="px-2 py-1.5 text-left font-medium">{t.stats.col.time}</th>
-              <th className="px-2 py-1.5 text-left font-medium">{t.stats.col.type}</th>
-              <th className="px-2 py-1.5 text-left font-medium">{t.stats.col.camera}</th>
-              <th className="px-2 py-1.5 text-right font-medium">{t.stats.col.severity}</th>
-            </tr>
-          </thead>
-          <tbody className={recentQ.isFetching && recentQ.isPlaceholderData ? "opacity-60" : undefined}>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-500">
-                  {recentQ.isLoading ? t.common.loading : t.stats.emptyEvents}
-                </td>
-              </tr>
-            )}
-            {rows.map((ev) => (
-              <tr key={ev.id} className="border-b border-white/[0.04]">
-                <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-400">
-                  {ev.time.slice(5, 10)} {nvrTime(ev.time)}
-                </td>
-                <td className="px-2 py-1.5 text-slate-100">{t.detect.category[ev.category] ?? ev.category_label}</td>
-                <td className="max-w-[220px] truncate px-2 py-1.5 text-slate-400">
-                  {cameraPlaceLabel(ev.channel, ev.camera)}
-                </td>
-                <td className="px-2 py-1.5 text-right">
-                  {isDanger(ev) ? (
-                    <span className="rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-rose-300">
-                      {t.common.dangerous}
-                    </span>
-                  ) : (
-                    <span className="text-slate-600">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {totalPages > 1 && (
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onChange={setPage}
-            prevLabel={t.detections.prev}
-            nextLabel={t.detections.next}
-            ariaLabel={`${page} / ${totalPages}`}
-            className="mt-2"
-          />
-        )}
-      </StatPanel>
     </div>
   );
 }

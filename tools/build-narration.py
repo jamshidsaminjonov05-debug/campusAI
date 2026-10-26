@@ -2,9 +2,8 @@
 """
 Taqdimot ovozini generatsiya qiladi.
 
-IKKITA taqdimot bor va ularning ovozi alohida (`--deck`):
-    product   `/taqdimot`  — mahsulot imkoniyatlari      (standart)
-    investor  `/investor`  — bozor va investitsiya taklifi
+Taqdimot ovozi (`--deck`, hozir faqat investor):
+    investor  `/investor`  — investor taqdimoti (yagona)
 
 Matn:   `<taqdimot>/copy/{uz,en}.ts` → `narration`
 Xizmat: O'zbek STT-TTS API — IKKALA TILDA HAM AYOL OVOZI
@@ -44,23 +43,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 # ── Taqdimotlar ro'yxati ────────────────────────────────────────────────
 # Sayt ikkita taqdimotni ko'rsatadi va ularning ovozi ALOHIDA:
-#   product  → /taqdimot  — mahsulot imkoniyatlari
 #   investor → /investor  — bozor, raqobat va investitsiya taklifi
 #
 # `cache` — qaysi matndan qaysi fayl chiqqani. `public/` ichida emas:
 # u yerda faqat brauzerga keradigan narsa turishi kerak.
 #
-# ⚠️ `product` keshi ATAYLAB ildizda (`.narration-cache`) qoldirilgan —
-# u yerda allaqachon generatsiya qilingan fayllar bor va yo'lni
-# o'zgartirish butun taqdimotni qaytadan sintez qilishga majbur qilardi.
 DECKS = {
-    "product": {
-        "copy": ("src", "components", "presentation", "copy"),
-        "ts": ("src", "components", "presentation", "narrationAudio.ts"),
-        "audio": ("public", "audio", "taqdimot"),
-        "url": "/audio/taqdimot",
-        "cache": ("tools", ".narration-cache"),
-    },
     "investor": {
         "copy": ("src", "components", "investor", "copy"),
         "ts": ("src", "components", "investor", "narrationAudio.ts"),
@@ -314,7 +302,7 @@ export const NARRATION_AUDIO: Record<string, Record<number, AudioSegment>> = {
 def main() -> None:
     global FFMPEG
     ap = argparse.ArgumentParser()
-    ap.add_argument("--deck", choices=sorted(DECKS), default="product", help="qaysi taqdimot uchun ovoz")
+    ap.add_argument("--deck", choices=sorted(DECKS), default="investor", help="qaysi taqdimot uchun ovoz")
     ap.add_argument("--api", default=API_DEFAULT)
     ap.add_argument("--lang", choices=["uz", "en"], action="append")
     ap.add_argument("--force", action="store_true", help="keshni e'tiborsiz qoldirib qayta generatsiya qilish")

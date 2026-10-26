@@ -6,6 +6,7 @@ import { searchInstitutionRows, type InstitutionRow } from "@/lib/nvr/institutio
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { useAppStore } from "@/store/useAppStore";
 import { DashPanel } from "./DashPanel";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /**
  * Dashboard xaritasi ustida suzuvchi — KUZATUVDAGI o'quv muassasalari
@@ -98,7 +99,7 @@ export function InstitutionsPanel() {
 
                 <div className="-mr-1.5 max-h-[360px] space-y-2 overflow-y-auto pr-1.5">
                   {found.length === 0 && (
-                    <p className="px-1 py-6 text-center text-[11.5px] text-slate-500">{t.institutions.notFound}</p>
+                    <EmptyState compact className="py-6" title={t.institutions.notFound} />
                   )}
                   {found.length > 0 && (
                     <Group label={t.institutions.groupMonitored}>

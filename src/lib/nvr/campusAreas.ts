@@ -11,6 +11,7 @@
  * butun Toshkent shahri konturini chizmaydi — faqat kuzatuv olib borilayotgan
  * hududlar ko'rinadi.
  */
+import { GROUND_COLORS, type CampusGroundPlan } from "@/config/campusGround";
 import { INSTITUTIONS } from "@/config/institutions";
 
 /** Metr ↔ daraja (kampus markazi atrofidagi tekis yaqinlashish). */
@@ -48,14 +49,8 @@ export interface CampusBuilding {
    * `Map3D.tsx`) qayta hisoblamasdan shu bayroqdan foydalanadi.
    */
   hasFacade: boolean;
-  /**
-   * XOM (metr fazosidagi) bino yozuvi — `BuildingInterior.tsx` shu
-   * shaklni kutadi (`{p, h, n}`, `mk-179.json`dagi bilan AYNI). `ring`
-   * (yuqorida) xaritaga chizish uchun lng/lat'ga o'girilgan va
-   * `BUILDING_PAD` bilan kengaytirilgan — ICHKI reja esa ASL konturdan
-   * qurilishi kerak, shuning uchun ikkalasi ALOHIDA saqlanadi.
-   */
-  raw: { p: [number, number][]; h: number; n?: string };
+  /* `raw` (metr fazosidagi asl kontur) 2026-10-26 da olib tashlandi — yagona
+     iste'molchisi `BuildingInterior` (bino ichki ko'rinishi) o'chirildi. */
 }
 
 export interface CampusArea {
@@ -156,7 +151,6 @@ function toArea(id: string, short: string, file: CampusFile): CampusArea | null 
            izohiga qarang (`facadeToGeoJson()` shu bayroqni qayta
            hisoblamasdan ishlatadi). */
         hasFacade: polyArea(b.p) >= FACADE_MIN_AREA_M2,
-        raw: { p: b.p, h, n: b.n },
       };
     });
 
@@ -206,6 +200,43 @@ export function areasToGeoJson(areas: CampusArea[]) {
       geometry: { type: "Polygon" as const, coordinates: [a.ring] },
     })),
   };
+}
+
+/**
+ * YER REJASI (`config/campusGround.ts`) → GeoJSON. Metr poligonlar kampus
+ * `origin` idan lng/lat ga o'giriladi (`toArea` dagi bilan AYNI formula —
+ * y JANUBGA o'sadi). Birinchi feature — MAYSA (butun hudud halqasi),
+ * qolganlari asfalt/plitka/bog' uning ustidan. `id` — kampus id'si
+ * (`setCampusFilter` "selected" rejimida shu bo'yicha filtrlaydi).
+ */
+export function groundToGeoJson(areas: CampusArea[], plans: readonly CampusGroundPlan[]) {
+  const features: {
+    type: "Feature";
+    properties: { id: string; kind: string; color: string };
+    geometry: { type: "Polygon"; coordinates: LngLat[][] };
+  }[] = [];
+  for (const a of areas) {
+    const plan = plans.find((g) => g.campusId === a.id);
+    if (!plan) continue;
+    const [lng0, lat0] = a.origin;
+    const mLng = M_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
+    const toLngLat = ([x, y]: [number, number]): LngLat => [lng0 + x / mLng, lat0 - y / M_PER_DEG_LAT];
+    features.push({
+      type: "Feature",
+      properties: { id: a.id, kind: "grass", color: plan.grass },
+      geometry: { type: "Polygon", coordinates: [a.ring] },
+    });
+    for (const z of plan.zones) {
+      const ring = z.p.map(toLngLat);
+      ring.push(ring[0]);
+      features.push({
+        type: "Feature",
+        properties: { id: a.id, kind: z.kind, color: GROUND_COLORS[z.kind] },
+        geometry: { type: "Polygon", coordinates: [ring] },
+      });
+    }
+  }
+  return { type: "FeatureCollection" as const, features };
 }
 
 /** Hudud ICHIDAGI binolar — alohida manba (ochiq rangda ko'tariladi). */

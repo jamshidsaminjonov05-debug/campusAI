@@ -51,7 +51,10 @@ export function useNvrChannels() {
       online: list.filter((c) => c.online).length,
       total: list.length,
       isLoading: query.isLoading,
+      isFetching: query.isFetching,
       error: query.error,
+      /** "Qayta urinish" tugmasi uchun — xato holatida keshni kutmasdan so'raydi. */
+      refetch: query.refetch,
     };
-  }, [channels, query.isLoading, query.error]);
+  }, [channels, query.isLoading, query.isFetching, query.error, query.refetch]);
 }

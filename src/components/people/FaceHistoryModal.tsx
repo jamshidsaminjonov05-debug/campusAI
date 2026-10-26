@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,22 +9,18 @@ import {
   Camera,
   CaretLeft,
   CaretRight,
-  Clock,
   Link as LinkIcon,
   LinkBreak,
   MagnifyingGlass,
   MagnifyingGlassPlus,
   UserFocus,
-  Warning,
   X,
 } from "@phosphor-icons/react";
 import { useModalHistory } from "@/hooks/useModalHistory";
-import { PersonIncidents } from "@/components/people/PersonIncidents";
-import { faceKey, personKey } from "@/lib/nvr/personIncidents";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { ImageLightbox } from "@/components/common/ImageLightbox";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
-import { Pagination } from "@/components/common/Pagination";
+import { EventVideo } from "@/components/detections/EventVideo";
 import {
   assignFace,
   getAttendanceSettings,
@@ -34,16 +30,17 @@ import {
   nvrDateTime,
   nvrImageUrl,
   nvrPersonPhotoUrl,
+  nvrEventVideoUrl,
   nvrTime,
 } from "@/lib/nvr/nvrApi";
 import { useNvrPeople } from "@/hooks/useNvrPeople";
-import { attDay, usePersonAttendanceRate } from "@/hooks/useNvrAttendance";
-import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { fmt } from "@/components/common/panels";
+import { usePersonAttendanceRate } from "@/hooks/useNvrAttendance";
+import { fmt, ListSkeleton } from "@/components/common/panels";
 import { useT } from "@/i18n";
 import { absenceSnapshot, getReason, subscribeAbsence, EXCUSED_CODES } from "@/lib/nvr/absenceReasons";
 import { dayMonthLongLabel } from "@/lib/dateLabel";
 import type { NvrEvent } from "@/lib/nvr/nvrApi";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /**
  * SHAXS TARIXI — bitta `face_id`ning butun kuzatuv tarixi.
@@ -52,7 +49,7 @@ import type { NvrEvent } from "@/lib/nvr/nvrApi";
  * o'zi hisoblab beradi: `stats` (jami/birinchi/oxirgi/kunlar/kameralar +
  * kunlar kesimi) va `events` (har bir qaydning o'zi — kadr shundan).
  *
- * ⚠️ Bu oyna **"Hammasi" ro'yxati** (`AllPeoplePage`) va **ro'yxatdagi
+ * ⚠️ Bu oyna **yuz oqimi** (ilgari `AllPeoplePage` — 2026-10-23 da o'chirilgan; endi dossiye/`RecentEntriesPanel`) va **ro'yxatdagi
  * shaxs** (`PeoplePage` — ism/rasm bosilganda) ikkalasidan ham ochiladi:
  * `face_id` — kuzatuv postining o'z raqami, backend `Person.id` (UUID)
  * bilan bog'liq emas. Ro'yxatdagi shaxs bosilganda mos `face_id` ISM
@@ -66,11 +63,19 @@ import type { NvrEvent } from "@/lib/nvr/nvrApi";
 export function FaceHistoryModal({
   faceId,
   personId,
+  initial,
   onClose,
   zClass = "z-[85]",
 }: {
   /** Kuzatuv jurnalidagi yuz raqami. */
   faceId?: number;
+  /**
+   * Chaqiruvchi ALLAQACHON biladigan ma'lumot (ism, sinf/rol) — oyna
+   * ochilgan ZAHOTI sarlavhada ko'rinadi, server javobini kutmaydi
+   * (2026-10-23, foydalanuvchi so'rovi: ilgari butun oyna bitta aylanuvchi
+   * belgi ortida, sarlavhada esa "Begona shaxs #0" deb turardi).
+   */
+  initial?: { name: string; subtitle?: string | null };
   /**
    * RO'YXATDAGI shaxs raqami (`NvrPerson.id`). `GET /people/{id}`
    * `getFace()` bilan AYNI shaklda javob beradi (o'lchandi 2026-09-04:
@@ -95,16 +100,6 @@ export function FaceHistoryModal({
   const n = (v: number) => fmt(v, t.locale);
   useModalHistory(onClose);
 
-  /* 🔵 STANDART "BUGUN" (2026-09-10, foydalanuvchi so'rovi) — ilgari
-     "all" edi, ya'ni oyna ochilishning O'ZIDA butun tarixni (yuzlab
-     kadr, ko'p sahifa) ko'rsatardi. Endi birinchi navbatda BUGUNGI kun
-     ko'rinadi, butun tarix esa pastdagi pilyulalardan "Butun tarix"
-     bilan ORQADA turadi — qidirish kerak bo'lganda bir bosishda ochiladi. */
-  const [period, setPeriod] = useState<"today" | "all" | "7" | "30" | "90" | "custom">("today");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const [framePage, setFramePage] = useState(0);
-  const [openEventId, setOpenEventId] = useState<number | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const qc = useQueryClient();
 
@@ -157,34 +152,17 @@ export function FaceHistoryModal({
   const attRole = personRole === "student" || personRole === "teacher" ? personRole : null;
   const attRate = usePersonAttendanceRate(attPersonId, attRole);
 
-  /* "BARCHA KADRLAR" — davr bo'yicha filtrlanadi. `events` allaqachon
-     serverdan yangidan-eskiga kelgan. */
-  const frames = useMemo(() => {
-    const all = data?.events ?? [];
-    if (period === "all") return all;
-    if (period === "today") {
-      const today = attDay();
-      return all.filter((e) => e.time.slice(0, 10) === today);
-    }
-    if (period === "custom") {
-      const from = customFrom ? new Date(`${customFrom}T00:00:00`).getTime() : -Infinity;
-      const to = customTo ? new Date(`${customTo}T23:59:59`).getTime() : Infinity;
-      return all.filter((e) => {
-        const ts = new Date(e.time).getTime();
-        return ts >= from && ts <= to;
-      });
-    }
-    const days = Number(period);
-    const cutoff = Date.now() - days * 86_400_000;
-    return all.filter((e) => new Date(e.time).getTime() >= cutoff);
-  }, [data?.events, period, customFrom, customTo]);
-
-  const FRAMES_PER_PAGE = 12;
-  const frameTotalPages = Math.max(1, Math.ceil(frames.length / FRAMES_PER_PAGE));
-  const framePageClamped = Math.min(framePage, frameTotalPages - 1);
-  const pageFrames = frames.slice(framePageClamped * FRAMES_PER_PAGE, (framePageClamped + 1) * FRAMES_PER_PAGE);
-
-  const displayName = data?.name?.trim() || pnl.unknownFace(faceId ?? 0);
+  /* Ism: server javobi → chaqiruvchi bergan ism → faqat yuz raqami bo'lsa
+     "Begona shaxs #N". `personId` bilan ochilganda "Begona shaxs #0" degan
+     yolg'on sarlavha CHIQMAYDI (ro'yxatdagi odam begona emas). */
+  const displayName = data?.name?.trim() || initial?.name?.trim() || (faceId != null ? pnl.unknownFace(faceId) : "…");
+  const subtitle = data?.person
+    ? data.person.role
+    : initial?.subtitle
+      ? initial.subtitle
+      : personId != null
+        ? ""
+        : pnl.hintNotInList;
 
   /**
    * Sarlavhadagi rasm va uni kattalashtirish.
@@ -197,15 +175,21 @@ export function FaceHistoryModal({
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarImages = useMemo(() => {
     const out: { src: string; label: string }[] = [];
-    if (data?.person) out.push({ src: nvrPersonPhotoUrl(data.person.id), label: pnl.libraryPhoto });
+    /* Bazadagi surat — `personId` ma'lum bo'lsa DARHOL (server javobini
+       kutmasdan): manzil faqat raqamdan quriladi. */
+    const libId = data?.person?.id ?? personId ?? null;
+    if (libId != null) out.push({ src: nvrPersonPhotoUrl(libId), label: pnl.libraryPhoto });
     const frame = (data?.events ?? []).find((e) => e.image_url);
     if (frame) {
       const u = nvrImageUrl(frame, 0);
       if (u) out.push({ src: u, label: `${pnl.camera} · ${nvrDateTime(frame.time)}` });
     }
     return out;
-  }, [data, pnl]);
+  }, [data, personId, pnl]);
   const avatar = avatarImages[0] ?? null;
+  /* Surat serverda bo'lmasa (404) — ikonkaga qaytadi, buzilgan rasm chizilmaydi. */
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => setAvatarFailed(false), [avatar?.src]);
 
   const body = (
     <motion.div
@@ -221,7 +205,9 @@ export function FaceHistoryModal({
         aria-label={displayName}
         onClick={(e) => e.stopPropagation()}
         /* 🔵 NEON QAYTA DIZAYN (2026-09-10) — ilgari `geo-strip-card` edi. */
-        className="neon-modal neon-modal--violet flex max-h-[92vh] w-[min(980px,96vw)] flex-col overflow-hidden"
+        /* 🔵 TO'LIQ EKRAN (2026-10-23, foydalanuvchi so'rovi) — balandlik
+           QAT'IY, mazmun yuklanishiga qarab oyna "sakramaydi". */
+        className="neon-modal neon-modal--violet flex h-[92vh] w-[min(1240px,96vw)] flex-col overflow-hidden"
       >
         <header className="relative flex flex-none h-[100px] flex-wrap items-center gap-3 border-b border-white/[0.08] px-4 py-3">
           {/* ── SHAXS RASMI — bosilsa KATTALASHADI ──
@@ -230,7 +216,7 @@ export function FaceHistoryModal({
               ketayotganini faqat ismdan bilish mumkin edi. Rasm
               ustuvorligi `FaceDatabasePage` bilan AYNI: bazadagi surat →
               kamera kadri. */}
-          {avatar ? (
+          {avatar && !avatarFailed ? (
             <button
               type="button"
               onClick={() => setAvatarOpen(true)}
@@ -238,7 +224,7 @@ export function FaceHistoryModal({
               className="group relative h-full w-[80px] flex-none overflow-hidden rounded-lg ring-1 ring-ice/25 hover:ring-ice/60"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={avatar.src} alt={displayName} className="h-full w-full object-cover" />
+              <img src={avatar.src} alt={displayName} onError={() => setAvatarFailed(true)} className="h-full w-full object-cover" />
               <span className="absolute inset-0 grid place-items-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                 <MagnifyingGlassPlus size={14} className="text-white" />
               </span>
@@ -251,7 +237,8 @@ export function FaceHistoryModal({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-bold text-white">{displayName}</p>
             <p className="truncate text-[10.5px] text-slate-500">
-              {data?.person ? data.person.role : "yuz bazasida yo'q"} · #{faceId}
+              {subtitle}
+              {faceId != null && `${subtitle ? " · " : ""}#${faceId}`}
             </p>
           </div>
           {stats && (
@@ -301,11 +288,12 @@ export function FaceHistoryModal({
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {q.isLoading ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-            </div>
-          ) : !stats ? (
+          {/* 🔴 BITTA UMUMIY AYLANUVCHI BELGI YO'Q (2026-10-23, foydalanuvchi
+              so'rovi). Ilgari server javobi kelguncha butun oyna bo'sh
+              turardi. Endi sarlavha (ism, rasm) darhol, bo'limlar esa
+              o'z joyida ALOHIDA yuklanadi — qaysi qism hali kelmagan bo'lsa
+              o'sha qismda skelet (`Skeleton`) turadi. */}
+          {!q.isLoading && !stats ? (
             <p className="py-10 text-center text-[12px] text-slate-500">{pnl.notFound}</p>
           ) : (
             <>
@@ -315,12 +303,25 @@ export function FaceHistoryModal({
                   o'zi kam ma'noli edi, davomat esa doim so'raladigan
                   ko'rsatkich. Faqat davomat ro'yxatidagi shaxs uchun
                   (`attRole` topilganda) — notanish yuzda bu tushuncha yo'q. */}
+              {!stats ? (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Skeleton key={i} className="h-[58px]" />
+                  ))}
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <StatCell label={pnl.total} value={n(stats.total)} hint={pnl.hintAllCases} />
                 <StatCell
                   label={pnl.attRate}
                   value={attRole == null ? "—" : attRate.isLoading ? "…" : attRate.rate != null ? `${attRate.rate}%` : "—"}
-                  hint={attRole == null ? pnl.hintNotInList : pnl.hintLast7}
+                  hint={
+                    attRole == null
+                      ? pnl.hintNotInList
+                      : attRate.rate != null
+                        ? pnl.hintLast7Days(n(attRate.days))
+                        : pnl.hintLast7
+                  }
                 />
                 <StatCell
                   label={pnl.lastSeen}
@@ -330,6 +331,7 @@ export function FaceHistoryModal({
                 <StatCell label={pnl.days} value={n(stats.days)} hint={pnl.hintDaysSeen} />
                 <StatCell label={t.common.cameras} value={n(stats.cameras.length)} hint={pnl.hintCountUnit} />
               </div>
+              )}
 
               {/* 🔵 ARALASH GURUH OGOHLANTIRISHI (`FRONTEND.md`, 2026-09-10
                   kechki — "Shaxs tarixiga BEGONA kadrlar tushmaydi").
@@ -344,36 +346,17 @@ export function FaceHistoryModal({
                 </p>
               )}
 
-              {/* QAYSI KAMERADA */}
-              <Section icon={Camera} title={pnl.whichCamera}>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[11.5px]">
-                    <thead className="text-[9.5px] uppercase tracking-wide text-slate-500">
-                      <tr className="border-b border-white/[0.08]">
-                        <th className="px-2 py-1.5 text-left font-medium">{pnl.camera}</th>
-                        <th className="px-2 py-1.5 text-right font-medium">{pnl.howMany}</th>
-                        <th className="px-2 py-1.5 text-right font-medium">{pnl.first}</th>
-                        <th className="px-2 py-1.5 text-right font-medium">{pnl.last}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.cameras.map((c) => (
-                        <tr key={c.channel} className="border-b border-white/[0.04]">
-                          <td className="px-2 py-1.5 font-semibold text-slate-200">
-                            {cameraPlaceLabel(c.channel, c.camera)} <span className="text-slate-500">#{c.channel}</span>
-                          </td>
-                          <td className="px-2 py-1.5 text-right font-mono text-slate-300">{n(c.count)}</td>
-                          <td className="px-2 py-1.5 text-right font-mono text-slate-500">{nvrDateTime(c.first_seen)}</td>
-                          <td className="px-2 py-1.5 text-right font-mono text-slate-500">{nvrDateTime(c.last_seen)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Section>
+              {/* ⚠️ "QAYSI KAMERADA" jadvali OLIB TASHLANDI (2026-10-23,
+                  foydalanuvchi so'rovi). Kamera soni yuqoridagi KPI'da,
+                  har kadrning kamerasi "Barcha kadrlar"da ko'rinadi.
+                  Server `stats.cameras`ni beraveradi — qaytarish kerak
+                  bo'lsa git tarixidan. */}
 
               {/* QAYSI KUNLARI — OY KESIMIDA KALENDAR + KUN TAFSILOTI */}
-              <Section icon={CalendarBlank} title={pnl.whichDays} hint={pnl.daysTotal(n(stats.by_day.length))}>
+              <Section icon={CalendarBlank} title={pnl.whichDays} hint={stats ? pnl.daysTotal(n(stats.by_day.length)) : undefined}>
+                {!stats ? (
+                  <Skeleton className="h-[260px]" />
+                ) : (
                 <AttendanceCalendarSection
                   byDay={stats.by_day}
                   firstSeen={stats.first_seen}
@@ -381,6 +364,7 @@ export function FaceHistoryModal({
                   events={data?.events ?? []}
                   personId={data?.person?.id ?? personId ?? null}
                 />
+                )}
               </Section>
 
               {/* ⚠️ "FAOL KAMERALAR" BO'LIMI OLIB TASHLANDI (2026-09-10,
@@ -388,135 +372,18 @@ export function FaceHistoryModal({
                   StatCell'ida ALLAQACHON bor edi, bu yerda faqat
                   takrorlanardi va joy egallardi. */}
 
-              {/* BOSHQA HODISALAR — janjal/qurol/chekish (operator biriktiradi).
-                  Server bu bog'lanishni BERMAYDI — sababi
-                  `components/people/PersonIncidents.tsx` boshida. */}
-              <Section
-                icon={Warning}
-                title={pnl.incidents}
-                hint={pnl.incidentsHint}
-              >
-                <PersonIncidents
-                  subjectKey={
-                    data?.person?.id != null
-                      ? personKey(data.person.id)
-                      : personId != null
-                        ? personKey(personId)
-                        : faceKey(faceId ?? 0)
-                  }
-                  cameras={(stats?.cameras ?? []).map((c) => c.channel)}
-                  onOpenEvent={setOpenEventId}
-                />
-              </Section>
-
-              {/* BARCHA KADRLAR */}
-              <Section icon={Clock} title={pnl.allFrames} hint={pnl.framesHint}>
-                <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                  {/* 🔵 "Bugun" — STANDART tanlov (2026-09-10, foydalanuvchi
-                      so'rovi), "Butun tarix" esa ORQADA — qidirish kerak
-                      bo'lganda bir bosishda ochiladi, lekin oyna
-                      ochilishning O'ZIDA yuzlab eski kadrni yuklamaydi. */}
-                  {(["today", "7", "30", "90", "all"] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => {
-                        setPeriod(p);
-                        setFramePage(0);
-                      }}
-                      className={`rounded-full border px-2.5 py-1 text-[10.5px] font-semibold transition-colors ${
-                        period === p
-                          ? "border-ice/50 bg-ice/[0.16] text-ice-bright"
-                          : "border-white/10 bg-white/[0.04] text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      {p === "today" ? pnl.today : p === "all" ? pnl.allHistory : `${p} ${pnl.daysUnit}`}
-                    </button>
-                  ))}
-                  <input
-                    type="date"
-                    value={customFrom}
-                    onChange={(e) => {
-                      setCustomFrom(e.target.value);
-                      setPeriod("custom");
-                      setFramePage(0);
-                    }}
-                    className="hik-input h-7 px-2 text-[11px] text-slate-200 [color-scheme:dark]"
-                  />
-                  <span className="text-slate-600">—</span>
-                  <input
-                    type="date"
-                    value={customTo}
-                    onChange={(e) => {
-                      setCustomTo(e.target.value);
-                      setPeriod("custom");
-                      setFramePage(0);
-                    }}
-                    className="hik-input h-7 px-2 text-[11px] text-slate-200 [color-scheme:dark]"
-                  />
-                  {(customFrom || customTo) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomFrom("");
-                        setCustomTo("");
-                        setPeriod("all");
-                      }}
-                      className="text-[10.5px] text-slate-500 hover:text-slate-300"
-                    >
-                      {pnl.clear}
-                    </button>
-                  )}
-                  <span className="ml-auto font-mono text-[10.5px] text-slate-500">
-                    {frames.length > 0 ? `${framePageClamped + 1} / ${frameTotalPages} sahifa` : "0 kadr"}
-                  </span>
-                </div>
-
-                {frames.length === 0 ? (
-                  <p className="py-6 text-center text-[11.5px] text-slate-500">{pnl.noFramesPeriod}</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-                    {pageFrames.map((ev) => (
-                      <button
-                        key={ev.id}
-                        type="button"
-                        onClick={() => setOpenEventId(ev.id)}
-                        title={pnl.openEventAt(nvrDateTime(ev.time))}
-                        className="group relative overflow-hidden rounded-lg border border-white/[0.1] transition-colors hover:border-ice/50"
-                      >
-                        <DetectionThumb id={ev.id} pictureLost={ev.picture_lost} className="aspect-[4/3] w-full" alt="" index={ev.image_count > 1 ? 1 : 0} />
-                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-1 py-0.5 text-center font-mono text-[9px] text-slate-200">
-                          {nvrTime(ev.time)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* 🔴 TOPILDI VA TUZATILDI (2026-09-10, foydalanuvchi
-                    so'radi: "pagination aynan bosilishi kerak"). Ilgari
-                    bu yerda qo'lda yozilgan ‹ N › widget turardi —
-                    ISHLARDI, lekin ko'rinishi ("sahifa raqami" emas,
-                    faqat ikkita o'q + bitta son) chindan ham
-                    "bosiladigan pagination"dek tanilmasdi. Endi butun
-                    ilovada ishlatiladigan BITTA komponent
-                    (`Pagination` — "Aniqlanganlar", davomat ro'yxati va
-                    h.k.), raqamlangan sahifalar bilan. */}
-                <Pagination
-                  page={framePageClamped + 1}
-                  totalPages={frameTotalPages}
-                  onChange={(p) => setFramePage(p - 1)}
-                  prevLabel={t.detections.prev}
-                  nextLabel={t.detections.next}
-                  className="mt-2.5"
-                />
-              </Section>
+              {/* 🔴 "BOSHQA HODISALAR" (`PersonIncidents`) va "BARCHA KADRLAR"
+                  (davr filtri + kadr panjarasi + sahifalash) BO'LIMLARI OLIB
+                  TASHLANDI (2026-10-23, foydalanuvchi so'rovi, skrinshot
+                  bilan). Kadrlar "Aniqlanganlar" bo'limida o'z filtri va
+                  sahifalashi bilan bor; hodisa biriktirish esa o'sha
+                  hodisaning dossiyesidan qilinadi. Bu bilan `EventDossier`,
+                  davr/sahifa holati ham ketdi (kalendar kun kesimidagi
+                  kadrlar — `DayDetail` — o'z joyida qoladi). */}
             </>
           )}
         </div>
       </div>
-
-      <EventDossier eventId={openEventId} onClose={() => setOpenEventId(null)} />
 
       {/* ⚠️ Ko'ruvchi SHU oynaning USTIDAN ochiladi va o'zi `z-[70]` da —
           bu oyna esa `z-[85]`. Shuning uchun o'ram bilan ko'tariladi,
@@ -606,11 +473,11 @@ function AssignPicker({ onPick, busy }: { onPick: (personId: number) => void; bu
           className="w-full bg-transparent text-[11.5px] outline-none placeholder:text-slate-600"
         />
       </label>
-      <div className="max-h-[220px] overflow-y-auto">
+      <div className="h-[220px] overflow-y-auto">
         {q.isLoading ? (
-          <p className="py-3 text-center text-[11px] text-slate-500">{t.common.loading}</p>
+          <ListSkeleton rows={4} />
         ) : people.length === 0 ? (
-          <p className="py-3 text-center text-[11px] text-slate-500">{t.common.nothingFound}</p>
+          <EmptyState compact className="py-3" title={t.common.nothingFound} />
         ) : (
           people.map((p) => (
             <button
@@ -771,7 +638,15 @@ function AttendanceCalendarSection({
   personId: number | null;
 }) {
   const pnl = useT().people.panel;
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  /* 🔵 BUGUNGI (aniqrog'i — OXIRGI ko'ringan) KUN AVTO TANLANGAN
+     (2026-10-23, foydalanuvchi so'rovi): profil ochilishi bilan o'ng
+     yarimda shu kunning holati va OXIRGI kadr videosi turadi, kalendardan
+     kun tanlash shart emas. */
+  const [selectedDay, setSelectedDay] = useState<string | null>(lastSeen?.slice(0, 10) ?? null);
+  useEffect(() => {
+    const d = lastSeen?.slice(0, 10) ?? null;
+    setSelectedDay((cur) => cur ?? d);
+  }, [lastSeen]);
   const dayMap = useMemo(() => new Map(byDay.map((d) => [d.day, d])), [byDay]);
   /* Hooklar SHARTSIZ chaqirilishi shart (`DayDetail`dagi bilan bir xil
      qoida) — shuning uchun `null` bo'lsa ham bo'sh qator bilan davom
@@ -804,11 +679,18 @@ function AttendanceCalendarSection({
     );
   }
 
+  /* 🔵 2026-10-26 — kun ma'lumoti va kadrlar KALENDAR OSTIDA, o'ng ustun
+     FAQAT VIDEO (kattaroq) — foydalanuvchi: "shu qismni kalendar ostiga qo'yib,
+     videoni sal kattalashtirsak". Tartibni `DayDetail` quradi. */
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <AttendanceCalendar firstSeen={firstSeen} lastSeen={lastSeen} statusOf={statusOf} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
-      <DayDetail day={selectedDay} statusOf={statusOf} events={events} />
-    </div>
+    <DayDetail
+      day={selectedDay}
+      statusOf={statusOf}
+      events={events}
+      calendar={
+        <AttendanceCalendar firstSeen={firstSeen} lastSeen={lastSeen} statusOf={statusOf} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+      }
+    />
   );
 }
 
@@ -951,10 +833,13 @@ function DayDetail({
   day,
   statusOf,
   events,
+  calendar,
 }: {
   day: string | null;
   statusOf: (dateStr: string) => { status: DayStatus; hit?: ByDayEntry };
   events: NvrEvent[];
+  /** Kalendar — chap ustunning tepasida, kun ma'lumoti uning OSTIDA. */
+  calendar: ReactNode;
 }) {
   const pnl = useT().people.panel;
   const t = useT();
@@ -964,17 +849,53 @@ function DayDetail({
      o'zgarib React xato beradi. Shu sabab shart ICHIDA emas, tashqarida
      (bo'sh massiv — `day` yo'q bo'lsa filtr baribir hech nima bermaydi). */
   const dayFrames = useMemo(() => (day ? events.filter((e) => e.time.slice(0, 10) === day) : []), [events, day]);
-  /* Kadrlar sahifalanadi (2026-09-09, foydalanuvchi so'rovi: "kadrlar
-     ko'payib ketsa muammo bo'ladi") — kun almashsa 1-sahifaga qaytadi. */
-  const [framePage, setFramePage] = useState(1);
-  useEffect(() => setFramePage(1), [day]);
+  /* 🔵 KADRLAR — KARUSEL, VIDEO USTIDA (2026-10-23, foydalanuvchi so'rovi,
+     skrinshot bilan): ilgari kadrlar panel PASTIDA 4 ustunli to'r + sahifalash
+     edi, video esa DOIM oxirgi kadrniki. Endi kadrlar vaqt yorlig'i o'rnida,
+     bir qatorda (`FRAME_WINDOW` tasi ko'rinadi, strelka bilan suriladi),
+     bosilgan kadrning VIDEOSI pastda ochiladi. Kun almashsa — boshiga va
+     eng oxirgi kadrga qaytadi (`events` yangidan eskiga kelgani uchun
+     `dayFrames[0]` — kunning oxirgi kadri). */
+  /* 🔵 2026-10-26 — kadrlar KATTAROQ (3 ta, 16:9) + har kadrda 🔍 "rasmni
+     ko'rish" (foydalanuvchi: "rasm cardlarini kattalashtir, bosganda rasmni
+     ham ko'rib bo'lsin"). Kadrning o'zi bosilsa — o'sha kadr VIDEOSI. */
+  /* O'sha kuni ikkinchi so'rov: "ikkitadan joylashtir, kattaroq" — 2 ustun,
+     sahifada 4 ta (2×2). Ustunlar soni `FRAME_COLS`, sahifa — `FRAME_WINDOW`. */
+  const FRAME_COLS = 2;
+  /* Uchinchi so'rov: "faqat ikkitadan, next bossa bitta-bitta o'tib" — bitta
+     qatorda 2 ta, ‹ › bir martada BITTA kadr suradi (`FRAME_STEP`). */
+  const FRAME_WINDOW = 2;
+  const FRAME_STEP = 1;
+  /** Rasm ko'ruvchisi — kunning barcha kadrlari, ochilgan kadr indeksi */
+  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
+  const dayPhotos = useMemo(
+    () =>
+      dayFrames.flatMap((ev) => {
+        const src = ev.picture_lost ? null : nvrImageUrl(ev, ev.image_count > 1 ? 1 : 0);
+        return src ? [{ id: ev.id, src, label: nvrDateTime(ev.time) }] : [];
+      }),
+    [dayFrames]
+  );
+  const [frameStart, setFrameStart] = useState(0);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  useEffect(() => {
+    setFrameStart(0);
+    setSelectedId(null);
+  }, [day]);
+  const selected = dayFrames.find((e) => e.id === selectedId) ?? dayFrames[0] ?? null;
+
+  /* Ikki ustun: CHAP — kalendar + kun ma'lumoti/kadrlar, O'NG — video (kengroq) */
+  const grid = "grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)]";
 
   if (!day) {
     return (
-      <div className="grid place-items-center rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
-        <div>
-          <CalendarBlank size={22} weight="duotone" className="mx-auto mb-2 text-slate-600" />
-          <p className="text-[11.5px] text-slate-500">{pnl.pickDayHint}</p>
+      <div className={grid}>
+        {calendar}
+        <div className="grid place-items-center rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
+          <div>
+            <CalendarBlank size={22} weight="duotone" className="mx-auto mb-2 text-slate-600" />
+            <p className="text-[11.5px] text-slate-500">{pnl.pickDayHint}</p>
+          </div>
         </div>
       </div>
     );
@@ -984,23 +905,37 @@ function DayDetail({
   const style = STATUS_STYLE[status];
 
   return (
-    <div className="rounded-3xl border border-white/[0.07] bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between">
+    <div className={grid}>
+    <div className="flex min-w-0 flex-col gap-3">
+    {calendar}
+    {/* `flex-1` — karta ustunning qolgan balandligini to'ldiradi, o'ngdagi
+        video kartasi bilan pastki chegarasi TEKIS */}
+    <div className="flex-1 rounded-3xl border border-white/[0.07] bg-white/[0.02] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[13px] font-bold text-white">
           {dayMonthLongLabel(new Date(`${day}T00:00:00`), t)}, {day.slice(0, 4)}
         </p>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${style.badge}`}>
-          {style.label}
+        <span className="flex items-center gap-1.5">
+          {/* QAYD SONI — nishon (2026-10-23, foydalanuvchi: "2 marta bo'lsa
+              badge qilib qo'shish kerak"); ilgari alohida KPI kafeli edi */}
+          {hit && hit.count > 0 && (
+            <span
+              className="rounded-full border border-ice-cyan/25 bg-ice-cyan/[0.1] px-2.5 py-1 font-mono text-[10px] font-bold text-ice-cyan"
+              title={pnl.howMany}
+            >
+              {hit.count} {pnl.hintRecords}
+            </span>
+          )}
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${style.badge}`}>
+            {style.label}
+          </span>
         </span>
       </div>
 
-      {hit ? (
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
-          <StatCell label={pnl.howMany} value={String(hit.count)} hint={pnl.hintRecords} />
-          <StatCell label={pnl.first} value={nvrTime(hit.first_seen)} hint={pnl.hintEntry} />
-          <StatCell label={pnl.last} value={nvrTime(hit.last_seen)} hint={pnl.hintSeen} />
-        </div>
-      ) : (
+      {/* ⚠️ "Birinchi / Oxirgi" KPI qatori OLIB TASHLANDI (2026-10-23,
+          foydalanuvchi so'rovi) — vaqtlar karuseldagi har kadrda ko'rinadi.
+          Qaydsiz kunda esa sabab avvalgidek yoziladi. */}
+      {!hit && (
         <p className="mt-2 text-[11px] leading-snug text-slate-500">
           {status === "weekend"
             ? pnl.weekendNote
@@ -1010,47 +945,128 @@ function DayDetail({
         </p>
       )}
 
+      {/* ── KADRLAR KARUSELI — vaqt yorlig'i O'RNIDA, video USTIDA ── */}
       {dayFrames.length > 0 && (() => {
-        const FRAME_PAGE_SIZE = 8;
-        const frameTotalPages = Math.max(1, Math.ceil(dayFrames.length / FRAME_PAGE_SIZE));
-        const frameSafePage = Math.min(framePage, frameTotalPages);
-        const pageFrames = dayFrames.slice((frameSafePage - 1) * FRAME_PAGE_SIZE, frameSafePage * FRAME_PAGE_SIZE);
+        const total = dayFrames.length;
+        const start = Math.min(frameStart, Math.max(0, total - FRAME_WINDOW));
+        const end = Math.min(total, start + FRAME_WINDOW);
+        const windowFrames = dayFrames.slice(start, end);
+        const canPrev = start > 0;
+        const canNext = end < total;
+        const navBtn =
+          "grid h-7 w-7 flex-none place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 transition-colors hover:bg-white/[0.09] hover:text-white disabled:cursor-default disabled:opacity-30 disabled:hover:bg-white/[0.04]";
         return (
           <div className="mt-3.5">
             <p className="mb-1.5 flex items-center justify-between text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">
               <span>{pnl.dayFrames}</span>
-              <span className="normal-case tracking-normal text-slate-600">{dayFrames.length} ta</span>
+              <span className="font-mono normal-case tracking-normal text-slate-600">
+                {start + 1}–{end} / {total}
+              </span>
             </p>
-            <div className="grid grid-cols-4 gap-1.5">
-              {pageFrames.map((ev) => (
-                <button
-                  key={ev.id}
-                  type="button"
-                  onClick={() => setOpenId(ev.id)}
-                  title={nvrDateTime(ev.time)}
-                  className="group relative overflow-hidden rounded-lg border border-white/[0.1] transition-colors hover:border-emerald-400/50"
-                >
-                  <DetectionThumb id={ev.id} pictureLost={ev.picture_lost} className="aspect-square w-full" alt="" index={ev.image_count > 1 ? 1 : 0} />
-                  <span className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-1 py-0.5 text-center font-mono text-[8.5px] text-slate-200">
-                    {nvrTime(ev.time)}
-                  </span>
-                </button>
-              ))}
+            <div className="flex items-center gap-1.5">
+              <button type="button" disabled={!canPrev} onClick={() => setFrameStart(Math.max(0, start - FRAME_STEP))} className={navBtn} aria-label={t.dashboard.ui.prev}>
+                <CaretLeft size={13} weight="bold" />
+              </button>
+              <div className="grid min-w-0 flex-1 gap-2" style={{ gridTemplateColumns: `repeat(${FRAME_COLS}, minmax(0, 1fr))` }}>
+                {windowFrames.map((ev) => {
+                  const on = selected?.id === ev.id;
+                  const photoAt = dayPhotos.findIndex((p) => p.id === ev.id);
+                  return (
+                    /* ⚠️ `<div>` o'ram — ichida IKKI tugma (kadr va 🔍); tugma
+                       ichida tugma yaroqsiz HTML */
+                    <div
+                      key={ev.id}
+                      className={`group relative overflow-hidden rounded-xl border transition-all ${
+                        on
+                          ? "border-emerald-400/70 shadow-[0_0_0_2px_rgba(52,211,153,0.25)]"
+                          : "border-white/[0.1] hover:border-emerald-400/40"
+                      }`}
+                    >
+                      <button type="button" onClick={() => setSelectedId(ev.id)} title={nvrDateTime(ev.time)} className="block w-full">
+                        <DetectionThumb id={ev.id} pictureLost={ev.picture_lost} className="aspect-video w-full" alt="" index={ev.image_count > 1 ? 1 : 0} />
+                        <span
+                          className={`absolute inset-x-0 bottom-0 truncate px-1 py-1 text-center font-mono text-[10.5px] font-semibold ${
+                            on ? "bg-emerald-500/80 text-white" : "bg-black/70 text-slate-200"
+                          }`}
+                        >
+                          {nvrTime(ev.time)}
+                        </span>
+                      </button>
+                      {photoAt >= 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIndex(photoAt)}
+                          title={pnl.viewPhoto}
+                          aria-label={pnl.viewPhoto}
+                          className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg border border-white/25 bg-black/60 text-white opacity-80 transition-all hover:scale-105 hover:border-cyan-300/70 hover:bg-cyan-500/40 hover:opacity-100"
+                        >
+                          <MagnifyingGlassPlus size={14} weight="bold" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" disabled={!canNext} onClick={() => setFrameStart(start + FRAME_STEP)} className={navBtn} aria-label={t.dashboard.ui.next}>
+                <CaretRight size={13} weight="bold" />
+              </button>
             </div>
-            <Pagination
-              page={frameSafePage}
-              totalPages={frameTotalPages}
-              onChange={setFramePage}
-              prevLabel={t.dashboard.ui.prev}
-              nextLabel={t.dashboard.ui.next}
-              ariaLabel={`${frameSafePage}-sahifa`}
-              className="mt-2"
-            />
           </div>
         );
       })()}
 
+    </div>
+    </div>
+
+      {/* ── TANLANGAN KADR VIDEOSI — O'NG USTUN, butun kenglikda ── */}
+      {selected ? (
+        <div className="min-w-0 rounded-3xl border border-white/[0.07] bg-white/[0.02] p-4">
+          <p className="mb-1.5 flex items-center justify-between text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            <span className="font-mono text-[12px] normal-case tracking-normal text-slate-200">{nvrTime(selected.time)}</span>
+            <button
+              type="button"
+              onClick={() => setOpenId(selected.id)}
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 normal-case tracking-normal text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <MagnifyingGlassPlus size={12} weight="bold" />
+              {t.nvr.openDossier}
+            </button>
+          </p>
+          <EventVideo key={selected.id} eventId={selected.id} videoUrl={nvrEventVideoUrl(selected.id)} />
+        </div>
+      ) : (
+        <div className="grid place-items-center rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6 text-center text-[11.5px] text-slate-500">
+          {pnl.dayFrames}: 0
+        </div>
+      )}
+
       <EventDossier eventId={openId} onClose={() => setOpenId(null)} />
+
+      {/* Rasm ko'ruvchisi — shu oynaning USTIDA (`z-[95]`), `stopPropagation`
+          shart (sarlavhadagi avatar ko'ruvchisi bilan AYNI sabab). */}
+      {photoIndex != null && dayPhotos.length > 0 && (
+        <div className="fixed inset-0 z-[95]" onClick={(e) => e.stopPropagation()}>
+          <ImageLightbox
+            images={dayPhotos.map(({ src, label }) => ({ src, label }))}
+            initialIndex={Math.min(photoIndex, dayPhotos.length - 1)}
+            onClose={() => setPhotoIndex(null)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Yuklanayotgan bo'lim o'rnidagi joy egallovchi — pulsatsiyali bo'sh plita. */
+function Skeleton({ className = "" }: { className?: string }) {
+  return (
+    <div
+      aria-busy="true"
+      className={`relative animate-pulse overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.04] ${className}`}
+    >
+      <span className="absolute inset-0 grid place-items-center">
+        <span className="h-5 w-5 rounded-full border-2 border-ice/30 border-t-ice/80 motion-safe:animate-spin" />
+      </span>
     </div>
   );
 }
@@ -1086,7 +1102,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-3.5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+    /* 2026-10-26: tashqi ramka/fon OLIB TASHLANDI (foydalanuvchi: "tashqi
+       borderni olib tashla") — ichidagi kalendar va kun kartasi o'z
+       ramkasida, ikki qavat ramka ortiqcha edi. */
+    <div className="mt-3.5">
       <div className="mb-2 flex items-center gap-1.5">
         <Icon size={13} weight="duotone" className="text-slate-400" />
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{title}</p>

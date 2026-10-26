@@ -66,3 +66,6 @@ __pycache__
 
 # Voyaga yetmagan o'quvchilar rasmlari — repoga TUSHMASIN
 public/imges/investor/3asinf/
+
+# Blender avtomatik zaxira nusxalari
+*.blend1

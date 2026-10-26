@@ -1,14 +1,14 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowsClockwise as RefreshCcw, Gear, MagnifyingGlass as Search, SquaresFour, Play, Plus, SecurityCamera, Trash as Trash2, UserFocus, X } from "@phosphor-icons/react";
-import { useCameraMutations, useCameras } from "@/hooks/useApi";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowsClockwise as RefreshCcw, MagnifyingGlass as Search, SquaresFour, Play, SecurityCamera, UserFocus, X } from "@phosphor-icons/react";
+import { useCameras } from "@/hooks/useApi";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { useDetectionCameras } from "@/hooks/useDetections";
-import { api, type CameraOut, type CameraPayload } from "@/lib/api";
+import { type CameraOut } from "@/lib/api";
 import { nvrChannelSnapshotUrl, nvrChannelStreamUrl } from "@/lib/nvr/nvrApi";
-import { cachedThumb, clearThumbs, loadThumb } from "@/lib/nvr/cameraThumbs";
+import { clearThumbs } from "@/lib/nvr/cameraThumbs";
+import { CamThumb } from "./CamThumb";
 import { useAppStore } from "@/store/useAppStore";
-import { usePermissions } from "@/lib/permissions";
 import { useT } from "@/i18n";
 import { Pagination } from "@/components/common/Pagination";
 import { INSTITUTIONS } from "@/config/institutions";
@@ -16,6 +16,8 @@ import { resolveCampus } from "@/lib/nvr/cameraBinding";
 import { CameraStreamModal } from "./CameraStreamModal";
 import { CameraDetectionsModal } from "./CameraDetectionsModal";
 import { CameraKpiRow } from "./CameraKpiRow";
+import { Skeleton } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Kameralar ro'yxati filtri. */
 /* ⚠️ Holat filtri ("Hammasi / Onlayn / Oflayn") OLIB TASHLANDI — 32 ta
@@ -36,154 +38,9 @@ const CAM_COLS_MAX = 8;
 const CAM_COLS_DEFAULT = 6;
 const CAM_COLS_KEY = "hik-cam-grid-cols";
 
-/**
- * Kartochkadagi STOP-KADR — bitta JPEG (`/channels/{ch}/snapshot`).
- *
- * Panjarada jonli oqim ATAYLAB ochilmaydi: 32 ta MJPEG uzluksiz ulanish
- * demakdir. Snapshot esa oddiy so'rov — darhol tugaydi.
- *
- * Surat BIR MARTA olinadi va sessiya davomida saqlanadi
- * (`lib/cameraThumbs.ts`): sahifadan chiqib qaytilganda ham, ro'yxat
- * yangilanganda ham u QAYTA YUKLANMAYDI va kartochka "sakramaydi".
- * Yuklash faqat kartochka ekranga yaqinlashganda boshlanadi
- * (`IntersectionObserver`) va bir vaqtda 4 tadan oshmaydi.
- */
-const CamThumb = memo(function CamThumb({ channel, bust }: { channel: number; bust?: number }) {
-  const [src, setSrc] = useState<string | null>(() => cachedThumb(channel) ?? null);
-  const slotRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (src) return;
-    const el = slotRef.current;
-    if (!el) return;
-    let alive = true;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((e) => e.isIntersecting)) return;
-        io.disconnect();
-        loadThumb(channel, bust).then((url) => {
-          if (alive && url) setSrc(url);
-        });
-      },
-      { rootMargin: "300px" } // ekranga yaqinlashganda oldindan boshlanadi
-    );
-    io.observe(el);
-    return () => {
-      alive = false;
-      io.disconnect();
-    };
-  }, [channel, bust, src]);
-
-  if (!src) return <span ref={slotRef} className="cam-card-img" aria-hidden />;
-  return <img src={src} alt="" decoding="async" className="cam-card-img" />;
-});
-
-const EMPTY_FORM: CameraPayload = {
-  name: "",
-  brand: "hikvision",
-  location: "",
-  ip_address: "",
-  port: 554,
-  username: "",
-  password: "",
-  channel: 1,
-  stream_quality: "main",
-  rtsp_url: "",
-  direction: "entry",
-};
-
-function CameraFormModal({
-  initial,
-  onClose,
-  onSubmit,
-  busy,
-  error,
-}: {
-  initial: (CameraPayload & { id?: string }) | null;
-  onClose: () => void;
-  onSubmit: (data: CameraPayload) => void;
-  busy: boolean;
-  error: string | null;
-}) {
-  const [form, setForm] = useState<CameraPayload>(initial ?? EMPTY_FORM);
-  const set = <K extends keyof CameraPayload>(k: K, v: CameraPayload[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const inputCls =
-    "w-full rounded-lg border border-blue-500/20 bg-slate-900/60 px-3 py-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-500";
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    onSubmit(form);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <motion.form
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={submit}
-        className="hik-glass-blue w-[440px] max-w-full rounded-2xl border border-white/10 bg-ink-panel p-5"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-[14px] font-bold">{initial?.id ? "Kamerani tahrirlash" : "Yangi kamera qo'shish"}</p>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white"><X size={17} /></button>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5">
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Nomi *" required className={`${inputCls} col-span-2`} />
-          <select value={form.brand} onChange={(e) => set("brand", e.target.value as CameraPayload["brand"])} className={inputCls}>
-            <option value="hikvision">Hikvision</option>
-            <option value="dahua">Dahua</option>
-            <option value="other">Boshqa</option>
-          </select>
-          <input value={form.location ?? ""} onChange={(e) => set("location", e.target.value)} placeholder="Joylashuv" className={inputCls} />
-          <input value={form.ip_address ?? ""} onChange={(e) => set("ip_address", e.target.value)} placeholder="IP manzil" className={inputCls} />
-          <input
-            type="number"
-            value={form.port ?? 554}
-            onChange={(e) => set("port", Number(e.target.value))}
-            placeholder="Port"
-            min={1}
-            max={65535}
-            className={inputCls}
-          />
-          <input value={form.username ?? ""} onChange={(e) => set("username", e.target.value)} placeholder="Kamera logini" className={inputCls} />
-          <input
-            type="password"
-            value={form.password ?? ""}
-            onChange={(e) => set("password", e.target.value)}
-            placeholder="Kamera paroli"
-            className={inputCls}
-          />
-          <select value={form.stream_quality} onChange={(e) => set("stream_quality", e.target.value as "main" | "sub")} className={inputCls}>
-            <option value="main">Asosiy oqim (main)</option>
-            <option value="sub">Qo'shimcha oqim (sub)</option>
-          </select>
-          <select value={form.direction} onChange={(e) => set("direction", e.target.value as CameraPayload["direction"])} className={inputCls}>
-            <option value="entry">Kirish kamerasi</option>
-            <option value="exit">Chiqish kamerasi</option>
-            <option value="area">Hudud kuzatuvi</option>
-          </select>
-          <input
-            value={form.rtsp_url ?? ""}
-            onChange={(e) => set("rtsp_url", e.target.value)}
-            placeholder="RTSP URL (ixtiyoriy, qo'lda)"
-            className={`${inputCls} col-span-2`}
-          />
-        </div>
-        {error && <p className="mt-2.5 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-4 flex w-full items-center justify-center gap-2 hik-btn-ice rounded-xl py-2.5 text-[13px] disabled:opacity-50"
-        >
-          {busy && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-          Saqlash
-        </button>
-      </motion.form>
-    </div>
-  );
-}
+/* Barqaror bo'sh ro'yxat — `[]` literal har renderda yangi massiv bo'lib
+   `useMemo` bog'liqliklarini buzardi (eslint exhaustive-deps). */
+const NO_CAMERAS: CameraOut[] = [];
 
 export function CamerasPage() {
   const t = useT();
@@ -193,13 +50,36 @@ export function CamerasPage() {
      ular `CameraOut` shakliga o'giriladi, shuning uchun quyidagi butun UI
      o'zgarishsiz ishlaydi (`hooks/useNvrChannels.ts`). */
   const nvr = useNvrChannels();
-  const usingNvr = (backendCameras?.length ?? 0) === 0 && nvr.cameras.length > 0;
-  const cameras = usingNvr ? nvr.cameras : backendCameras;
-  const isLoading = backendLoading || (backendCameras?.length === 0 && nvr.isLoading);
-  // `check` (ulanishni tekshirish) ISHLATILMAYDI — kartochkadagi tugma
-  // o'rniga endi "aniqlangan tasvirlar" oynasi ochiladi.
-  const { create, update, remove, start, stop } = useCameraMutations();
-  const { can, deniedMessage } = usePermissions();
+  /* 🔴 KUZATUV POSTI KANALLARI USTUN (2026-10-26, "kameralar ishlamay qoldi").
+     Ilgari `usingNvr` faqat backend ro'yxati BO'SH bo'lganda yoqilardi.
+     `NEXT_PUBLIC_API_ORIGIN` kuzatuv postiga (7007) o'tgach `/api/v1/cameras`
+     endi HODISA STATISTIKASINI qaytaradi (o'lchandi: `{cameras:[{id:"31",
+     name:"Camera 01",count:242565,last:…}]}`, 2.5 s) — `listCameras()`
+     adapteri uni `CameraOut[]` qilib bergani uchun ro'yxat "to'ldi", sahifa
+     32 kanal o'rniga faqat hodisa bo'lgan 3–4 kamerani chizdi, stop-kadr
+     (`usingNvr` shart) yo'qoldi, oqim esa mavjud bo'lmagan
+     `/cameras/{id}/mjpeg` ga ketdi. Qurilma kanallari — yagona haqiqiy
+     ro'yxat (onlayn bayrog'i bilan); backend ro'yxati faqat kanal
+     umuman bo'lmaganda zaxira. */
+  /* 🔴 ESKI TARTIB QAYTARILDI (2026-10-26 kechqurun, foydalanuvchi: "kameralarni
+     eski usulda olib kel"): qurilma kanallari kelsa — o'sha 32 ta; kanal
+     so'rovi XATO bo'lsa (kuzatuv posti qurilmaga ulana olmadi — `/api/status`
+     `nvr_ok:false`, `/api/channels` 502) — `/api/v1/cameras` ro'yxati
+     (hodisa bo'lgan kameralar, `channel = id`) ZAXIRA sifatida, bo'sh ekran
+     o'rniga. Ikkala manba ham kuzatuv posti (7007) — stop-kadr/oqim
+     `channel` raqami bilan bir xil yo'ldan, shuning uchun `usingNvr`
+     ro'yxat bo'sh bo'lmasa DOIM `true`. Xato faqat IKKALASI ham bo'sh
+     bo'lganda ko'rsatiladi — qisqa "Server bilan aloqa yo'q" (xom texnik
+     matn `title`da, ekranda emas — "Tizim holati" qoidasi). */
+  const channelsFailed = !nvr.isLoading && nvr.error != null && nvr.cameras.length === 0;
+  const cameras = nvr.cameras.length > 0 ? nvr.cameras : nvr.isLoading ? NO_CAMERAS : backendCameras;
+  const usingNvr = (cameras?.length ?? 0) > 0;
+  const isLoading = nvr.isLoading || (channelsFailed && backendLoading);
+  const noSource = channelsFailed && !backendLoading && (backendCameras?.length ?? 0) === 0;
+  /* 🔴 Kamera QO'SHISH/TAHRIRLASH/O'CHIRISH OLIB TASHLANDI (2026-10-26, test):
+     ular eski backend `/api/v1/cameras` ga yozardi — hozirgi serverda bu
+     resurs yo'q, tugmalar faqat xato berardi. Kameralar kuzatuv posti
+     qurilmasining o'zida sozlanadi. */
 
   const [selectedCamId, setSelectedCamId] = useState<string | null>(null);
   const [camSearch, setCamSearch] = useState("");
@@ -232,9 +112,7 @@ export function CamerasPage() {
   const [camPage, setCamPage] = useState(1);
   /* Qaysi kameraning aniqlangan tasvirlari ochilgan (kanal raqami). */
   const [infoCam, setInfoCam] = useState<CameraOut | null>(null);
-  const [modal, setModal] = useState<"create" | CameraOut | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
   /* Jonli oqim MODALDA ochiladi (`CameraStreamModal`): panjaradagi 32 ta
      kartochka bir vaqtda oqim ko'rsatsa brauzer ham, kuzatuv posti ham yiqiladi —
      har MJPEG oqimi ochiq HTTP ulanish. Modal yopilishi bilan oqim uziladi. */
@@ -318,26 +196,13 @@ export function CamerasPage() {
      oqimi (`/nvr/panel/channels/{id}/stream`), aks holda backend MJPEG.
      Faqat OCHIQ modal uchun hisoblanadi — panjarada oqim yo'q. */
   const liveCam = cameras?.find((c) => c.id === liveCamId) ?? null;
-  const liveStreamUrl = liveCam
-    ? usingNvr
-      ? nvrChannelStreamUrl(liveCam.channel, 4)
-      : api.cameraMjpegUrl(liveCam.id)
-    : null;
+  const liveStreamUrl = liveCam ? nvrChannelStreamUrl(liveCam.channel, 4) : null;
 
   /** Kartochka bosildi — kamera tanlanadi va jonli oqim oynasi ochiladi. */
   function openStream(id: string) {
     setSelectedCamId(id);
     setLiveCamId(id);
   }
-
-  /* Oqim boshlanishi/tugashi haqida backendga xabar (best-effort). kuzatuv posti
-     kanalida bunday API yo'q — u yerda faqat MJPEG manzili ochiladi. */
-  /* DIQQAT: id ALOHIDA olinadi. `onStop` oyna yopilgandan KEYIN (tozalash
-     effektida) chaqiriladi — o'sha paytda `liveCam` allaqachon `null`
-     bo'lishi mumkin. */
-  const notifyId = liveCam?.id ?? null;
-  const notifyStart = usingNvr || !notifyId ? undefined : () => start.mutate(notifyId, { onError: () => {} });
-  const notifyStop = usingNvr || !notifyId ? undefined : () => stop.mutate(notifyId, { onError: () => {} });
 
   // Ovozli buyruq: "Kamera 15 ni och" / "Birinchi kamerani och" / "Jonli efirni och/to'xtat" / "To'liq ekranga o't"
   const voiceCameraCommand = useAppStore((s) => s.voiceCameraCommand);
@@ -381,27 +246,6 @@ export function CamerasPage() {
   function refreshThumbs() {
     clearThumbs();
     setSnapBust(Date.now());
-  }
-
-  function submitCamera(data: CameraPayload) {
-    setFormError(null);
-    const clean: CameraPayload = { ...data };
-    if (!clean.rtsp_url) delete clean.rtsp_url;
-    if (!clean.ip_address) delete clean.ip_address;
-    if (modal === "create") {
-      create.mutate(clean, {
-        onSuccess: () => { setModal(null); flash("Kamera qo'shildi"); },
-        onError: (e) => setFormError(e.message),
-      });
-    } else if (modal) {
-      update.mutate(
-        { id: modal.id, data: clean },
-        {
-          onSuccess: () => { setModal(null); flash("Kamera yangilandi"); },
-          onError: (e) => setFormError(e.message),
-        }
-      );
-    }
   }
 
   return (
@@ -516,30 +360,46 @@ export function CamerasPage() {
               </button>
             )}
 
-            <button
-              onClick={() => {
-                if (!can("camera.create")) return flash(deniedMessage);
-                setFormError(null);
-                setModal("create");
-              }}
-              title="Yangi kamera qo'shish"
-              className="flex flex-none items-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-2.5 py-1.5 text-[11.5px] font-semibold text-ice-soft transition-colors hover:border-blue-400/70 hover:text-white"
-            >
-              <Plus size={13} /> Qo'shish
-            </button>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {isLoading && (
-              <div className="grid h-24 place-items-center">
-                <RefreshCcw size={18} className="animate-spin text-slate-500" />
+              <div className="cam-grid" style={{ ["--cam-cols" as string]: camCols }}>
+                {Array.from({ length: camCols * 2 }, (_, i) => (
+                  <Skeleton key={i} className="aspect-video w-full rounded-xl" />
+                ))}
               </div>
             )}
 
-            {!isLoading && shownCameras.length === 0 && (
-              <p className="py-8 text-center text-[12px] text-slate-500">
-                {camSearch ? "Mos kamera topilmadi" : "Kamera qo'shilmagan"}
+            {!isLoading && noSource && (
+              <div
+                className="mx-auto my-8 max-w-[460px] rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] px-5 py-4 text-center"
+                title={String((nvr.error as Error)?.message ?? nvr.error)}
+              >
+                <p className="text-[13px] font-bold text-rose-200">{t.cameras.noConnection}</p>
+                <p className="mt-1 text-[11.5px] text-slate-400">{t.cameras.noConnectionHint}</p>
+                <button
+                  type="button"
+                  onClick={() => nvr.refetch()}
+                  disabled={nvr.isFetching}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11.5px] font-semibold text-slate-200 transition-colors hover:border-ice/40 hover:text-white disabled:opacity-60"
+                >
+                  <RefreshCcw size={13} className={nvr.isFetching ? "animate-spin" : ""} /> {t.common.retry}
+                </button>
+              </div>
+            )}
+
+            {!isLoading && channelsFailed && !noSource && (
+              <p
+                className="mb-2 rounded-lg border border-amber-400/30 bg-amber-400/[0.08] px-3 py-1.5 text-center text-[11.5px] text-amber-200"
+                title={String((nvr.error as Error)?.message ?? nvr.error)}
+              >
+                {t.cameras.noConnectionFallback}
               </p>
+            )}
+
+            {!isLoading && !noSource && shownCameras.length === 0 && (
+              <EmptyState fill title={camSearch ? "Mos kamera topilmadi" : "Kamera qo'shilmagan"} />
             )}
 
             <div className="cam-grid" style={{ ["--cam-cols" as string]: camCols }}>
@@ -621,40 +481,6 @@ export function CamerasPage() {
                         </span>
                       )}
 
-                      <span className="cam-actions">
-                        <span
-                          role="button"
-                          tabIndex={-1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!can("camera.update")) return flash(deniedMessage);
-                            setFormError(null);
-                            setModal(cam);
-                          }}
-                          title="Tahrirlash"
-                          className="cam-act"
-                        >
-                          <Gear size={13} />
-                        </span>
-                        <span
-                          role="button"
-                          tabIndex={-1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!can("camera.delete")) return flash(deniedMessage);
-                            if (window.confirm(`"${cam.name}" kamerasini o'chirasizmi?`)) {
-                              remove.mutate(cam.id, {
-                                onSuccess: () => flash("Kamera o'chirildi"),
-                                onError: (err) => flash(`O'chirish xatosi: ${err.message}`),
-                              });
-                            }
-                          }}
-                          title="O'chirish"
-                          className="cam-act cam-act--danger"
-                        >
-                          <Trash2 size={13} />
-                        </span>
-                      </span>
                     </span>
                   </button>
                 );
@@ -697,43 +523,12 @@ export function CamerasPage() {
             streamUrl={liveStreamUrl}
             posterUrl={usingNvr ? nvrChannelSnapshotUrl(liveCam.channel, snapBust) : null}
             onClose={() => setLiveCamId(null)}
-            onStart={notifyStart}
-            onStop={notifyStop}
             action={camAction}
             onActionDone={() => setCamAction(null)}
           />
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {modal && (
-          <CameraFormModal
-            key={modal === "create" ? "create" : modal.id}
-            initial={
-              modal === "create"
-                ? null
-                : {
-                    id: modal.id,
-                    name: modal.name,
-                    brand: modal.brand as CameraPayload["brand"],
-                    location: modal.location ?? "",
-                    ip_address: modal.ip_address ?? "",
-                    port: modal.port,
-                    username: modal.username ?? "",
-                    password: "",
-                    channel: modal.channel,
-                    stream_quality: modal.stream_quality as "main" | "sub",
-                    rtsp_url: "",
-                    direction: modal.direction as CameraPayload["direction"],
-                  }
-            }
-            onClose={() => setModal(null)}
-            onSubmit={submitCamera}
-            busy={create.isPending || update.isPending}
-            error={formError}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

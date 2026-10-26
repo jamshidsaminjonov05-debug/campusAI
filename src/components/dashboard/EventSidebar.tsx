@@ -39,6 +39,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { Pie3D, type PieSlice } from "@/components/common/Pie3D";
 import { StatPanel } from "@/components/common/panels";
 import { EventTypeModal } from "./EventTypeModal";
+import { EmptyState } from "@/components/common/EmptyState";
 
 export function EventSidebar() {
   const t = useT();
@@ -85,9 +86,7 @@ export function EventSidebar() {
       <div className="grid min-h-0 flex-1 place-items-center overflow-y-auto">
         {slices.length === 0 ? (
           /* Nol o'rniga SABAB — bo'sh panel nosozlik deb o'qilmasin */
-          <p className="py-6 text-center text-[11px] leading-snug text-slate-500">
-            {stats.isLoading ? "…" : u.empty}
-          </p>
+          <EmptyState compact className="py-6" title={stats.isLoading ? "…" : u.empty} />
         ) : (
           <Pie3D
             data={slices}

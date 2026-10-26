@@ -13,6 +13,7 @@
  * qurol API'siniki bilan bir xil, faqat hodisa turi — JANJAL.
  */
 import { JANJAL2_BASE } from "@/config/endpoints";
+import { markHiddenV2Cameras } from "@/lib/nvr/v2CameraFilter";
 import { ApiError } from "@/lib/api";
 import { nvrDateTime, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 
@@ -38,6 +39,9 @@ export interface Janjal2Camera {
   /** Server o'zi hisoblab beradi — kamera bo'yicha jamlanma (qo'shimcha so'rovsiz). */
   accepted: number;
   ignored: number;
+  /** `v2CameraFilter.ts` — tungi klub kabi aloqasiz kamera; tanlagich/KPI/
+   *  hodisa ro'yxatidan chiqariladi. Ro'yxatdan O'CHIRILMAYDI — id kerak. */
+  hidden: boolean;
 }
 
 /**
@@ -67,9 +71,45 @@ export async function listJanjal2Alerts(page = 1, pageSize = 24): Promise<{ data
   return get(`api/alert/alert-list/?page=${page}&page_size=${pageSize}`);
 }
 
+/** Bitta kameraning hodisalari — `weapon2Api.ts` `listWeapon2CameraAlerts()` bilan
+ *  AYNI (o'lchandi 2026-10-24: `{data, total}`; yo'l oxirida `/` bo'lsa `307`). */
+export async function listJanjal2CameraAlerts(
+  cameraId: number,
+  page = 1,
+  pageSize = 24
+): Promise<{ data: Janjal2Alert[]; total: number }> {
+  return get(`api/alert/get-camera-alerts/${cameraId}?page=${page}&page_size=${pageSize}`);
+}
+
 /** Kameralar — `camera_id` ni odam o'qiydigan nom/joylashuvga aylantirish uchun. */
+/**
+ * Kameralar ro'yxati — BARCHA sahifalar.
+ *
+ * 🔴 2026-10-21: server javob shaklini o'zgartirdi — ilgari massiv
+ * qaytarardi, endi `{ data, total, page, page_size, pages }` (standart 20
+ * ta, `page_size` ko'pi bilan 100; o'lchandi: 208 kamera, 3 sahifa).
+ * Eski kod javobni to'g'ridan-to'g'ri massiv deb aylanib, "Aniqlanganlar"
+ * sahifasini `object is not iterable` bilan yiqitardi. Ikkala shakl ham
+ * qabul qilinadi; qolgan sahifalar parallel olinadi.
+ */
+type CameraPage<T> = T[] | { data?: T[]; pages?: number };
+async function listAllCameras<T>(): Promise<T[]> {
+  const first = await get<CameraPage<T>>(`api/cams/camera/list/?page=1&page_size=100`);
+  if (Array.isArray(first)) return first;
+  const rows = first.data ?? [];
+  const pages = Math.min(first.pages ?? 1, 20);
+  if (pages <= 1) return rows;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      get<CameraPage<T>>(`api/cams/camera/list/?page=${i + 2}&page_size=100`)
+    )
+  );
+  for (const r of rest) rows.push(...(Array.isArray(r) ? r : r.data ?? []));
+  return rows;
+}
+
 export async function listJanjal2Cameras(): Promise<Janjal2Camera[]> {
-  return get(`api/cams/camera/list/`);
+  return markHiddenV2Cameras(await listAllCameras<Omit<Janjal2Camera, "hidden">>());
 }
 
 /** Rasm — to'g'ridan-to'g'ri `<img src>` ga qo'yiladi (statik, oqim bilan). */

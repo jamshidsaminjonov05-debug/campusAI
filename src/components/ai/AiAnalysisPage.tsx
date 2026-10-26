@@ -2,20 +2,21 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Broadcast, Clock, SecurityCamera, ShieldWarning, UserFocus } from "@phosphor-icons/react";
-import { DetectionThumb } from "@/components/detections/DetectionThumb";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Broadcast, Clock, ShieldWarning, UserFocus } from "@phosphor-icons/react";
+import { Pistol } from "@/components/common/PistolIcon";
+import { EventOpener, EventTypeCardsModal, TypePanel, V2TypePanel } from "./TypeCards";
+import { AiNarrator } from "./AiNarrator";
 import { NVR_COLOR } from "@/components/detections/DetectionCard";
-import { Donut3D } from "@/components/common/Donut3D";
-import { AXIS, KpiTile, StatPanel, TabPill, TOOLTIP, fmt } from "@/components/common/panels";
+import { AXIS, KpiTile, PanelLoader, StatPanel, TabPill, TOOLTIP, Y_AXIS_W, fmt } from "@/components/common/panels";
+import { dayMonthLabel } from "@/lib/dateLabel";
 import { DataBadge } from "@/components/dashboard/DataBadge";
 import { ARRIVAL_PERIODS, localDay, periodRange, type ArrivalsOptions } from "@/hooks/useTodayArrivals";
-import { useEventStats, useFacesCount } from "@/hooks/useEventStats";
+import { useEventStats, useSeenPeople } from "@/hooks/useEventStats";
 import { NVR_CATEGORIES, type NvrRealCategory } from "@/hooks/useEventCounts";
-import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { listEvents, liveInterval, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
-import { useAppStore } from "@/store/useAppStore";
+import { listEvents, liveInterval, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { useT } from "@/i18n";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -79,10 +80,16 @@ export function AiAnalysisPage() {
 
   /** Sonlar — server hisobi (bitta so'rov). */
   const stats = useEventStats({ from: range.from, to: range.to });
-  /** Har xil odamlar — server birlashtirgan sanoq. */
-  const faces = useFacesCount({ from: range.from, to: range.to });
-  const setActivePage = useAppStore((s) => s.setActivePage);
-  const setFocusedDetectionId = useAppStore((s) => s.setFocusedDetectionId);
+  /* 🔵 "TANILGAN ODAMLAR" (ilgari "Har xil odam", 2026-10-26, foydalanuvchi:
+     "tanilgan odamlar deyishing kerak va aniq ma'lumot"). Manba —
+     `/faces/stats/classes` (oraliqda TANILGAN shaxslar, takrorsiz). Eski
+     `/faces` `total` hozir DOIM 0 qaytaradi — kartochka "0" bo'lib turardi. */
+  const seen = useSeenPeople({ from: range.from, to: range.to });
+  /* "Qurol va janjal" (2-versiya, ko'cha kameralari) — janjal/qurol panellari
+     shu serverlardan. "Hammasi" oynasi va kadr tafsiloti — `TypeCards.tsx`. */
+  const [v2Mode, setV2Mode] = useState(false);
+  const [allType, setAllType] = useState<NvrRealCategory | null>(null);
+  const [openEv, setOpenEv] = useState<NvrEvent | null>(null);
 
   /** Har kategoriyaning OXIRGI kadrlari — ro'yxat emas, faqat ko'rinadigani. */
   const shotsQ = useQuery({
@@ -120,91 +127,64 @@ export function AiAnalysisPage() {
   );
 
   const total = stats.total;
-  const peopleTotal = faces.total;
-  const knownTotal = faces.known;
   const alarmTotal = stats.danger;
   const peak = stats.peakHour;
   const peakCount = stats.peakCount;
-  const channels = stats.byChannel;
 
-  /** Soatlik zichlik — maydonli chiziq uchun. */
-  const hourSeries = useMemo(
-    () => stats.hourly.map((v, h) => ({ hour: `${String(h).padStart(2, "0")}`, [t.chart.count]: v })),
-    [stats.hourly, t.chart.count]
-  );
-
-  /** Turlar ulushi — Statistikadagi bilan AYNI pie chart (`Donut3D`). */
-  const typeShare = useMemo(
-    () => byType.filter((r) => r.count > 0).map((r) => ({ label: r.label, value: r.count, color: r.color })),
-    [byType]
-  );
-
-  /** Kameralar kesimi — gorizontal ustunlar (server `by_channel` — qaydlar soni). */
-  const camSeries = useMemo(
+  /**
+   * 🔵 QAYDLAR GRAFIGI (2026-10-26, foydalanuvchi: "oddiy odam tushunadigan
+   * so'zlar; soat bo'lsa soat, kun bo'lsa oy bosh harflari; chap ustun
+   * ko'rinmayapti; nomi soatlik zichlik emas"):
+   *   · BIR KUN tanlansa — soatlar ("08:00"), sarlavha "Qaysi soatda…";
+   *   · ko'p kunlik davr — KUNLAR ("22-okt", `dayMonthLabel`), sarlavha
+   *     "Qaysi kuni…". Server `by_day` ni allaqachon beradi — yangi so'rov yo'q.
+   * Chap o'q ilgari `margin.left = -20` bilan kesilgan edi (CLAUDE.md
+   * "YAxis KENGLIGI — `Y_AXIS_W`" tuzog'i) — endi manfiy margin YO'Q.
+   */
+  const daily = range.from !== range.to && stats.byDay.length > 1;
+  const series = useMemo(
     () =>
-      channels.slice(0, 6).map((c) => ({
-        name: cameraPlaceLabel(c.channel, c.camera),
-        [t.chart.count]: c.total,
-      })),
-    [channels, t.chart.count]
+      daily
+        ? stats.byDay.map((d) => {
+            const [y, m, dd] = d.day.split("-").map(Number);
+            return { key: d.day, label: dayMonthLabel(new Date(y, (m ?? 1) - 1, dd ?? 1), t), value: d.total };
+          })
+        : stats.hourly.map((v, h) => ({ key: String(h), label: `${String(h).padStart(2, "0")}:00`, value: v })),
+    [daily, stats.byDay, stats.hourly, t]
   );
+  const seriesPeak = useMemo(() => {
+    let best = -1;
+    series.forEach((r, i) => {
+      if (r.value > 0 && (best < 0 || r.value > series[best].value)) best = i;
+    });
+    return best;
+  }, [series]);
 
-  /** XULOSA JUMLALARI — faqat mavjud sonlardan. */
-  const insights = useMemo(() => {
-    const out: { tone: "info" | "warn" | "alarm"; text: string }[] = [];
-    if (total === 0) return out;
-
-    const top = byType[0];
-    if (top && top.count > 0) {
-      out.push({
-        tone: "info",
-        text: `Eng ko'p aniqlangan tur — ${top.label}: ${n(top.count)} ta qayd (oqimning ${Math.round((top.count / total) * 100)}%).`,
-      });
-    }
-    if (peak != null) {
-      out.push({
-        tone: "info",
-        text: `Zichlik ${String(peak).padStart(2, "0")}:00 da eng yuqori — ${n(peakCount)} ta qayd.`,
-      });
-    }
-    if (alarmTotal > 0) {
-      out.push({
-        tone: "alarm",
-        text: `${n(alarmTotal)} ta janjal/qurol qaydi bor — ularni ko'rib chiqish kerak.`,
-      });
-    }
-    if (peopleTotal > 0) {
-      out.push({
-        tone: knownTotal === 0 ? "warn" : "info",
-        text:
-          knownTotal === 0
-            ? `${n(peopleTotal)} ta har xil odam o'tdi, ammo hech biri yuz bazasida yo'q — baza to'ldirilmagan.`
-            : `${n(peopleTotal)} ta har xil odam o'tdi, shundan ${n(knownTotal)} tasi bazadan tanildi.`,
-      });
-    }
-    const busiest = channels[0];
-    if (busiest) {
-      out.push({
-        tone: "info",
-        text: `Eng ko'p ishlagan kamera — ${cameraPlaceLabel(busiest.channel, busiest.camera)} (#${busiest.channel}): ${n(busiest.total)} ta qayd.`,
-      });
-    }
-    for (const a of stats.anomalies) {
-      out.push({
-        tone: "warn",
-        text: `${t.detect.category[a.category]} odatdagidan ko'p: ${n(a.count)} ta (odatda ~${n(a.usual)}).`,
-      });
-    }
-    return out;
-  }, [total, byType, peak, peakCount, alarmTotal, peopleTotal, knownTotal, channels, stats.anomalies, n, t]);
 
   /** Kadrni bosish — "Aniqlanganlar" da o'sha hodisa ochiladi. */
-  const openEvent = (id: number) => {
-    setFocusedDetectionId(id);
-    setActivePage("Aniqlanganlar");
-  };
 
   const live = total > 0;
+
+  /* SLAYDER YUKLANISH (2026-10-26, foydalanuvchi so'rovi) — Statistikadagi
+     `PanelLoader` bilan AYNI: `/events/stats` sanasiz/uzun davrda 3–11 s
+     (o'lchandi), shu vaqtda KPI'larda "0" va bo'sh diagrammalar turardi.
+     Faqat BIRINCHI yuklanishda (`isLoading`); davr almashganda eski son
+     qolib, yangisi fonda keladi. */
+  const busy = stats.isLoading || shotsQ.isLoading;
+  const loaderDays =
+    periodId === "custom"
+      ? Math.max(1, Math.round((new Date(customTo).getTime() - new Date(customFrom).getTime()) / 864e5) + 1)
+      : (ARRIVAL_PERIODS.find((p) => p.id === periodId)?.days ?? 30);
+
+  /* Ovozli tahlilchi uchun o'zbekcha davr nomi (TTS o'zbekcha o'qiydi) */
+  const narratorPeriod =
+    periodId === "custom"
+      ? `${range.from} dan ${range.to} gacha`
+      : periodId === "all"
+        ? "Butun tarix"
+        : periodId === "today"
+          ? "Bugun"
+          : `Oxirgi ${ARRIVAL_PERIODS.find((p) => p.id === periodId)?.days ?? ""} kun`;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto">
@@ -217,7 +197,7 @@ export function AiAnalysisPage() {
         ))}
         {/* Istalgan ikki sana orasidagi kesim */}
         <TabPill group="ai-period" active={periodId === "custom"} onClick={() => setPeriodId("custom")}>
-          Oraliq
+          Sana oralig'i
         </TabPill>
         {periodId === "custom" && (
           <span className="flex items-center gap-1">
@@ -247,75 +227,154 @@ export function AiAnalysisPage() {
           {stats.isLoading ? "tahlil qilinmoqda…" : `${n(total)} qayd`}
           <DataBadge live={live} />
         </span>
+        <button
+          type="button"
+          onClick={() => setV2Mode((v) => !v)}
+          title={t.nvr.v2ButtonTitle}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+            v2Mode
+              ? "border-fuchsia-400/50 bg-fuchsia-400/15 text-fuchsia-200"
+              : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-fuchsia-400/30 hover:text-fuchsia-200"
+          }`}
+        >
+          <Pistol size={14} weight={v2Mode ? "fill" : "regular"} />
+          {t.nvr.v2Button}
+        </button>
       </div>
 
-      {/* ── Asosiy ko'rsatkichlar ── */}
+      {busy ? (
+        <PanelLoader days={loaderDays} allTime={periodId === "all"} className="hik-glass-blue min-h-[360px] flex-1 rounded-2xl" />
+      ) : (
+        <>
+      {/* ── Asosiy ko'rsatkichlar — ENG YUQORIDA (2026-10-26), ostida tur bo'yicha kesim ── */}
       <div className="grid flex-none grid-cols-2 gap-2 xl:grid-cols-4">
         <KpiTile Icon={Broadcast} label="Aniqlangan qaydlar" value={n(total)} tone="#8FB8FF" />
         <KpiTile
           Icon={UserFocus}
-          label="Har xil odam"
-          value={n(peopleTotal)}
-          hint={`${n(knownTotal)} tanish · ${n(Math.max(0, peopleTotal - knownTotal))} notanish`}
+          label="Aniqlangan shaxslar"
+          value={seen.data ? n(seen.data.total.seen_people) : seen.isLoading ? "…" : "—"}
+          hint={
+            seen.data
+              ? `${n(seen.data.students.seen_people)} ta o'quvchi • ${n(seen.data.teachers.seen_people)} ta o'qituvchi (bazaning ${Math.round(seen.data.total.coverage)}% i)`
+              : seen.isLoading
+                ? "sanalmoqda…"
+                : "ma'lumot kelmadi"
+          }
           tone="#22C55E"
         />
         <KpiTile
           Icon={ShieldWarning}
-          label="Trevoga"
+          label="Xavfli holatlar"
           value={n(alarmTotal)}
-          hint={alarmTotal > 0 ? "janjal · qurol — ko'rib chiqish kerak" : "trevoga yo'q"}
+          hint={alarmTotal > 0 ? "janjal • qurol — ko'rib chiqish kerak" : "Favqulodda holatlar yo'q"}
           tone="#FB7185"
         />
         <KpiTile
           Icon={Clock}
           label="Eng gavjum soat"
           value={peak != null ? `${String(peak).padStart(2, "0")}:00` : "—"}
-          hint={peak != null ? `${n(peakCount)} ta qayd` : "ma'lumot yo'q"}
+          hint={peak != null ? `${n(peakCount)} ta yozuv` : "ma'lumot yo'q"}
           tone="#F59E0B"
         />
       </div>
 
-      {/* ── AI xulosasi ── */}
-      {insights.length > 0 && (
-        <StatPanel title="AI xulosasi" hint="o'lchangan sonlardan" className="flex-none">
-          <ul className="space-y-1.5">
-            {insights.map((i) => (
-              <li key={i.text} className="flex items-start gap-2 text-[12px] leading-snug">
-                <span
-                  className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full"
-                  style={{ background: i.tone === "alarm" ? "#FB7185" : i.tone === "warn" ? "#F59E0B" : "#8FB8FF" }}
-                />
-                <span className="text-slate-300">{i.text}</span>
-              </li>
-            ))}
-          </ul>
-        </StatPanel>
+      {/* ── TUR BO'YICHA TAHLIL — KPI qatoridan keyin. Har panelda "Hammasi" →
+          kartochkali oyna (sahifalash + 3…8 ustun slayderi). "Qurol va janjal"
+          rejimida janjal/qurol panellari 2-versiya (ko'cha kameralari)
+          serverlaridan (`TypeCards.tsx`, 2026-10-26). ── */}
+      <div className="grid gap-3 xl:grid-cols-2">
+        {byType
+          .filter(({ id }) => !(v2Mode && (id === "janjal" || id === "gun")))
+          .map(({ id, label, color, count, shots }) => (
+            <TypePanel
+              key={id}
+              title={label}
+              hint={count > 0 ? `${n(count)} ta qayd` : "Bu davrda aniqlanmadi"}
+              color={color}
+              count={count}
+              shots={shots}
+              onOpenShot={setOpenEv}
+              onAll={() => setAllType(id)}
+            />
+          ))}
+        {v2Mode && (
+          <>
+            <V2TypePanel kind="janjal" onOpenShot={setOpenEv} />
+            <V2TypePanel kind="gun" onOpenShot={setOpenEv} />
+          </>
+        )}
+      </div>
+      {allType && (
+        <EventTypeCardsModal
+          title={t.detect.category[allType]}
+          color={NVR_COLOR[allType] ?? "#8FB8FF"}
+          tab={allType}
+          from={range.from}
+          to={range.to}
+          onClose={() => setAllType(null)}
+        />
       )}
+      <EventOpener ev={openEv} onClose={() => setOpenEv(null)} onSelect={setOpenEv} />
 
-      {/* ── Soatlik zichlik (maydonli chiziq) + turlar ulushi (Donut3D) ── */}
-      <div className="grid flex-none gap-3 xl:grid-cols-[1.5fr_1fr]">
-        <StatPanel title="Soatlik zichlik" hint="24 soat" right={<DataBadge live={live} />} className="min-h-[240px]">
-          <div className="h-[180px]">
+      {/* ── Soatlik zichlik (maydonli chiziq). "Turlar ulushi" (Donut3D) va
+          "Kameralar kesimi" 2026-10-26 da OLIB TASHLANDI (foydalanuvchi:
+          "tur ulushi va kameralar kesimi kerak emas"). ── */}
+      <div className="flex-none">
+        <StatPanel
+          title={daily ? "Kunlar kesimida qaydlar soni" : "Soatlar kesimida qaydlar soni"}
+          hint={
+            seriesPeak >= 0
+              ? `eng ko'pi: ${series[seriesPeak].label} da — ${n(series[seriesPeak].value)} ta`
+              : daily
+                ? "kunlar bo'yicha"
+                : "soatlar bo'yicha"
+          }
+          right={<DataBadge live={live} />}
+          className="min-h-[240px]"
+        >
+          {seriesPeak < 0 ? (
+            /* Davrda birorta qayd yo'q — bo'sh grafik o'rniga rasmli holat (balandlik grafik bilan teng) */
+            <EmptyState className="h-[200px]" title="Qayd topilmadi" hint="Tanlangan davrda kameralar hech narsa yozmadi." />
+          ) : (
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourSeries} margin={{ top: 8, right: 10, bottom: 0, left: -20 }}>
+              <AreaChart data={series} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="ai-hour" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#8FB8FF" stopOpacity={0.55} />
                     <stop offset="100%" stopColor="#8FB8FF" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="hour" tick={AXIS} tickLine={false} axisLine={false} interval={1} />
-                <YAxis tick={AXIS} tickLine={false} axisLine={false} width={38} />
-                <Tooltip contentStyle={TOOLTIP} />
+                <XAxis
+                  dataKey="label"
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={daily ? "preserveStartEnd" : 1}
+                  minTickGap={daily ? 18 : 4}
+                />
+                <YAxis
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={false}
+                  width={Y_AXIS_W}
+                  allowDecimals={false}
+                  tickFormatter={(v: number) => (v >= 10000 ? `${Math.round(v / 1000)}k` : String(v))}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP}
+                  labelFormatter={(label: string) => (daily ? label : `${label} – ${String((Number(label.slice(0, 2)) + 1) % 24).padStart(2, "0")}:00`)}
+                  formatter={(v: number) => [`${n(v)} ta qayd`, "Kamera qaydlari"]}
+                />
                 <Area
                   type="monotone"
-                  dataKey={t.chart.count}
+                  dataKey="value"
                   stroke="#8FB8FF"
                   strokeWidth={2}
                   fill="url(#ai-hour)"
-                  /* Cho'qqi nuqtasi ko'zga tashlansin */
+                  /* Eng ko'p nuqta ko'zga tashlansin */
                   dot={(props: { cx?: number; cy?: number; index?: number }) =>
-                    props.index === peak ? (
+                    props.index === seriesPeak ? (
                       <circle key="peak" cx={props.cx} cy={props.cy} r={4} fill="#FB7185" stroke="#0B1220" strokeWidth={2} />
                     ) : (
                       <circle key={`d-${props.index}`} r={0} />
@@ -325,96 +384,27 @@ export function AiAnalysisPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </StatPanel>
-
-        <StatPanel title="Turlar ulushi" right={<DataBadge live={live} />} className="min-h-[240px]">
-          {typeShare.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-slate-500">
-              {stats.isLoading ? "Yuklanmoqda…" : "Bu davrda hodisa qayd etilmadi"}
-            </p>
-          ) : (
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <Donut3D data={typeShare} caption="jami qayd" size={260} format={n} />
-            </div>
           )}
         </StatPanel>
+
       </div>
 
-      {/* ── Kameralar kesimi — gorizontal ustunlar ── */}
-      {camSeries.length > 0 && (
-        <StatPanel
-          title="Kameralar kesimi"
-          hint="qaysi kameradan nechta qayd keldi"
-          right={<DataBadge live={live} />}
-          className="min-h-[200px] flex-none"
-        >
-          <div className="h-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={camSeries} layout="vertical" margin={{ top: 4, right: 16, bottom: 0, left: 4 }}>
-                <XAxis type="number" tick={AXIS} tickLine={false} axisLine={false} />
-                {/* Nomlar uzun — gorizontal joylashuv shuning uchun */}
-                <YAxis type="category" dataKey="name" tick={AXIS} tickLine={false} axisLine={false} width={132} />
-                <Tooltip contentStyle={TOOLTIP} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                <Bar dataKey={t.chart.count} fill="#22C55E" radius={[0, 4, 4, 0]} barSize={14} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </StatPanel>
+        </>
       )}
-
-      {/* ── TUR BO'YICHA TAHLIL ── */}
-      <div className="grid gap-3 xl:grid-cols-2">
-        {byType.map(({ id, label, color, count, shots, last }) => (
-          <StatPanel
-            key={id}
-            title={label}
-            hint={count > 0 ? `${n(count)} ta qayd` : "bu davrda aniqlanmadi"}
-            right={
-              <span
-                className="rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold"
-                style={{ background: `${color}22`, color }}
-              >
-                {n(count)}
-              </span>
-            }
-          >
-            {count === 0 ? (
-              <p className="py-3 text-[11.5px] text-slate-500">Tanlangan davrda bu turdagi hodisa qayd etilmadi.</p>
-            ) : (
-              <>
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} weight="duotone" />
-                    oxirgisi {last ? nvrTime(last.time) : "—"}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <SecurityCamera size={12} weight="duotone" />
-                    {last ? cameraPlaceLabel(last.channel, last.camera) : "—"}
-                  </span>
-                </div>
-
-                {/* Kadrlar — HAQIQIY, faqat oxirgi `SHOTS` tasi */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {shots.map((ev) => (
-                    <button
-                      key={ev.id}
-                      type="button"
-                      onClick={() => openEvent(ev.id)}
-                      title={`${ev.label} · ${nvrTime(ev.time)} — ochish`}
-                      className="group relative overflow-hidden rounded-lg border border-white/[0.1] transition-colors hover:border-white/30"
-                    >
-                      <DetectionThumb id={ev.id} className="aspect-[4/3] w-full" alt="" />
-                      <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center font-mono text-[9px] text-slate-200">
-                        {nvrTime(ev.time)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </StatPanel>
-        ))}
-      </div>
+      <AiNarrator
+        ready={!stats.isLoading}
+        summary={{
+          periodLabel: narratorPeriod,
+          total,
+          recognized: seen.data?.total.seen_people ?? null,
+          students: seen.data?.students.seen_people ?? null,
+          teachers: seen.data?.teachers.seen_people ?? null,
+          alarms: alarmTotal,
+          peakHour: peak,
+          peakCount,
+          byType: byType.map((r) => ({ id: r.id, count: r.count })),
+        }}
+      />
     </div>
   );
 }

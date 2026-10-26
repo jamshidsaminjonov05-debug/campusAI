@@ -1,14 +1,18 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, Database, RefreshCcw, ScanFace, ServerCog, ShieldCheck, UserPlus, Users as UsersIcon,
+  Activity, Clock, Mic, ScanFace, ServerCog, ShieldCheck, UserPlus, Users as UsersIcon, Video,
   CheckCircle2, XCircle,
 } from "lucide-react";
-import { useAdminMutations, useAdminStatus, useDashboard, useUsers } from "@/hooks/useApi";
+import { useAdminMutations, useUsers } from "@/hooks/useApi";
 import { useDetections } from "@/hooks/useDetections";
+import { getNvrStatus } from "@/lib/nvr/nvrApi";
+import { voiceApi } from "@/services/voice/VoiceService";
 import { useAuthStore } from "@/store/useAuthStore";
 import { usePermissions } from "@/lib/permissions";
 import { useT } from "@/i18n";
+import { EmptyState } from "@/components/common/EmptyState";
 
 function StatusDot({ ok }: { ok: boolean }) {
   return ok ? (
@@ -18,23 +22,35 @@ function StatusDot({ ok }: { ok: boolean }) {
   );
 }
 
+/** Qurilma soati serverdan shunchadan ko'p farq qilsa — ogohlantirish. */
+const CLOCK_SKEW_WARN_S = 60;
+
+/**
+ * Sozlamalar — "Tizim holati" + foydalanuvchilar.
+ *
+ * 🔴 **"TIZIM HOLATI" MANBASI ALMASHTIRILDI (2026-10-26, test).** Ilgari
+ * eski backend `/api/v1/admin/status` (`useAdminStatus`) edi — hozirgi
+ * kuzatuv posti serveri bu yo'lga HTML qaytaradi, karta BO'M-BO'SH turardi,
+ * "Resync"/"Yuz indeksi" tugmalari ham o'sha o'lik serverga yozardi.
+ * Endi manba kuzatuv postining o'z `GET /api/status`i (`getNvrStatus`):
+ * qurilmaga ulanish (`nvr_ok`, model), soat farqi (`clock.skew_seconds`),
+ * yuz oqimi (`useDetections`), nutq serveri (`/speech/health`, JSON bo'lsa).
+ * Foydalanuvchilar ro'yxati va yaratish — shu serverning `GET/POST /api/users`
+ * (admin JWT bilan ishlaydi, `openapi.json`da bor).
+ */
 export function SettingsPage() {
   const t = useT();
-  const status = useAdminStatus();
+  const status = useQuery({ queryKey: ["nvr-status"], queryFn: getNvrStatus, refetchInterval: 60_000 });
+  /* Kalit `FloatingVoiceButton` bilan umumiy — bitta so'rov. */
+  const speech = useQuery({ queryKey: ["speech-health"], queryFn: () => voiceApi.checkHealth(), staleTime: 10 * 60_000, retry: false });
+  const faceFeed = useDetections({ category: "face", limit: 1 });
   const users = useUsers();
-  const { resync, reloadFaceIndex, createUser } = useAdminMutations();
+  const { createUser } = useAdminMutations();
   const currentUser = useAuthStore((s) => s.user);
   const { can, deniedMessage } = usePermissions();
 
   const [msg, setMsg] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({ username: "", password: "", full_name: "", role: "viewer" });
-
-  function report(label: string) {
-    return {
-      onSuccess: () => setMsg(`${label} — muvaffaqiyatli bajarildi`),
-      onError: (e: Error) => setMsg(`${label} — xato: ${e.message}`),
-    };
-  }
 
   function handleCreateUser(e: FormEvent) {
     e.preventDefault();
@@ -51,131 +67,74 @@ export function SettingsPage() {
       },
       {
         onSuccess: (u) => {
-          setMsg(`"${u.username}" foydalanuvchisi yaratildi`);
+          setMsg(t.settings.userCreated(u.username));
           setNewUser({ username: "", password: "", full_name: "", role: "viewer" });
         },
-        onError: (err) => setMsg(`Foydalanuvchi yaratish xatosi: ${err.message}`),
+        onError: (err) => setMsg(t.settings.userCreateError(err.message)),
       }
     );
   }
 
   const s = status.data;
-  /* Modul BAYROG'I emas, HAQIQIY ma'lumot oqimi muhim: backendda
-     `onnxruntime` o'rnatilmagan bo'lsa ham yuz hodisalari kuzatuv postidan kelaveradi
-     (u tanishni o'zi bajaradi). Shuning uchun holat shu ikkala manbadan
-     birga chiqariladi. */
-  const faceFeed = useDetections({ category: "face", limit: 1 });
-  const dash = useDashboard();
-
-  /**
-   * Holat qatorlari.
-   *
-   * IKKI QOIDA:
-   * 1. **Xom Python xatosi ekranga chiqmaydi.** Server modul yo'q bo'lsa
-   *    `ModuleNotFoundError: No module named 'onnxruntime'` qaytaradi; bu
-   *    foydalanuvchiga hech narsa demaydi, shuning uchun odam o'qiydigan
-   *    holatga aylantiriladi. Asl matn faqat `title` da (sichqoncha ostida).
-   * 2. **MA'LUMOT KELAYOTGAN bo'lsa — "Ishlayapti".** Modul bayrog'i `false`
-   *    bo'lsa ham, agar o'sha imkoniyat bo'yicha haqiqiy ma'lumot kelayotgan
-   *    bo'lsa (yuz hodisalari kuzatuv postidan), qator ISHLAYAPTI deb ko'rsatiladi va
-   *    yonida manbasi yoziladi. Umuman ma'lumot yo'q bo'lsa — qator
-   *    CHIZILMAYDI (bo'sh indeks, bo'sh oqim, ishlamayotgan ovoz moduli).
-   */
-  const rows = useMemo(() => {
-    if (!s) return [];
-    const out: {
-      key: string;
-      label: string;
-      value: string;
-      tone: string;
-      note?: string;
-      hint?: string;
-      Icon?: typeof Database;
-    }[] = [];
-
-    const ON = { value: t.settings.stateOn, tone: "text-emerald-400" };
-
-    // 1) Aniqlash serveri (kuzatuv posti) — hodisalar shundan keladi
-    if (!faceFeed.isLoading) {
-      const nvrOk = !faceFeed.error;
-      out.push({
-        key: "nvr",
-        label: t.settings.detectServer,
-        Icon: Activity,
-        value: nvrOk ? t.settings.stateConnected : t.settings.stateDisconnected,
-        tone: nvrOk ? "text-emerald-400" : "text-amber-400",
-      });
-    }
-
-    // 2) Ma'lumotlar bazasi
-    out.push({
-      key: "db",
-      label: t.settings.dbEngine,
-      Icon: Database,
-      value: s.postgres_available ? t.settings.stateConnected : t.settings.stateDisconnected,
-      tone: s.postgres_available ? "text-emerald-400" : "text-amber-400",
-    });
-    if (s.postgres_available) {
-      out.push({
-        key: "resync",
-        label: t.settings.needsResync,
-        value: s.needs_resync ? t.settings.yes : t.settings.no,
-        tone: s.needs_resync ? "text-amber-400" : "text-emerald-400",
-      });
-    }
-
-    // 3) Yuz tanish — kuzatuv posti hodisalari kelayotgan bo'lsa ISHLAYAPTI
-    const faceLive = faceFeed.total > 0 || faceFeed.events.length > 0;
-    if (s.face_engine.available || faceLive) {
-      out.push({
-        key: "face",
-        label: t.settings.faceEngine,
-        Icon: ScanFace,
-        ...ON,
-        note: s.face_engine.available ? undefined : t.settings.viaNvr,
-        hint: s.face_engine.error,
-      });
-    }
-
-    // 4) Hissiyot tahlili — yozuv bo'lmasa qator umuman chizilmaydi
-    if (s.emotion_engine.available || (dash.data?.emotions_today?.total ?? 0) > 0) {
-      out.push({ key: "emotion", label: t.settings.emotionEngine, ...ON, hint: s.emotion_engine.error });
-    }
-
-    // 5) Ovoz modullari — faqat ishlayotgani ko'rsatiladi
-    if (s.stt_engine?.available) out.push({ key: "stt", label: t.settings.sttEngine, ...ON });
-    if (s.tts_engine?.available) out.push({ key: "tts", label: t.settings.ttsEngine, ...ON });
-
-    // 6) Sonlar — nolga teng bo'lsa ko'rsatilmaydi
-    if (s.face_index_size > 0) {
-      out.push({
-        key: "index",
-        label: t.settings.faceIndexSize,
-        value: String(s.face_index_size),
-        tone: "font-mono text-slate-200",
-      });
-    }
-    if (s.active_streams.length > 0) {
-      out.push({
-        key: "streams",
-        label: t.settings.activeStreams,
-        value: String(s.active_streams.length),
-        tone: "font-mono text-slate-200",
-      });
-    }
-    return out;
-  }, [s, t, faceFeed.isLoading, faceFeed.error, faceFeed.total, faceFeed.events.length, dash.data]);
+  const skew = s?.clock?.skew_seconds;
+  const faceLive = !faceFeed.isLoading && !faceFeed.error && (faceFeed.total > 0 || faceFeed.events.length > 0);
+  /* Holat qatorlari — sabab/izoh ekranda (`note`), xom matn faqat `title`da. */
+  const rows: { key: string; label: string; value: string; tone: string; note?: string; hint?: string; Icon: typeof Activity }[] = s
+    ? [
+        {
+          key: "server",
+          label: t.settings.detectServer,
+          Icon: Activity,
+          value: t.settings.stateConnected,
+          tone: "text-emerald-400",
+        },
+        {
+          key: "device",
+          label: t.settings.device,
+          Icon: Video,
+          value: s.nvr_ok ? t.settings.stateConnected : t.settings.stateDisconnected,
+          tone: s.nvr_ok ? "text-emerald-400" : "text-amber-400",
+          note: s.nvr_ok && s.nvr?.model ? s.nvr.model : t.settings.deviceHint,
+          hint: s.nvr_host ? `ISAPI: ${s.nvr_host}` : undefined,
+        },
+        ...(typeof skew === "number"
+          ? [{
+              key: "clock",
+              label: t.settings.clockSkew,
+              Icon: Clock,
+              value: t.settings.seconds(skew),
+              tone: Math.abs(skew) > CLOCK_SKEW_WARN_S ? "font-mono text-amber-400" : "font-mono text-slate-200",
+              note: Math.abs(skew) > CLOCK_SKEW_WARN_S ? t.settings.clockSkewHint : undefined,
+              hint: s.clock?.nvr_time && s.clock?.server_time ? `${s.clock.nvr_time} / ${s.clock.server_time}` : undefined,
+            }]
+          : []),
+        {
+          key: "face",
+          label: t.settings.faceEngine,
+          Icon: ScanFace,
+          value: faceLive ? t.settings.stateOn : t.settings.stateOff,
+          tone: faceLive ? "text-emerald-400" : "text-amber-400",
+          note: faceLive ? t.settings.viaNvr : undefined,
+        },
+        {
+          key: "speech",
+          label: t.settings.speech,
+          Icon: Mic,
+          value: speech.data ? t.settings.stateOn : t.settings.stateNotInstalled,
+          tone: speech.data ? "text-emerald-400" : "text-slate-500",
+          note: speech.data ? undefined : t.settings.speechHint,
+        },
+      ]
+    : [];
 
   const inputCls =
-    "w-full rounded-lg border border-blue-500/20 bg-slate-900/60 px-3 py-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-500";
-  const btnCls =
-    "flex items-center gap-2 rounded-lg border border-blue-500/20 bg-slate-900/60 px-3 py-2 text-[11.5px] text-slate-200 transition-colors hover:bg-slate-800/70 disabled:opacity-50";
+    "w-full rounded-lg border border-blue-500/20 bg-slate-900/60 px-3 py-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-500 focus:border-ice/50";
 
   return (
     <div className="hik-glass-blue flex h-full min-h-0 flex-col gap-3 overflow-y-auto rounded-3xl p-4">
       <div className="flex flex-none items-center gap-2">
         <ServerCog size={16} className="text-ice-soft" />
-        <p className="text-[13px] font-bold">Tizim sozlamalari va administrator paneli</p>
+        <p className="text-[13px] font-bold">{t.settings.heading}</p>
         {msg && (
           <motion.span
             key={msg}
@@ -195,78 +154,25 @@ export function SettingsPage() {
             <Activity size={13} /> {t.settings.systemStatus}
           </p>
           {status.isLoading && <p className="text-[11.5px] text-slate-500">{t.common.loading}</p>}
-          {s && (
-            <div className="space-y-1.5 text-[12px]">
-              {rows.length > 0 ? (
-                rows.map((r) => (
-                  <div key={r.key} className="flex items-center justify-between gap-3" title={r.hint}>
-                    <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-300">
-                      {r.Icon && <r.Icon size={13} className="flex-none" />}
-                      {r.label}
-                    </span>
-                    <span className={`flex-none ${r.tone}`}>
-                      {r.value}
-                      {/* Manba — modul o'chiq bo'lsa ham ma'lumot qayerdan kelayotgani */}
-                      {r.note && <small className="ml-1.5 text-[9.5px] font-normal text-slate-500">{r.note}</small>}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-[11.5px] text-slate-500">{t.settings.statusEmpty}</p>
-              )}
-            </div>
+          {status.isError && (
+            <p className="flex items-center gap-2 text-[12px] text-red-300" title={String(status.error)}>
+              <XCircle size={14} className="flex-none" /> {t.settings.statusError}
+            </p>
           )}
-
-          {/* ⚠️ **ISHLAMAYDIGAN AMAL TUGMASI CHIZILMAYDI** (2026-09-14,
-              foydalanuvchi so'rovi: "backendda mavjud bo'lmagan
-              ma'lumotlarni olib tashla, shunchaki chiqmasin").
-
-              O'lchandi (jonli backend, `GET /api/v1/admin/status`):
-                postgres_available: false
-                face_engine:  {available:false, "No module named 'onnxruntime'"}
-                emotion/stt/tts: false (ultralytics / torch yo'q)
-
-              Ya'ni "Resync" bosilsa ham ko'chiradigan BAZA yo'q, "Yuz
-              indeksini qayta yuklash" bosilsa ham qayta yuklaydigan
-              MODUL yo'q — tugma faqat xato qaytarardi. Endpoint'larning
-              O'ZI backendda bor (`/admin/resync`, `/admin/face-index/
-              reload`), shuning uchun modul/baza paydo bo'lgan zahoti
-              tugmalar O'ZI qaytadi — kodga tegilmaydi. */}
-          {(s?.postgres_available || s?.face_engine.available) && (
-            <div className="mt-auto space-y-2 border-t border-slate-700/30 pt-3">
-              {s?.postgres_available && (
-                <>
-                  <button
-                    className={btnCls}
-                    disabled={resync.isPending}
-                    onClick={() => resync.mutate("to_backup", report("Resync (asosiy → zaxira)"))}
-                  >
-                    <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-ice-soft" : "text-ice-soft"} />
-                    Resync: asosiy → zaxira
-                  </button>
-                  <button
-                    className={btnCls}
-                    disabled={resync.isPending}
-                    onClick={() => resync.mutate("to_primary", report("Resync (zaxira → asosiy)"))}
-                  >
-                    <RefreshCcw size={14} className={resync.isPending ? "animate-spin text-amber-300" : "text-amber-300"} />
-                    Resync: zaxira → asosiy
-                  </button>
-                </>
-              )}
-              {s?.face_engine.available && (
-                <button
-                  className={btnCls}
-                  disabled={reloadFaceIndex.isPending}
-                  onClick={() => reloadFaceIndex.mutate(undefined, report("Yuz indeksini qayta yuklash"))}
-                >
-                  <ScanFace
-                    size={14}
-                    className={reloadFaceIndex.isPending ? "animate-pulse text-emerald-300" : "text-emerald-300"}
-                  />
-                  Yuz indeksini qayta yuklash
-                </button>
-              )}
+          {rows.length > 0 && (
+            <div className="space-y-2 text-[12px]">
+              {rows.map((r) => (
+                <div key={r.key} className="flex items-start justify-between gap-3" title={r.hint}>
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5 text-slate-300">
+                    <r.Icon size={13} className="flex-none" />
+                    {r.label}
+                  </span>
+                  <span className={`flex-none text-right ${r.tone}`}>
+                    {r.value}
+                    {r.note && <small className="block text-[9.5px] font-normal text-slate-500">{r.note}</small>}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -274,9 +180,10 @@ export function SettingsPage() {
         {/* Foydalanuvchilar */}
         <div className="hik-glass-blue flex min-h-0 flex-col gap-2.5 rounded-2xl px-4 py-3.5">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            <UsersIcon size={13} /> Foydalanuvchilar ({users.data?.length ?? 0})
+            <UsersIcon size={13} /> {t.settings.users} ({users.data?.length ?? 0})
           </p>
           <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+            {users.isLoading && <p className="text-[11.5px] text-slate-500">{t.common.loading}</p>}
             {(users.data ?? []).map((u) => (
               <div key={u.id} className="flex items-center gap-2.5 rounded-lg border border-slate-700/30 bg-slate-900/40 px-3 py-2">
                 <div className="grid h-8 w-8 flex-none place-items-center rounded-full bg-ice/15 text-[11px] font-bold text-ice-soft ring-1 ring-ice/25">
@@ -285,7 +192,7 @@ export function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-semibold">
                     {u.full_name || u.username}
-                    {currentUser?.id === u.id && <span className="ml-1.5 text-[9.5px] text-ice-soft">(siz)</span>}
+                    {currentUser?.id === u.id && <span className="ml-1.5 text-[9.5px] text-ice-soft">{t.settings.you}</span>}
                   </p>
                   <p className="text-[10px] text-slate-400">@{u.username}</p>
                 </div>
@@ -300,12 +207,10 @@ export function SettingsPage() {
               </div>
             ))}
             {users.data && users.data.length === 0 && (
-              <p className="py-6 text-center text-[11px] text-slate-500">Foydalanuvchilar topilmadi</p>
+              <EmptyState compact className="py-6" title={t.settings.usersEmpty} />
             )}
             {users.isError && (
-              <p className="py-6 text-center text-[11px] text-red-400">
-                Ro'yxatni olishda xato — admin huquqi kerak bo'lishi mumkin
-              </p>
+              <p className="py-6 text-center text-[11px] text-red-400">{t.settings.usersError}</p>
             )}
           </div>
         </div>
@@ -313,38 +218,44 @@ export function SettingsPage() {
         {/* Yangi foydalanuvchi */}
         <div className="hik-glass-blue flex flex-col gap-3 rounded-2xl px-4 py-3.5">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            <UserPlus size={13} /> Yangi foydalanuvchi qo'shish
+            <UserPlus size={13} /> {t.settings.newUser}
           </p>
           <form onSubmit={handleCreateUser} className="flex flex-col gap-2.5">
             <input
               value={newUser.username}
               onChange={(e) => setNewUser((v) => ({ ...v, username: e.target.value }))}
-              placeholder="Login *"
+              placeholder={t.settings.login}
+              aria-label={t.settings.login}
               required
+              autoComplete="off"
               className={inputCls}
             />
             <input
               type="password"
               value={newUser.password}
               onChange={(e) => setNewUser((v) => ({ ...v, password: e.target.value }))}
-              placeholder="Parol *"
+              placeholder={t.settings.password}
+              aria-label={t.settings.password}
               required
+              autoComplete="new-password"
               className={inputCls}
             />
             <input
               value={newUser.full_name}
               onChange={(e) => setNewUser((v) => ({ ...v, full_name: e.target.value }))}
-              placeholder="To'liq ism"
+              placeholder={t.settings.fullName}
+              aria-label={t.settings.fullName}
               className={inputCls}
             />
             <select
               value={newUser.role}
               onChange={(e) => setNewUser((v) => ({ ...v, role: e.target.value }))}
-              className={inputCls}
+              aria-label={t.settings.roleViewer}
+              className={`${inputCls} [color-scheme:dark] [&_option]:bg-ink-panel [&_option]:text-slate-100`}
             >
-              <option value="viewer">Kuzatuvchi (viewer)</option>
-              <option value="operator">Operator</option>
-              <option value="admin">Administrator</option>
+              <option value="viewer">{t.settings.roleViewer}</option>
+              <option value="operator">{t.settings.roleOperator}</option>
+              <option value="admin">{t.settings.roleAdmin}</option>
             </select>
             <button
               type="submit"
@@ -356,13 +267,12 @@ export function SettingsPage() {
               ) : (
                 <UserPlus size={15} />
               )}
-              Yaratish
+              {t.settings.create}
             </button>
           </form>
           <p className="mt-auto flex items-start gap-1.5 rounded-lg bg-slate-900/50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-400">
             <ShieldCheck size={13} className="mt-0.5 flex-none text-ice-soft" />
-            Foydalanuvchi yaratish uchun administrator huquqi kerak. Rollar: viewer — faqat ko'rish,
-            operator — hodisalarni boshqarish, admin — to'liq huquq.
+            {t.settings.rolesNote}
           </p>
         </div>
       </div>

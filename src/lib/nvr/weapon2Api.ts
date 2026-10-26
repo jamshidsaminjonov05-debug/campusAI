@@ -16,6 +16,7 @@
  * qismi (kartochka, filtr) o'zgarmaydi.
  */
 import { WEAPON2_BASE } from "@/config/endpoints";
+import { markHiddenV2Cameras, WEAPON2_ALLOWED_CAMERA_IDS } from "@/lib/nvr/v2CameraFilter";
 import { ApiError } from "@/lib/api";
 import { nvrDateTime, nvrTime, type NvrEvent } from "@/lib/nvr/nvrApi";
 
@@ -41,6 +42,9 @@ export interface Weapon2Camera {
   /** Server o'zi hisoblab beradi — kamera bo'yicha jamlanma (qo'shimcha so'rovsiz). */
   accepted: number;
   ignored: number;
+  /** `v2CameraFilter.ts` — tungi klub kabi aloqasiz kamera; tanlagich/KPI/
+   *  hodisa ro'yxatidan chiqariladi. Ro'yxatdan O'CHIRILMAYDI — id kerak. */
+  hidden: boolean;
 }
 
 /** `GET /api/alert/alerts-total/` — butun tarix bo'yicha jamlanma. */
@@ -75,11 +79,53 @@ export async function listWeapon2Alerts(page = 1, pageSize = 24): Promise<{ data
   return get(`api/alert/alert-list/?page=${page}&page_size=${pageSize}`);
 }
 
+/**
+ * BITTA kameraning hodisalari — `GET /api/alert/get-camera-alerts/{camera_id}`
+ * (2026-10-24, foydalanuvchi: "faqat men bergan kameralarni chiqarish").
+ * `alert-list` da kamera filtri YO'Q (`/openapi.json`: faqat `page`/`page_size`),
+ * shuning uchun tanlangan har kamera ALOHIDA so'raladi (`useNvrEvents`
+ * birlashtiradi). O'lchandi: javob `{data, total}` — `alert-list` bilan AYNI
+ * shakl. ⚠️ Yo'l oxirida `/` YO'Q — qo'yilsa server `307` qaytaradi.
+ */
+export async function listWeapon2CameraAlerts(
+  cameraId: number,
+  page = 1,
+  pageSize = 24
+): Promise<{ data: Weapon2Alert[]; total: number }> {
+  return get(`api/alert/get-camera-alerts/${cameraId}?page=${page}&page_size=${pageSize}`);
+}
+
 /** Kameralar — `camera_id` ni odam o'qiydigan nom/joylashuvga aylantirish uchun.
  *  Har birida `accepted`/`ignored` ALLAQACHON hisoblangan — kamera kesimi
  *  uchun qo'shimcha so'rov kerak emas ("Statistika" oynasi shundan o'qiydi). */
+/**
+ * Kameralar ro'yxati — BARCHA sahifalar.
+ *
+ * 🔴 2026-10-21: server javob shaklini o'zgartirdi — ilgari massiv
+ * qaytarardi, endi `{ data, total, page, page_size, pages }` (standart 20
+ * ta, `page_size` ko'pi bilan 100; o'lchandi: 208 kamera, 3 sahifa).
+ * Eski kod javobni to'g'ridan-to'g'ri massiv deb aylanib, "Aniqlanganlar"
+ * sahifasini `object is not iterable` bilan yiqitardi. Ikkala shakl ham
+ * qabul qilinadi; qolgan sahifalar parallel olinadi.
+ */
+type CameraPage<T> = T[] | { data?: T[]; pages?: number };
+async function listAllCameras<T>(): Promise<T[]> {
+  const first = await get<CameraPage<T>>(`api/cams/camera/list/?page=1&page_size=100`);
+  if (Array.isArray(first)) return first;
+  const rows = first.data ?? [];
+  const pages = Math.min(first.pages ?? 1, 20);
+  if (pages <= 1) return rows;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      get<CameraPage<T>>(`api/cams/camera/list/?page=${i + 2}&page_size=100`)
+    )
+  );
+  for (const r of rest) rows.push(...(Array.isArray(r) ? r : r.data ?? []));
+  return rows;
+}
+
 export async function listWeapon2Cameras(): Promise<Weapon2Camera[]> {
-  return get(`api/cams/camera/list/`);
+  return markHiddenV2Cameras(await listAllCameras<Omit<Weapon2Camera, "hidden">>(), WEAPON2_ALLOWED_CAMERA_IDS);
 }
 
 /** Butun tarix bo'yicha qabul qilingan/e'tiborsiz qoldirilgan jami. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ImageBroken, MagnifyingGlass, UserFocus, X } from "@phosphor-icons/react";
@@ -10,10 +10,23 @@ import { useFaces } from "@/hooks/useFaces";
 import { ARRIVAL_PERIODS, periodRange } from "@/hooks/useTodayArrivals";
 import { nvrDateTime, nvrTime } from "@/lib/nvr/nvrApi";
 import { cameraPlaceLabel } from "@/config/cameraPlacements";
-import { TabPill } from "@/components/common/panels";
+import { TabPill, CardGridSkeleton } from "@/components/common/panels";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
+import { Pagination } from "@/components/common/Pagination";
+import { useT } from "@/i18n";
 import type { NvrFaceRow } from "@/lib/nvr/nvrApi";
+import { EmptyState } from "@/components/common/EmptyState";
+
+/**
+ * Bitta sahifadagi odamlar soni — server `/faces` sahifalashi (`offset`).
+ * 🔴 2026-10-26 gacha SAHIFALASH YO'Q edi: `limit: 100` bilan FAQAT birinchi
+ * 100 odam ko'rsatilardi, sarlavhada esa "1 119 odam" turardi — qolgan
+ * 1 000 tasini ko'rishning yo'li yo'q edi (o'lchandi: butun tarixda 1 119,
+ * bugun 620). Endi `offset` bilan sahifalanadi (`AllPeoplePage`dagi
+ * 2026-09-06 o'lchovi: `offset=0` va `offset=20` chindan boshqa yozuv beradi).
+ */
+const PAGE_SIZE = 60;
 
 /**
  * KAMERAGA TUSHGAN ODAMLAR — to'liq ro'yxat.
@@ -55,13 +68,30 @@ export function TodayArrivalsModal({
 }) {
   /* ◀ "orqaga" avval SHU oynani yopadi (`lib/modalHistory.ts`). */
   useModalHistory(onClose);
-  const [periodId, setPeriodId] = useState(initialPeriod);
-  const [q, setQ] = useState("");
-  const [known, setKnown] = useState<"all" | "yes" | "no">(initialKnown);
+  const t = useT();
+  const [periodId, setPeriodIdRaw] = useState(initialPeriod);
+  const [q, setQRaw] = useState("");
+  const [known, setKnownRaw] = useState<"all" | "yes" | "no">(initialKnown);
+  /* Sahifa — filtr (davr / tanish / qidiruv) o'zgarsa 1 ga qaytadi, aks
+     holda eski `offset` yangi, qisqaroq ro'yxatdan tashqarida qolib bo'sh
+     sahifa chiqardi (`useNvrEvents` `safePage` tuzog'i bilan AYNI). */
+  const [page, setPage] = useState(1);
+  const setPeriodId = (v: string) => {
+    setPeriodIdRaw(v);
+    setPage(1);
+  };
+  const setQ = (v: string) => {
+    setQRaw(v);
+    setPage(1);
+  };
+  const setKnown = (v: "all" | "yes" | "no") => {
+    setKnownRaw(v);
+    setPage(1);
+  };
   /* Bosilgan yozuvning MA'LUMOTLARI — "Aniqlanganlar" dagi bilan ayni oyna. */
   const [openId, setOpenId] = useState<number | null>(null);
   /** Ro'yxat/kartochka — `AttendanceListModal`dagi bilan AYNI naqsh (2026-09-11). */
-  const [viewMode, setViewMode] = useViewMode("arrivals-list", "card");
+  const [viewMode, setViewMode] = useViewMode("arrivals-list");
 
   const range = periodRange(periodId);
   /* Qidiruv va filtr SERVERGA yuboriladi — ro'yxat mingdan uzun bo'lishi
@@ -75,11 +105,22 @@ export function TodayArrivalsModal({
        xato bor edi). */
     date_from: range.from,
     date_to: range.to,
-    limit: 100,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
     sort: "last_seen",
     search: q.trim() || undefined,
     known: known === "all" ? undefined : known,
   });
+
+  /* `total` — davr+filtr bo'yicha SERVER soni; sahifalar shundan. Filtr
+     o'zgarib ro'yxat qisqarsa `safePage` eski raqamni o'zi tortib qaytaradi. */
+  const totalPages = Math.max(1, Math.ceil(a.total / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  /* Jonli yangilanishda `total` kamayib oxirgi sahifa yo'qolsa — so'rov
+     `offset`i oshib ketmasin (bo'sh ro'yxat "hech kim yo'q" deb chiqardi). */
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const KNOWN_TABS = [
     { id: "all", label: "Hammasi" },
@@ -100,7 +141,7 @@ export function TodayArrivalsModal({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="geo-strip-card flex max-h-[88vh] w-[min(1180px,95vw)] flex-col overflow-hidden rounded-2xl"
+        className="geo-strip-card flex h-[min(820px,88vh)] w-[min(1180px,95vw)] flex-col overflow-hidden rounded-2xl"
       >
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-white/[0.08] px-4 py-3">
           <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-emerald-400/15 text-emerald-300">
@@ -144,27 +185,39 @@ export function TodayArrivalsModal({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
           {a.isLoading ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-            </div>
+            <CardGridSkeleton count={8} media="aspect-[3/4]" />
           ) : a.faces.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-slate-500">
-              {q ? "Qidiruvga mos yozuv yo'q" : "Bu davrda hech kim qayd etilmadi"}
-            </p>
-          ) : viewMode === "list" ? (
-            <ul className="space-y-1">
-              {a.faces.map((f) => (
-                <ArrivalRow key={f.face_id} f={f} onOpen={() => setOpenId(f.last_event_id)} />
-              ))}
-            </ul>
+            <EmptyState fill title={q ? "Qidiruvga mos yozuv yo'q" : "Bu davrda hech kim qayd etilmadi"} />
           ) : (
-            <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(232px,1fr))]">
-              {a.faces.map((f) => (
-                <ArrivalCard key={f.face_id} f={f} onOpen={() => setOpenId(f.last_event_id)} />
-              ))}
-            </div>
+            <>
+              {/* Yangi sahifa kelguncha eski ro'yxat xira turadi (`keepPreviousData`) */}
+              <div className={`transition-opacity ${a.isFetching ? "opacity-60" : ""}`}>
+                {viewMode === "list" ? (
+                  <ul className="space-y-1">
+                    {a.faces.map((f) => (
+                      <ArrivalRow key={f.face_id} f={f} onOpen={() => setOpenId(f.last_event_id)} />
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(232px,1fr))]">
+                    {a.faces.map((f) => (
+                      <ArrivalCard key={f.face_id} f={f} onOpen={() => setOpenId(f.last_event_id)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Pagination
+                page={safePage}
+                totalPages={totalPages}
+                onChange={setPage}
+                prevLabel={t.detections.prev}
+                nextLabel={t.detections.next}
+                ariaLabel={t.detections.page(safePage)}
+                className="mt-auto pt-3"
+              />
+            </>
           )}
         </div>
 

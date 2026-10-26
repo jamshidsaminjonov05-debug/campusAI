@@ -35,6 +35,50 @@ body { @apply bg-ink font-sans antialiased; }
   }
 }
 
+/* ---------- YENGIL REJIM — boshqaruv paneli (`:root.perf-flat`, 2026-10-26) ----------
+   Foydalanuvchi: "animatsiyalarni minimallashtir, loyiha qotyapti".
+   `App.tsx` panel ochilganda `<html>`ga `perf-flat` sinfini qo'yadi (chiqilganda
+   oladi — landing/login tegilmaydi). Ikki narsa o'chadi:
+   1. **`backdrop-filter` — HAMMA JOYDA** (37 ta sinf + Tailwind `backdrop-blur-*`,
+      shu jumladan `document.body`ga portal qilingan modallar — shuning uchun
+      `.map-flat` kabi konteyner emas, ildiz sinfi). Har blur'li sirt ostidagi
+      rasm o'zgarganda qayta hisoblanadi; xarita/video/kadr ustida bu har kadr.
+      Shisha sirtlar o'rniga deyarli-noshaffof fon (matn o'qilsin).
+   2. **Bezak uchun cheksiz animatsiyalar** — marker pulsi, dossiye burchagi,
+      PTZ konusi, trevoga halqasi, ovoz tugmasining tinch holatdagi porlashi.
+      YUKLANISH belgilari (spinner, skelet, shimmer) va yozib olish paytidagi
+      qizil halqa QOLADI — ular holatni bildiradi, bezak emas. */
+:root.perf-flat *,
+:root.perf-flat *::before,
+:root.perf-flat *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root.perf-flat .hik-glass-blue,
+:root.perf-flat .nexa-card {
+  background-color: rgba(10, 17, 32, 0.92);
+}
+:root.perf-flat .geo-strip-card,
+:root.perf-flat .map-glass-card {
+  background-color: rgba(6, 11, 22, 0.97);
+}
+/* Modal pardalari: blur o'rniga biroz quyuqroq qoraytirish */
+:root.perf-flat .fixed.inset-0[class*="bg-black/"],
+:root.perf-flat .fixed.inset-0[class*="bg-[#03060E]/"] {
+  background-color: rgba(3, 6, 14, 0.88) !important;
+}
+:root.perf-flat .ymk-dot.pulse::after,
+:root.perf-flat .ymk-campus-base::after,
+:root.perf-flat .nvr-dsr::before,
+:root.perf-flat .nvr-dsr::after,
+:root.perf-flat .ymk-cam-fov.is-ptz,
+:root.perf-flat .ymk-alert-base::before,
+:root.perf-flat .ymk-alert-base::after,
+:root.perf-flat .ymk-alert-badge,
+:root.perf-flat .hik-glow-ring {
+  animation: none !important;
+}
+
 /* ---------- Chop etish (hisobotlar) — faqat kontent qolsin ---------- */
 @media print {
   .no-print { display: none !important; }
@@ -153,574 +197,6 @@ body { @apply bg-ink font-sans antialiased; }
     box-shadow 0.3s ease;
 }
 
-/* ═════════ Dashboard HUD — "katta ekran" ramkasi ═════════
-   Boshqaruv panelida ma'lumot panellari yo'q: orqa fonda xarita, ustida shu
-   ramka (burchak qavslari + sarlavha kapsulasi), pastda yoysimon footer va
-   o'ngda begona shaxs ogohlantirishlari. */
-/* DIQQAT — geometriya bog'langan: ramka radiusi 34px, burchak SVG'lari
-   -12px chetlatiladi va ularning `A34,34` yoyi shu chiziq ustiga tushadi.
-   Radiusni o'zgartirsangiz `HudFrame.tsx` dagi yoylarni ham o'zgartiring. */
-.hud-frame {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  padding: 14px;
-  border-radius: 34px;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%),
-    linear-gradient(180deg, #070c1a 0%, #04070f 100%);
-  box-shadow: inset 0 0 100px -40px rgba(133, 224, 255, 0.45), 0 30px 80px -46px rgba(0, 0, 0, 0.95);
-}
-/* Asosiy ramka chizig'i — xira; yorqinligini chekka gradientlari beradi */
-.hud-frame::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 34px;
-  border: 1px solid rgba(133, 224, 255, 0.16);
-  pointer-events: none;
-}
-/* Tashqi yumshoq porlash */
-.hud-frame::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 35px;
-  box-shadow: 0 0 40px -10px rgba(90, 168, 240, 0.35);
-  pointer-events: none;
-}
-/* Ekran — kontent (xarita) shu yerda qirqiladi */
-.hud-screen {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid rgba(133, 224, 255, 0.1);
-  background: #04070f;
-}
-/* Ichki vinyetka + yuqoridan ko'k yorug' — reference'dagi chuqurlik */
-.hud-vignette {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 0%, rgba(46, 114, 227, 0.1), transparent 55%);
-  box-shadow: inset 0 0 130px -46px rgba(0, 0, 0, 0.95);
-}
-.hud-deco {
-  position: absolute;
-  inset: 0;
-  pointer-events: none; /* bezak bosishga xalaqit bermasin */
-}
-
-/* ── Chekka chiziqlari: burchak qavslaridan boshlanadi, o'rtada so'nadi ── */
-.hud-edge {
-  position: absolute;
-  background: linear-gradient(
-    var(--dir, 90deg),
-    rgba(191, 228, 255, 0.85),
-    rgba(133, 224, 255, 0.2) 22%,
-    rgba(133, 224, 255, 0.14) 50%,
-    rgba(133, 224, 255, 0.2) 78%,
-    rgba(191, 228, 255, 0.85)
-  );
-}
-.hud-edge--t { left: 84px; right: 84px; top: 0; height: 1px; }
-.hud-edge--b { left: 84px; right: 84px; bottom: 0; height: 1px; }
-.hud-edge--l { top: 84px; bottom: 84px; left: 0; width: 1px; --dir: 180deg; }
-.hud-edge--r { top: 84px; bottom: 84px; right: 0; width: 1px; --dir: 180deg; }
-
-/* Ichki ikkinchi ramka */
-.hud-inner-line {
-  position: absolute;
-  inset: 9px;
-  border-radius: 26px;
-  border: 1px solid rgba(133, 224, 255, 0.09);
-}
-
-/* ── Burchak qavslari (SVG) ── */
-.hud-corner {
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  filter: drop-shadow(0 0 6px rgba(133, 224, 255, 0.5));
-}
-.hud-corner--tl { left: -12px; top: -12px; }
-.hud-corner--tr { right: -12px; top: -12px; transform: scaleX(-1); }
-.hud-corner--bl { left: -12px; bottom: -12px; transform: scaleY(-1); }
-.hud-corner--br { right: -12px; bottom: -12px; transform: scale(-1); }
-
-/* ── Yuqori markazdagi sarlavha kapsulasi ── */
-.hud-cap {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  /* Ichki ramka chizig'i (`.hud-inner-line`, `inset: 9px`) va yuqori chekka
-     chizig'i sarlavha USTIDAN o'tib, matnni "chizib" tashlardi. Ikki chora:
-     kapsula bezak qatlamining hammasidan yuqorida turadi va MATLAM shu
-     chiziqlardan pastda boshlanadi (padding-top 6px → 14px). */
-  z-index: 7;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 14px 44px 8px;
-  background: linear-gradient(180deg, rgb(23, 56, 112), rgb(7, 15, 32));
-  clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 26px 100%);
-  border-bottom: 1px solid rgba(133, 224, 255, 0.5);
-}
-.hud-cap b {
-  @apply text-[12px] font-bold uppercase tracking-[0.18em] text-white;
-  text-shadow: 0 0 14px rgba(133, 224, 255, 0.6);
-}
-.hud-cap i {
-  @apply not-italic text-[9px] uppercase tracking-[0.2em] text-ice-cyan/70;
-}
-
-/* ── O'ng yuqori yorliq — reference'dagi to'ldirilgan ko'k tab ── */
-.hud-badge {
-  position: absolute;
-  right: 40px;
-  top: -2px;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 5px 16px 6px;
-  border-radius: 0 0 8px 8px;
-  background: linear-gradient(180deg, #2f72e3 0%, #1b3f91 100%);
-  box-shadow: 0 10px 26px -12px rgba(47, 114, 227, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-}
-.hud-badge i {
-  @apply flex items-center gap-1.5 not-italic text-[8.5px] font-bold uppercase leading-none tracking-[0.16em] text-white/75;
-}
-.hud-badge b {
-  @apply font-mono text-[12px] font-bold leading-none text-white;
-}
-.hud-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #86efac;
-  box-shadow: 0 0 8px #86efac;
-  animation: hud-blink 2s ease-in-out infinite;
-}
-@keyframes hud-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-/* ---------- Yoysimon footer (detektorlar menyusi) ----------
-   Geometriya `HudFooter.tsx` da: SVG viewBox balandligi element balandligiga
-   TENG, shuning uchun tugmalar `top` piksellari yoy bilan aniq mos tushadi.
-   Bu yerdagi o'lchamlarni o'zgartirsangiz — u yerdagi SVG_TOP/BASE_Y ni ham. */
-.hud-footer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 176px;
-  z-index: 20;
-  pointer-events: none; /* faqat tugmalar bosiladi */
-}
-.hud-footer-arc {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 150px;
-}
-/* Gumbaz ostidagi porlash — sekin nafas oladi */
-.hud-arc-glow {
-  transform-origin: 500px 150px;
-  animation: hud-arc-breathe 6.5s ease-in-out infinite;
-}
-@keyframes hud-arc-breathe {
-  0%, 100% { opacity: 0.75; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hud-arc-sweep { display: none; } /* SMIL animatsiyani CSS to'xtata olmaydi */
-}
-
-/* Chetdagi qiya belgilar ("////") */
-.hud-footer-marks {
-  position: absolute;
-  bottom: 20px;
-  display: flex;
-  gap: 5px;
-}
-.hud-footer-marks--l { left: 8.5%; }
-.hud-footer-marks--r { right: 8.5%; flex-direction: row-reverse; }
-.hud-footer-marks i {
-  display: block;
-  width: 3px;
-  height: 15px;
-  border-radius: 1px;
-  transform: skewX(-24deg);
-  background: linear-gradient(180deg, #8ecbff, rgba(142, 203, 255, 0));
-  box-shadow: 0 0 9px rgba(133, 200, 255, 0.65);
-  animation: hud-mark-fade 3.2s ease-in-out infinite;
-}
-.hud-footer-marks--r i { transform: skewX(24deg); }
-@keyframes hud-mark-fade {
-  0%, 100% { opacity: 0.28; }
-  50% { opacity: 0.9; }
-}
-
-/* Qanotlar bo'ylab uchuvchi ma'lumot nuqtasi */
-.hud-footer-flow {
-  position: absolute;
-  bottom: 45px;
-  height: 2px;
-  width: 84px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #9fd4ff, transparent);
-  opacity: 0.7;
-  filter: blur(0.3px);
-}
-.hud-footer-flow--l { left: 0; animation: hud-flow-l 5.5s linear infinite; }
-.hud-footer-flow--r { right: 0; animation: hud-flow-r 5.5s linear infinite; }
-@keyframes hud-flow-l {
-  0% { transform: translateX(-100%); opacity: 0; }
-  15% { opacity: 0.8; }
-  70%, 100% { transform: translateX(18vw); opacity: 0; }
-}
-@keyframes hud-flow-r {
-  0% { transform: translateX(100%); opacity: 0; }
-  15% { opacity: 0.8; }
-  70%, 100% { transform: translateX(-18vw); opacity: 0; }
-}
-
-/* ── Detektor tugmalari ── */
-/* DIQQAT: markazlash (`translate(-50%,-50%)`) shu yerda EMAS — framer-motion
-   `style={{x,y}}` orqali beradi, aks holda `scale` animatsiyasi uni bosadi. */
-.hud-foot-btn {
-  position: absolute;
-  width: 48px;
-  height: 48px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  pointer-events: auto;
-  /* Markazga kelganda kattalashadi — o'lchov CSS'da, joyi framer'da */
-  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-}
-/* Markaziy uyadagi tugma — fokus holati */
-.hud-foot-btn.is-center { width: 60px; height: 60px; }
-.hud-foot-btn.is-center::after {
-  content: "";
-  position: absolute;
-  inset: -20px;
-  z-index: -1;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 30%, transparent), transparent 70%);
-  animation: hud-center-glow 3.4s ease-in-out infinite;
-}
-@keyframes hud-center-glow {
-  0%, 100% { opacity: 0.55; transform: scale(0.94); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-/* Aktivda ikonkadan yuqoriga ko'tarilgan yorug' nur */
-.hud-foot-btn::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 3px);
-  width: 2px;
-  height: 0;
-  transform: translateX(-50%);
-  border-radius: 2px;
-  background: linear-gradient(180deg, transparent, var(--c));
-  opacity: 0;
-  transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
-}
-.hud-foot-btn.is-active::before { height: 24px; opacity: 0.9; }
-
-.hud-foot-icon {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid rgba(150, 200, 255, 0.32);
-  /* Shisha "quduq": tepadan yorug', pastga qarab chuqurlashadi */
-  background:
-    radial-gradient(88% 80% at 50% 10%, rgba(130, 185, 255, 0.42), rgba(20, 48, 96, 0.72) 52%, rgba(5, 12, 26, 0.94) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -8px 14px -8px rgba(0, 0, 0, 0.95),
-    0 12px 24px -14px rgba(0, 0, 0, 0.95);
-  color: #d6e8ff;
-  transition:
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.3s ease,
-    box-shadow 0.3s ease,
-    color 0.3s ease;
-}
-/* Halqa — hover/aktivda kengayadi */
-.hud-foot-icon::before {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border-radius: 50%;
-  border: 1px solid var(--c);
-  opacity: 0;
-  transform: scale(0.86);
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.hud-foot-btn:hover .hud-foot-icon {
-  transform: translateY(-4px) scale(1.07);
-  color: #fff;
-  border-color: var(--c);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 26px -6px var(--c), 0 16px 26px -14px rgba(0, 0, 0, 0.95);
-}
-.hud-foot-btn:hover .hud-foot-icon::before { opacity: 0.55; transform: scale(1); }
-.hud-foot-btn.is-active .hud-foot-icon {
-  color: #fff;
-  border-color: var(--c);
-  background:
-    radial-gradient(88% 80% at 50% 10%, rgba(255, 255, 255, 0.32), rgba(26, 60, 118, 0.85) 52%, rgba(6, 14, 30, 0.95) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 32px -4px var(--c), 0 16px 26px -14px rgba(0, 0, 0, 0.95);
-}
-.hud-foot-btn.is-active .hud-foot-icon::before { opacity: 0.9; transform: scale(1); }
-/* Markazdagi tugma — doimiy yumshoq nafas */
-.hud-foot-btn.is-center .hud-foot-icon {
-  border-color: var(--c);
-  animation: hud-primary-breathe 3.4s ease-in-out infinite;
-}
-.hud-foot-btn.is-center .hud-foot-label {
-  @apply text-[9.5px] text-slate-100;
-}
-/* Trevoga bo'lsa — qizil halqa tarqaladi */
-.hud-foot-btn.has-alert .hud-foot-icon::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 1.5px solid var(--c);
-  animation: hud-alert-ring 1.5s ease-out infinite;
-}
-@keyframes hud-primary-breathe {
-  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 18px -8px var(--c), 0 12px 24px -14px rgba(0, 0, 0, 0.95); }
-  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 30px -4px var(--c), 0 12px 24px -14px rgba(0, 0, 0, 0.95); }
-}
-@keyframes hud-alert-ring {
-  0% { transform: scale(1); opacity: 0.85; }
-  100% { transform: scale(1.75); opacity: 0; }
-}
-
-.hud-foot-label {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  @apply text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
-  transition: color 0.25s ease, text-shadow 0.25s ease;
-}
-.hud-foot-btn:hover .hud-foot-label { @apply text-slate-100; }
-.hud-foot-btn.is-active .hud-foot-label {
-  color: var(--c);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent), 0 1px 6px rgba(0, 0, 0, 0.9);
-}
-.hud-foot-count {
-  position: absolute;
-  top: -3px;
-  right: -7px;
-  min-width: 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(4, 10, 22, 0.9);
-  background: var(--c);
-  padding: 0 4px;
-  @apply font-mono text-[9.5px] font-bold not-italic leading-[16px] text-[#08101F];
-  box-shadow: 0 0 12px -2px var(--c);
-}
-
-/* Markaziy kapsula — reference'dagi yorqin ko'k yorliq */
-.hud-footer-chip {
-  position: absolute;
-  left: 50%;
-  top: 116px;
-  transform: translateX(-50%);
-  overflow: hidden;
-  border-radius: 999px;
-  border: 1px solid rgba(180, 215, 255, 0.5);
-  background: linear-gradient(180deg, #2f72e3 0%, #1b3f91 100%);
-  padding: 4px 22px;
-  white-space: nowrap;
-  box-shadow: 0 0 26px -6px rgba(64, 140, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.38);
-  @apply text-[10px] font-bold uppercase tracking-[0.16em] text-white;
-}
-/* Kapsula ustidan o'tuvchi yorug' */
-.hud-footer-chip::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.42) 50%, transparent 65%);
-  transform: translateX(-120%);
-  animation: hud-chip-shine 5s ease-in-out infinite;
-}
-@keyframes hud-chip-shine {
-  0%, 62% { transform: translateX(-120%); }
-  85%, 100% { transform: translateX(120%); }
-}
-
-/* ---------- Begona shaxs ogohlantirishlari ---------- */
-.hud-alerts {
-  position: absolute;
-  right: 18px;
-  top: 60px;
-  z-index: 25;
-  display: flex;
-  width: 312px;
-  max-height: calc(100% - 230px);
-  flex-direction: column;
-}
-.hud-alerts-head {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(133, 224, 255, 0.22);
-  border-radius: 12px 12px 0 0;
-  background: rgba(6, 13, 28, 0.88);
-  padding: 7px 11px;
-  backdrop-filter: blur(14px);
-}
-.hud-alerts-head b { @apply text-[11px] font-bold tracking-[0.14em] text-slate-100; }
-.hud-alerts-count {
-  @apply rounded-full bg-rose-500/20 px-2 font-mono text-[10.5px] font-bold leading-[17px] text-rose-300;
-}
-.hud-alerts-demo {
-  @apply rounded bg-amber-400/15 px-1.5 font-mono text-[9px] font-bold tracking-wide text-amber-300;
-}
-.hud-alerts-clear {
-  @apply ml-auto text-[10px] uppercase tracking-wide text-slate-400 transition-colors hover:text-ice-bright;
-}
-.hud-alerts-list {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 7px;
-  overflow-y: auto;
-  border-inline: 1px solid rgba(133, 224, 255, 0.14);
-  background: rgba(4, 9, 20, 0.55);
-  padding: 7px;
-  backdrop-filter: blur(10px);
-}
-.hud-alerts-idle { @apply px-1 py-2 text-center text-[10.5px] leading-snug text-slate-500; }
-.hud-alerts-foot {
-  border: 1px solid rgba(133, 224, 255, 0.14);
-  border-radius: 0 0 12px 12px;
-  background: rgba(6, 13, 28, 0.88);
-  @apply px-3 py-1.5 text-[10px] text-slate-500 backdrop-blur-md;
-}
-.hud-alerts-foot b { @apply font-mono text-slate-300; }
-
-.hud-alert {
-  position: relative;
-  display: flex;
-  gap: 9px;
-  cursor: pointer;
-  border-radius: 11px;
-  border: 1px solid rgba(133, 224, 255, 0.25);
-  background: linear-gradient(180deg, rgba(11, 25, 50, 0.94), rgba(6, 12, 26, 0.94));
-  padding: 8px 10px;
-  box-shadow: 0 16px 34px -22px rgba(0, 0, 0, 0.95);
-  transition: border-color 0.25s ease;
-}
-.hud-alert:hover { border-color: rgba(133, 224, 255, 0.55); }
-.hud-alert--repeat {
-  border-color: rgba(255, 77, 77, 0.65);
-  background: linear-gradient(180deg, rgba(56, 12, 22, 0.94), rgba(20, 6, 12, 0.94));
-  animation: hud-alert-pulse 1.9s ease-in-out infinite;
-}
-@keyframes hud-alert-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.35), 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
-  50% { box-shadow: 0 0 0 4px rgba(255, 77, 77, 0), 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
-}
-.hud-alert-face {
-  display: grid;
-  height: 38px;
-  width: 38px;
-  flex: none;
-  place-items: center;
-  border-radius: 9px;
-  border: 1px solid rgba(133, 224, 255, 0.3);
-  background: rgba(133, 224, 255, 0.08);
-  @apply text-ice-cyan;
-}
-.hud-alert--repeat .hud-alert-face {
-  border-color: rgba(255, 77, 77, 0.5);
-  background: rgba(255, 77, 77, 0.12);
-  @apply text-rose-300;
-}
-.hud-alert-title { @apply truncate pr-4 text-[12px] font-bold text-slate-100; }
-.hud-alert-sub { @apply truncate text-[10px] text-slate-400; }
-.hud-alert-meta { @apply mt-0.5 flex justify-between gap-2 font-mono text-[9.5px] text-slate-500; }
-.hud-alert-flag { @apply mt-1 text-[9px] font-bold tracking-[0.1em] text-rose-400; }
-.hud-alert-x {
-  @apply absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded text-slate-500 transition-colors hover:bg-white/10 hover:text-white;
-}
-/* Ro'yxat rejimi — jiddiylik ustuni va "ochish" strelkasi */
-.hud-alert-sev {
-  width: 3px;
-  flex: none;
-  align-self: stretch;
-  border-radius: 2px;
-  box-shadow: 0 0 10px -1px currentColor;
-}
-.hud-alert-go {
-  @apply flex-none self-center text-slate-600 transition-colors;
-}
-.hud-alert:hover .hud-alert-go { @apply text-ice-bright; }
-
-/* ---------- Detal — ESKI Hodisalar bo'limi HUD ustida ---------- */
-.hud-detail {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, rgba(4, 9, 20, 0.97), rgba(3, 6, 14, 0.99));
-  backdrop-filter: blur(8px);
-}
-.hud-detail-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 14px;
-  border-bottom: 1px solid rgba(133, 224, 255, 0.18);
-  background: rgba(8, 17, 36, 0.92);
-  padding: 9px 16px;
-}
-.hud-detail-back {
-  @apply flex flex-none items-center gap-1.5 rounded-xl border border-ice-cyan/30 bg-ice-cyan/[0.07] px-3 py-1.5 text-[11.5px] font-semibold text-ice-bright transition-colors;
-}
-.hud-detail-back:hover { @apply border-ice-cyan/60 bg-ice-cyan/15 text-white; }
-.hud-detail-title {
-  @apply flex min-w-0 flex-1 flex-col leading-tight;
-}
-.hud-detail-title b { @apply truncate text-[13px] font-bold text-slate-100; }
-.hud-detail-title i { @apply truncate not-italic font-mono text-[10px] text-slate-500; }
-.hud-detail-tag {
-  flex: none;
-  border: 1px solid var(--c, #85e0ff);
-  color: var(--c, #85e0ff);
-  @apply rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em];
-  box-shadow: 0 0 18px -8px var(--c, #85e0ff);
-}
-.hud-detail-body {
-  min-height: 0;
-  flex: 1;
-  padding: 12px;
-}
-
 /* Asosiy tugma — muzli ko'k gradient, hover'da ko'tarilib porlaydi */
 .hik-btn-ice {
   @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#C4D7FF] to-[#7FA6F2] font-bold text-[#0A0F1E] transition-[transform,box-shadow,filter] duration-300;
@@ -785,37 +261,6 @@ body { @apply bg-ink font-sans antialiased; }
 }
 .hik-popup-btn:hover { filter: brightness(1.06); }
 
-/* ---------- Kamera AI overlay ---------- */
-.hik-ai-box {
-  position: absolute;
-  border: 1.5px solid rgba(0, 229, 255, 0.9);
-  border-radius: 4px;
-  animation: hik-blink 2s infinite;
-  transition: left 1s ease, top 1s ease;
-}
-.hik-ai-box span {
-  position: absolute;
-  top: -18px;
-  left: -1px;
-  @apply whitespace-nowrap rounded-sm bg-cyan-400 px-1.5 font-mono text-[9.5px] font-bold text-slate-950;
-}
-@keyframes hik-blink {
-  0%, 100% { border-color: rgba(0, 229, 255, 0.9); }
-  50% { border-color: rgba(0, 229, 255, 0.35); }
-}
-.hik-scanline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.5), transparent);
-  animation: hik-scan 4s linear infinite;
-}
-@keyframes hik-scan {
-  0% { top: -10%; }
-  100% { top: 110%; }
-}
-
 /* ---------- Kameralar sahifasi — ko'k neon glass ---------- */
 .hik-glass-blue {
   @apply border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl;
@@ -823,32 +268,6 @@ body { @apply bg-ink font-sans antialiased; }
     0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
     0 20px 50px -20px rgba(0, 0, 0, 0.5),
     0 0 30px -12px rgba(143, 184, 255, 0.3);
-}
-.hik-ai-box-blue {
-  position: absolute;
-  border: 1.5px solid rgba(37, 99, 235, 0.95);
-  border-radius: 6px;
-  animation: hik-blink-blue 2s infinite;
-  transition: left 1s ease, top 1s ease;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.5);
-}
-.hik-ai-box-blue span {
-  position: absolute;
-  top: -18px;
-  left: -1px;
-  @apply whitespace-nowrap rounded-sm bg-blue-600 px-1.5 font-mono text-[9.5px] font-bold text-white;
-}
-@keyframes hik-blink-blue {
-  0%, 100% { border-color: rgba(37, 99, 235, 0.95); }
-  50% { border-color: rgba(37, 99, 235, 0.4); }
-}
-.hik-scanline-blue {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.65), transparent);
-  animation: hik-scan 4s linear infinite;
 }
 .hik-glow-ring {
   animation: hik-glow-pulse 2.4s ease-in-out infinite;
@@ -858,71 +277,13 @@ body { @apply bg-ink font-sans antialiased; }
   50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
 }
 
-/* ---------- Hodisalar sahifasi — qizil trevoga variantlari ---------- */
-.hik-ai-box-red {
-  position: absolute;
-  border: 1.5px solid rgba(239, 68, 68, 0.95);
-  border-radius: 6px;
-  animation: hik-blink-red 1.4s infinite;
-  transition: left 1s ease, top 1s ease;
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.55);
-}
-.hik-ai-box-red span {
-  position: absolute;
-  top: -18px;
-  left: -1px;
-  @apply whitespace-nowrap rounded-sm bg-red-600 px-1.5 font-mono text-[9.5px] font-bold text-white;
-}
-@keyframes hik-blink-red {
-  0%, 100% { border-color: rgba(239, 68, 68, 0.95); }
-  50% { border-color: rgba(239, 68, 68, 0.35); }
-}
+/* ---------- Ovoz tugmasi — qizil halqa (yozib olish paytida) ---------- */
 .hik-glow-ring-red {
   animation: hik-glow-pulse-red 1.6s ease-in-out infinite;
 }
 @keyframes hik-glow-pulse-red {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
   50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-}
-
-/* ---------- Geo Analitika xarita markerlari (holat bo'yicha pulse) ---------- */
-.hik-geo-marker {
-  cursor: pointer;
-}
-.hik-geo-marker--normal { width: 12px; height: 12px; }
-.hik-geo-marker--warning { width: 15px; height: 15px; }
-.hik-geo-marker--critical { width: 18px; height: 18px; }
-.hik-geo-marker::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--hik-dot-color);
-  opacity: 0.6;
-}
-.hik-geo-marker::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--hik-dot-color);
-  border: 2px solid #0f172a;
-  box-shadow: 0 0 8px var(--hik-dot-color);
-}
-.hik-geo-marker--normal::before { animation: hik-geo-pulse-sm 2.4s ease-out infinite; }
-.hik-geo-marker--warning::before { animation: hik-geo-pulse-md 1.8s ease-out infinite; }
-.hik-geo-marker--critical::before { animation: hik-geo-pulse-lg 1.1s ease-out infinite; }
-@keyframes hik-geo-pulse-sm {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(1.8); opacity: 0; }
-}
-@keyframes hik-geo-pulse-md {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-@keyframes hik-geo-pulse-lg {
-  0% { transform: scale(1); opacity: 0.7; }
-  100% { transform: scale(3.4); opacity: 0; }
 }
 
 /* ── Yandex Maps: DARK MODE ──────────────────────────────────────────────
@@ -1104,11 +465,27 @@ body { @apply bg-ink font-sans antialiased; }
   box-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
 }
 
+/* TO'R — ustunlar soni FOYDALANUVCHIDAN (`--cols`, slayder 3…8,
+   `useCardColumns`; 2026-10-23). Kichik ekranda slayderdan qat'i nazar
+   2 / 1 ustun — 8 ta kadr telefonda o'qilmaydi. Kadr `aspect-video`. */
 .nvr-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
 }
+@media (max-width: 1023px) { .nvr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 599px) { .nvr-grid { grid-template-columns: 1fr; } }
+/* Kategoriya tugmasidagi hisoblagich (`DetectionsPage` — davrdagi son) */
+.nvr-tab-count {
+  @apply ml-1 rounded-full px-1.5 py-px font-mono text-[9.5px] font-bold leading-[14px] text-slate-300;
+  background: rgba(255, 255, 255, 0.09);
+}
+.text-white .nvr-tab-count {
+  color: #fff;
+  background: color-mix(in srgb, var(--c, #85E0FF) 30%, transparent);
+}
+/* Nol / hali hisoblanmagan / kelmagan — xira (2026-10-24: har tabda son bor) */
+.nvr-tab-count.is-dim { opacity: 0.55; }
 /* ── KARTOCHKA ────────────────────────────────────────────────────────
    ⚠️ QAYTA ISHLANDI. Ilgari butun kartochka (ramka + pastki qism foni)
    xavflilik rangiga bo'yalardi. Panjarada 20+ kartochka bo'lganda bu
@@ -1120,7 +497,7 @@ body { @apply bg-ink font-sans antialiased; }
    oldidagi nuqta. Sirt esa BARCHA kartochkada bir xil va MAVZU
    tokenlaridan olinadi — oltala mavzuda ham to'g'ri ko'rinadi. */
 .nvr-card {
-  @apply relative flex w-full flex-col overflow-hidden rounded-xl border text-left transition-all;
+  @apply relative flex h-full w-full flex-col overflow-hidden rounded-xl border text-left transition-all;
   border-color: rgba(255, 255, 255, 0.09);
   background: rgba(255, 255, 255, 0.035);
   backdrop-filter: blur(10px);
@@ -1142,31 +519,54 @@ body { @apply bg-ink font-sans antialiased; }
   box-shadow: 0 0 12px -1px var(--c);
 }
 
-/* KO'RILGAN — tasma so'nadi, sarlavha ingichkalashadi, burchakda ✓ turadi.
+/* KO'RILGAN — rangli tasma UMUMAN yo'qoladi (oddiy kulrang ramka qoladi),
+   sarlavha ingichkalashadi, sarlavha oxirida ✓ turadi (2026-10-23: ilgari
+   tasma so'nib qolardi, ✓ esa rasm burchagida — endi u yerda tur nishoni).
+   Ya'ni rang FAQAT yangi (ko'rilmagan) hodisada — panjara ola-chipor emas.
    ⚠️ RASMGA TEGILMAYDI (`opacity`/`grayscale` yo'q): kadr har doim to'liq
    tiniq bo'lishi kerak, operator yuzni aniq ko'rsin. */
-.nvr-card.is-seen::before { background: color-mix(in srgb, var(--c) 28%, transparent); }
+.nvr-card.is-seen::before { display: none; }
 .nvr-card.is-seen .nvr-card-title { @apply font-medium opacity-75; }
-.nvr-card.is-seen .nvr-card-dot { display: none; }
-.nvr-card.is-seen .nvr-card-media::after {
+.nvr-card.is-seen .nvr-card-title::after {
   content: "✓";
-  @apply pointer-events-none absolute right-1.5 top-1.5 grid h-[15px] w-[15px] place-items-center rounded-full
-         text-[9px] font-bold leading-none text-white/70;
-  background: rgba(4, 7, 15, 0.72);
+  @apply ml-auto grid h-[15px] w-[15px] flex-none place-items-center rounded-full text-[9px] font-bold leading-none text-white/70;
+  background: rgba(255, 255, 255, 0.1);
 }
-/* KO'RILMAGAN — sarlavha oldida rangli nuqta */
-.nvr-card-dot {
-  @apply h-1.5 w-1.5 flex-none rounded-full;
-  background: var(--c);
-  box-shadow: 0 0 6px var(--c);
-}
+.nvr-card.is-seen .nvr-card-badge { opacity: 0.7; }
 
 .nvr-card-media {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #04070f;
 }
+/* Hodisa TURI nishoni — o'ng yuqori burchak, xavflilik rangida */
+.nvr-card-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  @apply flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white;
+  background: color-mix(in srgb, var(--c) 78%, #000 22%);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.7);
+}
+/* Hover — "Videoni ko'rish" / "Dossiyeni ochish" rasm markazida */
+.nvr-card-play {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  @apply flex flex-col items-center justify-center gap-1 text-[10.5px] font-semibold text-white opacity-0 transition-opacity;
+  background: rgba(4, 7, 15, 0.42);
+  pointer-events: none;
+}
+.nvr-card-play > svg {
+  @apply grid h-9 w-9 rounded-full p-2;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(4px);
+}
+.nvr-card:hover .nvr-card-play,
+.nvr-card:focus-visible .nvr-card-play { opacity: 1; }
+/* Xira fon — 72×128 px thumb, to'liq rasm ustidan yopadi (2026-10-26) */
 .nvr-card-media img {
   height: 100%;
   width: 100%;
@@ -1180,32 +580,58 @@ body { @apply bg-ink font-sans antialiased; }
 }
 .nvr-card-count p { @apply text-[11.5px] text-slate-300; }
 .nvr-card-count b { @apply font-mono text-[13px] text-white; }
-.nvr-card-time,
+/* ── VAQT va ISHONCH — RASM OSTIDA (2026-10-24, UX tahlili 3-band) ──
+   Ilgari ikkalasi rasmning pastki burchaklarida `absolute` chip edi va
+   kameraning o'z yozuvlari ("10-23-2026 Fri…", "Camera 01") ustiga tushib
+   qorishib ketardi. Endi ular ma'lumot blokidagi oddiy matn. */
+.nvr-card-time { @apply font-mono text-[10px] font-semibold text-slate-300; }
+/* Sana qismi ("Bugun ·" / "23-okt ·", "Oxirgi") — soatdan ochroq */
+.nvr-card-time b { @apply font-semibold text-slate-500; }
 .nvr-card-conf {
-  position: absolute;
-  bottom: 6px;
-  @apply rounded bg-black/70 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold text-slate-200;
+  @apply flex-none rounded px-1.5 py-0.5 font-mono text-[10px] font-bold;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
 }
-.nvr-card-time { left: 6px; }
-.nvr-card-conf { right: 6px; color: var(--c); }
-/* Pastki qism (nom + kamera) ham XAVFLILIK rangida — `--c` kartochkadan
-   keladi (`detectionLevel()`). Ilgari u neytral qorong'i edi va rang faqat
-   chegarada ko'rinardi; endi yangi hodisa bir qarashda ajraladi. */
-/* Pastki qism NEYTRAL — rang faqat chap tasmada va nuqtada. Ilgari
-   bu yer ham `--c` bilan bo'yalardi va panjara ola-chipor ko'rinardi. */
+/* Pastki qism NEYTRAL — rang faqat chap tasmada. Ilgari bu yer ham `--c`
+   bilan bo'yalardi va panjara ola-chipor ko'rinardi. `flex-1` — to'rdagi
+   kartochkalar bir xil balandlikda, rol qatori bo'lmasa ham. */
 .nvr-card-body {
-  @apply px-2.5 py-2;
+  @apply flex flex-1 flex-col px-2.5 py-2;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
+/* Sarlavha qatori: [bazadagi avatar] ism+rol [ishonch %] */
+.nvr-card-head { @apply flex items-center gap-2; }
 .nvr-card-title {
-  @apply flex items-center gap-1.5 truncate text-[12px] font-bold text-slate-100;
+  @apply flex items-center gap-1.5 truncate text-[12.5px] font-bold text-slate-100;
 }
-.nvr-card-sub { @apply mt-0.5 truncate text-[10px] text-slate-400; }
+/* Rol: "O'quvchi · 6-A" / "O'qituvchi" — ism ostida, ochroq */
+.nvr-card-role { @apply truncate text-[10px] font-semibold text-sky-300/90; }
+.nvr-card-sub { @apply mt-1 truncate text-[10.5px] text-slate-400; }
+.nvr-card-meta { @apply mt-auto flex items-center gap-1.5 pt-1; }
+/* Bir odamning 10 daqiqa ichidagi qo'shimcha o'tishlari ("+1 o'tish") */
+.nvr-card-passes {
+  @apply rounded px-1.5 py-px font-mono text-[9.5px] font-bold text-amber-200;
+  background: rgba(245, 158, 11, 0.16);
+}
+/* Bazadagi (etalon) surat — 36 px dumaloq; bo'lmasa bosh harflar,
+   notanishda chiziqli halqa + ikonka (hech narsa o'ylab topilmaydi) */
+.nvr-card-avatar {
+  @apply grid h-9 w-9 flex-none place-items-center overflow-hidden rounded-full object-cover text-[11px] font-bold text-slate-200;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+.nvr-card-avatar.is-unknown {
+  @apply text-slate-500;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+}
 /* Yig'ilgan o'tish nishoni — "N kadr" (`group=true`, FRONTEND.md 4-A) */
 .nvr-card-frames {
   position: absolute;
   top: 6px;
   left: 6px;
+  z-index: 2;
   @apply rounded bg-black/70 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold text-slate-200;
 }
 
@@ -1574,35 +1000,33 @@ body { @apply bg-ink font-sans antialiased; }
 }
 .maplibregl-popup.hik-map-popup .maplibregl-popup-tip { display: none; }
 
-/* ---------- 3D kampus (Campus3D / BuildingInterior) ---------- */
-/* Aniqlangan nuqta atrofidagi qizil radius — sekin "nafas oladi".
-   DIQQAT: SVG element uchun `transform-box: fill-box` SHART, aks holda
-   `transform-origin: center` viewBox markaziga tushib markerni uchirib
-   yuboradi. */
-@keyframes c3d-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.06); }
+/* Kamera kartasi (`cameraLayer.ts` `cameraHintHtml`) — belgi ustiga kelganda */
+.hik-cam-tip { min-width: 164px; padding: 9px 11px 9px; font-size: 11px; line-height: 1.3; }
+.hik-cam-tip-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.hik-cam-tip-ic {
+  display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 7px;
+  color: #fff; background: linear-gradient(135deg, #22d3ee, #818cf8); box-shadow: 0 6px 14px -8px #22d3ee;
 }
-.c3d-pulse {
-  animation: c3d-pulse 2.6s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
+.hik-cam-tip-title { flex: 1; min-width: 0; font-weight: 700; font-size: 12px; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hik-cam-tip-ch {
+  flex: none; padding: 1px 6px; border-radius: 999px; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700;
+  color: #a5f3fc; background: rgba(34, 211, 238, 0.12); border: 1px solid rgba(34, 211, 238, 0.3);
 }
-
-@keyframes c3d-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+.hik-cam-tip-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; color: #cbd5e1; }
+.hik-cam-tip-k { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.hik-cam-tip-v { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-family: ui-monospace, monospace; font-weight: 700; color: #e2e8f0; }
+.hik-cam-tip-row:has(.hik-cam-tip-dot) .hik-cam-tip-v { margin-left: 0; font-family: inherit; font-weight: 600; }
+.hik-cam-tip-dot { width: 7px; height: 7px; border-radius: 999px; flex: none; }
+.hik-cam-tip-dot.is-online { background: #34d399; box-shadow: 0 0 8px #34d399; }
+.hik-cam-tip-dot.is-warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.hik-cam-tip-dot.is-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+/* Kompas strelkasi — `heading` bo'yicha buriladi (0° = shimol) */
+.hik-cam-tip-compass {
+  display: inline-block; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 9px solid #22d3ee; transform-origin: 50% 70%;
 }
-.c3d-blink { animation: c3d-blink 1.4s ease-in-out infinite; }
-
-/* Trevoga kartochkasi — qirqilgan yuqori-o'ng burchak, qizil neon ramka */
-.c3d-card {
-  border: 1px solid rgba(255, 45, 85, 0.55);
-  background: linear-gradient(180deg, rgba(20, 6, 14, 0.94), rgba(9, 14, 26, 0.94));
-  backdrop-filter: blur(6px);
-  box-shadow: 0 0 32px -8px rgba(255, 45, 85, 0.55), inset 0 0 40px -22px rgba(255, 45, 85, 0.9);
-  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-}
+.hik-cam-tip-approx { font-style: normal; font-family: inherit; font-weight: 500; font-size: 9.5px; color: #94a3b8; padding: 0 5px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.3); }
+.hik-cam-tip-events { margin-top: 3px; padding-top: 5px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #fda4af; font-weight: 600; }
 
 /* ---------- Kamera va hodisa markerlari (Smart Campus ko'rinishi) ----------
    DIQQAT: `.ymk` ildiziga transform/animatsiya BERILMAYDI — MapLibre unga
@@ -1629,34 +1053,37 @@ body { @apply bg-ink font-sans antialiased; }
   top: 0;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 18px;
+  /* 2026-10-23: canvas ikonkasi (`cameraLayer.ts`) bilan AYNI — navy korpus,
+     ochroq navy chegara; tanlanganda cyan chegara + porlash. */
+  width: 22px;
+  height: 22px;
   transform: translate(-50%, -50%);
-  padding: 1px;
-  border-radius: 5px;
-  background-color: #1f53285e;
-  color: var(--ymk, #757575);
-  filter: drop-shadow(0 0 6px rgba(118, 119, 119, 0.5));
-  transition: filter 0.2s ease, transform 0.2s ease;
+  border-radius: 6px;
+  border: 1px solid #24355a;
+  background-color: #101b31;
+  color: #2dd4ee;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  transition: filter 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 .ymk-cam.is-selected .ymk-cam-body {
   transform: translate(-50%, -50%) scale(1.22);
-  filter: drop-shadow(0 0 10px rgba(5, 5, 190, 0.95));
+  border-color: #22d3ee;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.95));
 }
 
-/* ── Holat nuqtasi — KICHIK (xarita taktik ko'rinishda qolsin) ── */
+/* ── Holat nuqtasi — FAQAT muammo bo'lsa (onlayn kamera namunadagidek toza),
+   korpus ICHIDA pastki-o'ng burchakda ── */
 .ymk-cam-led {
   position: absolute;
-  right: -1px;
-  top: -1px;
-  width: 5px;
-  height: 5px;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
- 
-  box-shadow: 0 0 5px -1px currentColor;
-  background-color: rgb(21, 252, 0);
+  border: 1px solid #101b31;
+  box-shadow: 0 0 5px currentColor;
 }
-.ymk-cam.is-online .ymk-cam-led { background: #34d399; }
+.ymk-cam.is-online .ymk-cam-led { display: none; }
 .ymk-cam.is-warning .ymk-cam-led { background: #f59e0b; }
 .ymk-cam.is-offline .ymk-cam-led { background: #ef4444; }
 
@@ -1852,9 +1279,20 @@ body { @apply bg-ink font-sans antialiased; }
 .nvr-video-btn.is-on {
   @apply border-rose-400/50 bg-rose-500/15 text-rose-200;
 }
+/* 🔴 2026-10-26 — QAT'IY O'LCHAM (foydalanuvchi: "ma'lumot kelmay turgan bo'lsa
+   width/height o'zgarib kichkina bo'lib qolmasin"). Ilgari `min-h-[220px]` edi:
+   video tayyorlanayotganda / yuklanayotganda / yo'q bo'lganda sahna 220 px,
+   video kelgach ~450 px ga SAKRARDI. Endi har holatda bir xil quti:
+   `aspect-ratio 16/10` (16:9 kadr + ostidagi pleer paneli), eng ko'pi 62vh.
+   Ichidagi holatlar (yozuv, skelet, pleer) shu qutini to'ldiradi. To'liq
+   ekran oynasida (`minimal`) `!h-full !aspect-auto` bilan bekor qilinadi. */
 .nvr-video-stage {
-  @apply relative grid min-h-[220px] place-items-center overflow-hidden rounded-xl border border-white/10 bg-black;
+  @apply relative grid w-full place-items-center overflow-hidden rounded-xl border border-white/10 bg-black;
+  aspect-ratio: 16 / 10;
+  max-height: 62vh;
 }
+.nvr-video-stage > * { @apply h-full w-full; }
+.nvr-video-stage > .nvr-video-note { @apply h-auto w-auto; }
 .nvr-video-el {
   @apply max-h-[46vh] w-full bg-black object-contain;
 }
@@ -1991,9 +1429,6 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-scheme="light"] .cam-kpi-label { color: var(--lm-text-soft) !important; }
 :root[data-scheme="light"] .cam-kpi-hint { color: var(--lm-text-mute) !important; }
 
-
-
-
 /* ⚠️ `SpaceBackground` yorug' rejimda O'CHIRILADI — uning tumanliklari,
    yulduzlari va porlashlari qorong'i fon uchun chizilgan, oq sahnada ular
    iflos dog' bo'lib qolardi.
@@ -2101,8 +1536,7 @@ body { @apply bg-ink font-sans antialiased; }
    ostida butunlay yo'qolardi. */
 :root[data-scheme="light"] .hik-glass-blue,
 :root[data-scheme="light"] .nexa-card,
-:root[data-scheme="light"] .hik-popup,
-:root[data-scheme="light"] .c3d-card {
+:root[data-scheme="light"] .hik-popup {
   backdrop-filter: blur(14px) !important;
   background: rgba(255, 255, 255, 0.74) !important;
   border-color: var(--lm-line) !important;
@@ -2120,11 +1554,9 @@ body { @apply bg-ink font-sans antialiased; }
   box-shadow: inset 0 1px 2px rgba(15, 27, 46, 0.06) !important;
 }
 
-/* Aniqlanganlar / HUD kartochkalari */
+/* Aniqlanganlar kartochkalari */
 :root[data-scheme="light"] .nvr-card,
-:root[data-scheme="light"] .nvr-dsr,
-:root[data-scheme="light"] .hud-detail,
-:root[data-scheme="light"] .hud-alert {
+:root[data-scheme="light"] .nvr-dsr {
   background: var(--lm-surface) !important;
   border-color: var(--lm-line) !important;
 }
@@ -2157,6 +1589,10 @@ body { @apply bg-ink font-sans antialiased; }
   border-color: var(--lm-line) !important;
   color: var(--lm-text) !important;
 }
+:root[data-scheme="light"] .hik-cam-tip-title,
+:root[data-scheme="light"] .hik-cam-tip-v { color: var(--lm-text); }
+:root[data-scheme="light"] .hik-cam-tip-row { color: #475569; }
+:root[data-scheme="light"] .hik-cam-tip-events { border-top-color: var(--lm-line); color: #be123c; }
 
 /* Xarita marker yorliqlari qorong'i qoladi (xarita fonида o'qilishi uchun) */
 :root[data-scheme="light"] .ymk-stat-badge,
@@ -2264,40 +1700,6 @@ body { @apply bg-ink font-sans antialiased; }
   background-color: #04070f !important;
 }
 
-/* ── 3D KAMPUS (`.c3d-root`) — yorug' rejimda u ham oqaradi ────────────────
-   Sahna ranglari JS palitrasidan keladi (`Campus3D.tsx` → `C3D_PALETTE`),
-   bu yerda esa sahna USTIDAGI yorliq va tugmalar moslanadi: oq fonda oq
-   matn va sian nur o'qilmaydi.
-
-   DIQQAT: qoidalar `.c3d-root` bilan CHEKLANGAN — xuddi shu sinflar kamera
-   kadri yoki rasm ustida ham ishlatiladi, u yerda ular QORONG'I qolishi
-   kerak (yuqoridagi 3-guruh). Qo'shimcha sinf tufayli bu yerdagi qoida
-   ustunroq. */
-:root[data-scheme="light"] .c3d-root [class*="bg-[#06192c]"] {
-  background-color: color-mix(in srgb, var(--lm-surface) 92%, transparent) !important;
-  color: var(--lm-text) !important;
-}
-:root[data-scheme="light"] .c3d-root [class*="text-white/"],
-:root[data-scheme="light"] .c3d-root [class*="text-ice-cyan"] {
-  color: var(--lm-text-soft) !important;
-}
-:root[data-scheme="light"] .c3d-root [class*="ring-ice-cyan"] {
-  --tw-ring-color: color-mix(in srgb, var(--lm-accent) 50%, transparent) !important;
-}
-:root[data-scheme="light"] .c3d-root [class*="border-ice-cyan/"] {
-  border-color: color-mix(in srgb, var(--lm-accent) 28%, transparent) !important;
-}
-/* Sahna tugmalari (qatlam/zoom) — oq sirtda ko'rinadigan bo'lsin */
-:root[data-scheme="light"] .c3d-root .c3d-btn {
-  background: color-mix(in srgb, var(--lm-surface) 92%, transparent) !important;
-  border-color: var(--lm-line) !important;
-  color: var(--lm-text-soft) !important;
-}
-:root[data-scheme="light"] .c3d-root .c3d-btn.is-on {
-  border-color: var(--lm-accent) !important;
-  color: var(--lm-accent) !important;
-}
-
 /* Modal sarlavhasi: fon oqargach chegara ham ko'rinishi kerak */
 :root[data-scheme="light"] header[class*="border-white/10"],
 :root[data-scheme="light"] [class*="border-b"][class*="border-white/"] {
@@ -2310,196 +1712,6 @@ body { @apply bg-ink font-sans antialiased; }
   box-shadow: 0 10px 30px -8px rgba(15, 27, 46, 0.35) !important;
 }
 :root[data-scheme="light"] [class*="bg-[#16203A]"] .text-white { color: var(--lm-text) !important; }
-
-/* ══════════════════════════════════════════════════════════════════════
-   YORUG' REJIM: HODISALAR HUD'i
-   ══════════════════════════════════════════════════════════════════════
-   ⚠️ HUD ilgari ATAYLAB qorong'i qolardi ("katta ekran" ko'rinishi) va
-   xaritaga `themeOverride="dark"` berilardi. Endi u ham yorug' mavzuga
-   ergashadi — ramka, panel va footer oq sirtga o'tadi.
-
-   MEDIA — kamera kadri va video — HAR DOIM qorong'i qoladi (pastdagi
-   "ataylab qorong'i" bloki), chunki tasvir o'z rangida ko'rinishi kerak. */
-
-:root[data-scheme="light"] .hud-frame {
-  background: linear-gradient(180deg, var(--lm-surface) 0%, var(--lm-bg) 100%) !important;
-  box-shadow:
-    inset 0 0 90px -50px color-mix(in srgb, var(--lm-accent) 25%, transparent),
-    0 20px 50px -34px rgba(15, 27, 46, 0.3) !important;
-}
-:root[data-scheme="light"] .hud-frame::before {
-  border-color: color-mix(in srgb, var(--lm-accent) 22%, transparent) !important;
-}
-:root[data-scheme="light"] .hud-frame::after {
-  box-shadow: 0 0 30px -12px color-mix(in srgb, var(--lm-accent) 25%, transparent) !important;
-}
-:root[data-scheme="light"] .hud-screen {
-  background: var(--lm-surface) !important;
-  border-color: var(--lm-line) !important;
-}
-/* Vinetka — oq sahnada qora parda o'rniga YENGIL kulrang */
-:root[data-scheme="light"] .hud-vignette {
-  background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(15, 27, 46, 0.07)) !important;
-}
-
-/* Ogohlantirishlar paneli */
-:root[data-scheme="light"] .hud-alerts-head,
-:root[data-scheme="light"] .hud-alerts-list,
-:root[data-scheme="light"] .hud-alerts-foot {
-  background: color-mix(in srgb, var(--lm-surface) 94%, transparent) !important;
-  border-color: var(--lm-line) !important;
-}
-:root[data-scheme="light"] .hud-alert {
-  background: color-mix(in srgb, var(--lm-surface) 96%, transparent) !important;
-  border-color: var(--lm-line) !important;
-}
-:root[data-scheme="light"] .hud-alert-title { color: var(--lm-text) !important; }
-:root[data-scheme="light"] .hud-alert-sub,
-:root[data-scheme="light"] .hud-alert-meta { color: var(--lm-text-mute) !important; }
-
-/* Pastki detektor menyusi — tugmaning O'ZI shaffof qoladi (`.hud-foot-btn`
-   ga fon berilsa dumaloq ikonka ortida oq KVADRAT paydo bo'lardi); sirt
-   faqat ikonka diskiga va kapsulaga beriladi, pastroqdagi bloklarda. */
-/* ── Sarlavha kapsulasi ──
-   ⚠️ Ilgari faqat `color` almashardi: kapsula O'ZI to'q ko'k qolib,
-   ichidagi `b` esa umumiy `.text-white` qoidasi bilan QORAYIB ketardi —
-   qora matn to'q ko'k fonda O'QILMASDI (o'lchandi). Endi sirt ham
-   mavzu tokenidan olinadi. */
-:root[data-scheme="light"] .hud-cap {
-  background: linear-gradient(180deg, var(--lm-surface) 0%, var(--lm-surface-2) 100%) !important;
-  border-bottom-color: var(--lm-accent) !important;
-  box-shadow: 0 8px 20px -14px rgba(15, 27, 46, 0.5);
-}
-:root[data-scheme="light"] .hud-cap b {
-  color: var(--lm-text) !important;
-  text-shadow: none !important;
-}
-:root[data-scheme="light"] .hud-cap i { color: var(--lm-text-mute) !important; }
-
-/* O'ng yuqoridagi soat yorlig'i — mavzu urg'u rangida (ko'k qotirilgan
-   emas, aks holda "Qum"/"Yalpiz" mavzularida begona ko'k dog' bo'lardi) */
-:root[data-scheme="light"] .hud-badge {
-  background: linear-gradient(
-    180deg,
-    var(--lm-accent) 0%,
-    color-mix(in srgb, var(--lm-accent) 72%, #0b1524) 100%
-  ) !important;
-  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--lm-accent) 85%, transparent) !important;
-}
-:root[data-scheme="light"] .hud-badge b,
-:root[data-scheme="light"] .hud-badge i { color: #ffffff !important; }
-
-/* ── Ramka bezagi: burchak qavslari, chekka chiziqlari, ichki ramka ──
-   Ular sian rangda va porlash bilan chizilgan — oq sirtda umuman
-   ko'rinmasdi. Rang mavzu urg'usidan olinadi. SVG `stroke` atribut
-   bo'lsa ham CSS uni bosib o'tadi. */
-:root[data-scheme="light"] .hud-corner { filter: none !important; }
-:root[data-scheme="light"] .hud-corner path { stroke: var(--lm-accent) !important; }
-:root[data-scheme="light"] .hud-corner rect { fill: var(--lm-accent) !important; }
-:root[data-scheme="light"] .hud-edge {
-  background: linear-gradient(
-    var(--dir, 90deg),
-    color-mix(in srgb, var(--lm-accent) 75%, transparent),
-    color-mix(in srgb, var(--lm-accent) 16%, transparent) 22%,
-    color-mix(in srgb, var(--lm-accent) 12%, transparent) 50%,
-    color-mix(in srgb, var(--lm-accent) 16%, transparent) 78%,
-    color-mix(in srgb, var(--lm-accent) 75%, transparent)
-  ) !important;
-}
-:root[data-scheme="light"] .hud-inner-line { border-color: var(--lm-line) !important; }
-
-/* ── Pastki YOY (footer) ──
-   Gradient stoplari SVG ichida, lekin `stop-color` — CSS xossasi,
-   shuning uchun uslubdan almashtiriladi. Shusiz oq ramkaning tagida
-   to'q ko'k gumbaz qolib, detektor yozuvlari o'qilmasdi. */
-:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(1) {
-  stop-color: var(--lm-surface-2);
-  stop-opacity: 0.97;
-}
-:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(2) {
-  stop-color: var(--lm-surface);
-  stop-opacity: 0.98;
-}
-:root[data-scheme="light"] .hud-footer-arc #hfBody stop:nth-child(3) {
-  stop-color: var(--lm-surface);
-  stop-opacity: 1;
-}
-:root[data-scheme="light"] .hud-footer-arc #hfEdge stop,
-:root[data-scheme="light"] .hud-footer-arc #hfInner stop,
-:root[data-scheme="light"] .hud-footer-arc #hfSweep stop,
-:root[data-scheme="light"] .hud-footer-arc #hfGlow stop {
-  stop-color: var(--lm-accent);
-}
-/* Yoy chetidagi eng yorqin nuqta oq edi — oq sirtda yo'qolardi */
-:root[data-scheme="light"] .hud-footer-arc #hfEdge stop:nth-child(4) {
-  stop-color: color-mix(in srgb, var(--lm-accent) 80%, #0b1524);
-}
-:root[data-scheme="light"] .hud-arc-glow { opacity: 0.35 !important; }
-
-/* Qanotlardagi qiya belgilar va uchuvchi nuqta */
-:root[data-scheme="light"] .hud-footer-marks i {
-  background: linear-gradient(180deg, var(--lm-accent), transparent) !important;
-  box-shadow: none !important;
-}
-:root[data-scheme="light"] .hud-footer-flow {
-  background: linear-gradient(90deg, transparent, var(--lm-accent), transparent) !important;
-}
-
-/* Detektor tugmalari — "shisha quduq" o'rniga yengil oq disk */
-:root[data-scheme="light"] .hud-foot-icon {
-  background: radial-gradient(
-    88% 80% at 50% 10%,
-    #ffffff,
-    var(--lm-surface) 55%,
-    var(--lm-surface-2) 100%
-  ) !important;
-  border-color: var(--lm-line) !important;
-  color: var(--lm-text-soft) !important;
-  box-shadow: 0 10px 20px -14px rgba(15, 27, 46, 0.55) !important;
-}
-:root[data-scheme="light"] .hud-foot-btn:hover .hud-foot-icon,
-:root[data-scheme="light"] .hud-foot-btn.is-active .hud-foot-icon {
-  color: var(--lm-text) !important;
-  border-color: var(--c) !important;
-}
-:root[data-scheme="light"] .hud-foot-label {
-  color: var(--lm-text-soft) !important;
-  text-shadow: none !important;
-}
-:root[data-scheme="light"] .hud-foot-btn:hover .hud-foot-label { color: var(--lm-text) !important; }
-/* Sanoq rozetkasi — rangli fonda matn OQ qolsin */
-:root[data-scheme="light"] .hud-foot-count {
-  border-color: rgba(255, 255, 255, 0.85) !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px -3px rgba(15, 27, 46, 0.6) !important;
-}
-
-/* Markaziy "Barcha detektorlar" kapsulasi — mavzu urg'u rangida */
-:root[data-scheme="light"] .hud-footer-chip {
-  background: linear-gradient(
-    180deg,
-    var(--lm-accent) 0%,
-    color-mix(in srgb, var(--lm-accent) 72%, #0b1524) 100%
-  ) !important;
-  border-color: color-mix(in srgb, var(--lm-accent) 60%, transparent) !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--lm-accent) 85%, transparent) !important;
-}
-
-/* Ogohlantirishlar paneli sarlavhasi va nishonlari */
-:root[data-scheme="light"] .hud-alerts-head b { color: var(--lm-text) !important; }
-:root[data-scheme="light"] .hud-alerts-idle,
-:root[data-scheme="light"] .hud-alerts-foot,
-:root[data-scheme="light"] .hud-alerts-foot b { color: var(--lm-text-mute) !important; }
-:root[data-scheme="light"] .hud-detail-title b { color: var(--lm-text) !important; }
-:root[data-scheme="light"] .hud-detail-title i { color: var(--lm-text-mute) !important; }
-
-/* Tafsilot oynasi (`.hud-detail`) — `EventsPage` shu yerda ochiladi */
-:root[data-scheme="light"] .hud-detail,
-:root[data-scheme="light"] .hud-detail-bar {
-  background: var(--lm-surface) !important;
-  border-color: var(--lm-line) !important;
-}
 
 /* ══════════════════════════════════════════════════════════════════════
    YORUG' REJIM: HODISA MA'LUMOTLARI (`.nvr-dsr*`)
@@ -2697,14 +1909,25 @@ body { @apply bg-ink font-sans antialiased; }
    ko'rinmasdi (o'lchandi — "2 kadr" va soat yorliqlari). Kadr esa har
    mavzuda o'z rangida qoladi, shuning uchun yorliq ham qorong'i chip
    bo'lib qolishi SHART. */
-:root[data-scheme="light"] .nvr-card-time,
-:root[data-scheme="light"] .nvr-card-conf,
 :root[data-scheme="light"] .nvr-card-frames {
   background-color: rgba(4, 7, 15, 0.78) !important;
   color: #e2e8f0 !important;
 }
-/* Ishonch foizi — rangi XAVFLILIKdan keladi, uni saqlaymiz */
+/* Vaqt/ishonch endi RASM OSTIDA (2026-10-24) — mavzu tokenlarida */
+:root[data-scheme="light"] .nvr-card-time { color: var(--lm-text) !important; }
+:root[data-scheme="light"] .nvr-card-time b { color: var(--lm-text-mute) !important; }
 :root[data-scheme="light"] .nvr-card-conf { color: var(--c) !important; }
+:root[data-scheme="light"] .nvr-card-role { color: var(--lm-accent) !important; }
+:root[data-scheme="light"] .nvr-card-avatar {
+  color: var(--lm-text) !important;
+  background: color-mix(in srgb, var(--lm-text) 8%, transparent) !important;
+  box-shadow: 0 0 0 1px var(--lm-line) !important;
+}
+:root[data-scheme="light"] .nvr-card-avatar.is-unknown {
+  color: var(--lm-text-mute) !important;
+  border-color: var(--lm-line) !important;
+  background: transparent !important;
+}
 /* Kadr o'rnidagi sanoq paneli ham qorong'i sahnada turadi */
 :root[data-scheme="light"] .nvr-card-count p { color: #cbd5e1 !important; }
 :root[data-scheme="light"] .nvr-card-count b { color: #ffffff !important; }
@@ -2728,7 +1951,6 @@ body { @apply bg-ink font-sans antialiased; }
 }
 /* Video pleyer o'rami — `EventVideo` */
 :root[data-scheme="light"] .nvr-vid-stage { background: #04070f !important; }
-
 
 /* ── Kameralar ro'yxati (panjara) ──────────────────────────────────────────
    Ilgari gorizontal lenta edi va har kartochkada BITTA soxta rasm turardi.
@@ -2941,32 +2163,6 @@ body { @apply bg-ink font-sans antialiased; }
   background: #04070f;
 }
 .det-toast-shot img { @apply absolute inset-0 h-full w-full object-cover; }
-
-/* ── "Test rejimi" yuguruvchi lentasi (`DemoDataBanner`) ─────────────────
-   Ekranning ENG YUQORISIDA. Fon YO'Q — faqat qizil matn yurib o'tadi:
-   to'ldirilgan lenta ekran tepasidan joy olib, panelni pastga siqardi va
-   bir necha daqiqadan keyin "fon"ga aylanib ko'zga tashlanmay qolardi. */
-.test-marquee {
-  @apply relative flex-none overflow-hidden py-1;
-}
-.test-marquee-track {
-  display: flex;
-  width: max-content;
-  gap: 4rem;
-  padding-inline: 2rem;
-  animation: test-marquee 30s linear infinite;
-}
-/* Sichqoncha tegsa to'xtaydi — matnni o'qib bo'lsin */
-.test-marquee:hover .test-marquee-track { animation-play-state: paused; }
-@keyframes test-marquee {
-  from { transform: translateX(0); }
-  /* Ro'yxat IKKI marta chiziladi — yarmi o'tganda boshiga qaytadi va
-     uzilish sezilmaydi */
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .test-marquee-track { animation: none; justify-content: center; width: 100%; }
-}
 
 /* ── Bildirishnoma qatori (header qo'ng'irog'i) ──────────────────────────
    Rang `--c` orqali JIDDIYLIK darajasidan keladi (`notifyLevel`), kategoriya
@@ -3306,6 +2502,57 @@ body { @apply bg-ink font-sans antialiased; }
 }
 .neon-icon-btn:disabled { cursor: not-allowed; opacity: 0.4; box-shadow: none; }
 
+/* Video pleer ovoz slayderi — brauzer standart ko'rinishi o'rniga neon chiziq */
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(90deg, #22d3ee, #818cf8) 0 / var(--fill, 100%) 100% no-repeat, rgba(255, 255, 255, 0.18);
+}
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 8px #22d3ee;
+}
+.player-range::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 8px #22d3ee;
+}
+
+/* Skelet ustidan o'tib turadigan yorug' to'lqin (2026-10-23). `prefers-reduced-
+   motion` da fayl boshidagi umumiy qoida animatsiyani o'zi to'xtatadi. */
+.skeleton-shimmer { isolation: isolate; }  /* position — komponentda (Tailwind `absolute`/`relative`) */
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg, transparent 20%, rgba(133, 224, 255, 0.09) 45%, rgba(129, 140, 248, 0.11) 55%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to { transform: translateX(100%); }
+}
+
+/* Kartochka (davomat paneli). Hover effekti (gradient porlash, ko'tarilish)
+   OLIB TASHLANDI (2026-10-23, foydalanuvchi so'rovi) — kartochka bosilmaydi,
+   faqat ichidagi tugmalar; hover'da "jonlanishi" chalg'itardi. */
+.neon-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.025);
+}
+
 /* Sarlavha ikonka chipi — gradient fon (`.cam-kpi-chip` bilan AYNI shakl) */
 .neon-chip {
   display: grid;
@@ -3332,7 +2579,6 @@ body { @apply bg-ink font-sans antialiased; }
 :root[data-scheme="light"] .neon-modal [class*="border-slate-7"],
 :root[data-scheme="light"] .neon-modal [class*="border-slate-8"] { border-color: rgba(255, 255, 255, 0.1) !important; }
 
-
 /* ═══ "KUNDUZGI" MAVZU — volt.ai uslubidagi yorug' dashboard (2026-09-11) ═══
    Foydalanuvchi so'rovi (skrinshot bilan): tekis och kulrang fon, SOF OQ
    kartalar yumshoq soya bilan, kichik ikonkalar, och-ko'k aktiv band.
@@ -3342,8 +2588,7 @@ body { @apply bg-ink font-sans antialiased; }
    bir xil spetsifiklik, keyingisi yutadi. */
 :root[data-theme="light"] .app-grid { background-image: none !important; }
 :root[data-theme="light"] .hik-glass-blue,
-:root[data-theme="light"] .nexa-card,
-:root[data-theme="light"] .c3d-card {
+:root[data-theme="light"] .nexa-card {
   backdrop-filter: none !important;
   background: #ffffff !important;
   border-color: rgba(23, 24, 25, 0.06) !important;
@@ -3367,7 +2612,6 @@ body { @apply bg-ink font-sans antialiased; }
   background: var(--lm-accent) !important;
   box-shadow: none !important;
 }
-
 
 /* ═══ OMMAVIY SAYT (landing + ichki sahifalar) — MAVZU TOKENLARI (2026-09-11) ═══
    Sayt komponentlari (`components/site/`, `landing/LandingPage.tsx`) rangni
@@ -3424,14 +2668,348 @@ body { @apply bg-ink font-sans antialiased; }
 }
 
 
-/* ═══ BOSHQARUV PANELI RADARI (`dashboard/RadarScreen.tsx`, 2026-09-11) ═══
-   Aylanishlar SVG guruhida `transform-box: view-box` + markaz
-   `transform-origin` bilan (inline) — `fill-box` bo'lsa nur o'z chegarasi
-   atrofida aylanib, markazdan chiqib ketardi.
-   `prefers-reduced-motion` — fayl boshidagi umumiy qoida o'chiradi. */
-@keyframes radar-spin { to { transform: rotate(360deg); } }
-@keyframes radar-spin-rev { to { transform: rotate(-360deg); } }
-@keyframes radar-dash { to { stroke-dashoffset: -34; } }
-@keyframes radar-bar { 0%, 100% { opacity: 0.28; } 50% { opacity: 1; } }
-@keyframes radar-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-@keyframes radar-sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+/* ══════════════════════════════════════════════════════════════════════════
+   YORUG' MAVZULAR — O'QILISH TUZATISHI (2026-10-26)
+   ══════════════════════════════════════════════════════════════════════════
+   Foydalanuvchi: "light yoki boshqa temada yozuvlarini o'qish muammolarini
+   to'g'rila". Yuqoridagi qatlam faqat NEYTRAL ranglarni (`text-white`,
+   `text-slate-*`, `bg-white/…`) qayta aniqlardi. Ikki bo'shliq qolgan edi:
+
+   1) OCH RANGLI MATN — `text-amber-200`, `text-emerald-300`, `text-rose-300`…
+      (o'lchandi: ~150 joy). Qorong'i fon uchun tanlangan bu tuslar oq kartada
+      deyarli ko'rinmasdi (kontrast ~1.3–2). Endi 50…400 tuslari o'sha rangning
+      700-tusiga o'tadi. Selektor matn BOSHIDA yoki BO'SH JOYDAN keyin
+      (`hover:text-…` USHLANMAYDI — aks holda tinch holat ham bo'yalardi).
+
+   2) RASM/VIDEO USTIDAGI YOZUVLAR — media sahnasi (`.nvr-card-media`,
+      `.cam-card`…) ataylab QORONG'I qoladi, lekin ichidagi `text-white`/
+      `text-slate-*` yuqoridagi qoida bilan QORAGA aylanardi (qora fonda qora
+      yozuv). Rasm ustidagi `absolute … bg-black/70` yorliqlar ham shaffof
+      bo'lib, kadr ustida qora matn qolardi. Endi shu kontekstlarda fon
+      qorong'i, matn va och ranglar ASL holiga qaytadi.
+
+   ⚠️ Ommaviy sayt (`.site`) o'z tokenlarida, investor taqdimoti esa o'zini
+   majburan qorong'i qiladi (`Deck.tsx`) — ularga bu blok ta'sir qilmaydi. */
+
+
+:root[data-scheme="light"] [class^="text-emerald-50"], [class*=" text-emerald-50"],
+:root[data-scheme="light"] [class^="text-emerald-100"], [class*=" text-emerald-100"],
+:root[data-scheme="light"] [class^="text-emerald-200"], [class*=" text-emerald-200"],
+:root[data-scheme="light"] [class^="text-emerald-300"], [class*=" text-emerald-300"],
+:root[data-scheme="light"] [class^="text-emerald-400"], [class*=" text-emerald-400"] { color: #047857 !important; }
+
+:root[data-scheme="light"] [class^="text-amber-50"], [class*=" text-amber-50"],
+:root[data-scheme="light"] [class^="text-amber-100"], [class*=" text-amber-100"],
+:root[data-scheme="light"] [class^="text-amber-200"], [class*=" text-amber-200"],
+:root[data-scheme="light"] [class^="text-amber-300"], [class*=" text-amber-300"],
+:root[data-scheme="light"] [class^="text-amber-400"], [class*=" text-amber-400"] { color: #b45309 !important; }
+
+:root[data-scheme="light"] [class^="text-rose-50"], [class*=" text-rose-50"],
+:root[data-scheme="light"] [class^="text-rose-100"], [class*=" text-rose-100"],
+:root[data-scheme="light"] [class^="text-rose-200"], [class*=" text-rose-200"],
+:root[data-scheme="light"] [class^="text-rose-300"], [class*=" text-rose-300"],
+:root[data-scheme="light"] [class^="text-rose-400"], [class*=" text-rose-400"] { color: #be123c !important; }
+
+:root[data-scheme="light"] [class^="text-red-50"], [class*=" text-red-50"],
+:root[data-scheme="light"] [class^="text-red-100"], [class*=" text-red-100"],
+:root[data-scheme="light"] [class^="text-red-200"], [class*=" text-red-200"],
+:root[data-scheme="light"] [class^="text-red-300"], [class*=" text-red-300"],
+:root[data-scheme="light"] [class^="text-red-400"], [class*=" text-red-400"] { color: #b91c1c !important; }
+
+:root[data-scheme="light"] [class^="text-violet-50"], [class*=" text-violet-50"],
+:root[data-scheme="light"] [class^="text-violet-100"], [class*=" text-violet-100"],
+:root[data-scheme="light"] [class^="text-violet-200"], [class*=" text-violet-200"],
+:root[data-scheme="light"] [class^="text-violet-300"], [class*=" text-violet-300"],
+:root[data-scheme="light"] [class^="text-violet-400"], [class*=" text-violet-400"] { color: #6d28d9 !important; }
+
+:root[data-scheme="light"] [class^="text-fuchsia-50"], [class*=" text-fuchsia-50"],
+:root[data-scheme="light"] [class^="text-fuchsia-100"], [class*=" text-fuchsia-100"],
+:root[data-scheme="light"] [class^="text-fuchsia-200"], [class*=" text-fuchsia-200"],
+:root[data-scheme="light"] [class^="text-fuchsia-300"], [class*=" text-fuchsia-300"],
+:root[data-scheme="light"] [class^="text-fuchsia-400"], [class*=" text-fuchsia-400"] { color: #a21caf !important; }
+
+:root[data-scheme="light"] [class^="text-sky-50"], [class*=" text-sky-50"],
+:root[data-scheme="light"] [class^="text-sky-100"], [class*=" text-sky-100"],
+:root[data-scheme="light"] [class^="text-sky-200"], [class*=" text-sky-200"],
+:root[data-scheme="light"] [class^="text-sky-300"], [class*=" text-sky-300"],
+:root[data-scheme="light"] [class^="text-sky-400"], [class*=" text-sky-400"] { color: #0369a1 !important; }
+
+:root[data-scheme="light"] [class^="text-green-50"], [class*=" text-green-50"],
+:root[data-scheme="light"] [class^="text-green-100"], [class*=" text-green-100"],
+:root[data-scheme="light"] [class^="text-green-200"], [class*=" text-green-200"],
+:root[data-scheme="light"] [class^="text-green-300"], [class*=" text-green-300"],
+:root[data-scheme="light"] [class^="text-green-400"], [class*=" text-green-400"] { color: #15803d !important; }
+
+:root[data-scheme="light"] [class^="text-yellow-50"], [class*=" text-yellow-50"],
+:root[data-scheme="light"] [class^="text-yellow-100"], [class*=" text-yellow-100"],
+:root[data-scheme="light"] [class^="text-yellow-200"], [class*=" text-yellow-200"],
+:root[data-scheme="light"] [class^="text-yellow-300"], [class*=" text-yellow-300"],
+:root[data-scheme="light"] [class^="text-yellow-400"], [class*=" text-yellow-400"] { color: #a16207 !important; }
+
+:root[data-scheme="light"] [class^="text-orange-50"], [class*=" text-orange-50"],
+:root[data-scheme="light"] [class^="text-orange-100"], [class*=" text-orange-100"],
+:root[data-scheme="light"] [class^="text-orange-200"], [class*=" text-orange-200"],
+:root[data-scheme="light"] [class^="text-orange-300"], [class*=" text-orange-300"],
+:root[data-scheme="light"] [class^="text-orange-400"], [class*=" text-orange-400"] { color: #c2410c !important; }
+
+:root[data-scheme="light"] [class^="text-teal-50"], [class*=" text-teal-50"],
+:root[data-scheme="light"] [class^="text-teal-100"], [class*=" text-teal-100"],
+:root[data-scheme="light"] [class^="text-teal-200"], [class*=" text-teal-200"],
+:root[data-scheme="light"] [class^="text-teal-300"], [class*=" text-teal-300"],
+:root[data-scheme="light"] [class^="text-teal-400"], [class*=" text-teal-400"] { color: #0f766e !important; }
+
+:root[data-scheme="light"] [class^="text-blue-50"], [class*=" text-blue-50"],
+:root[data-scheme="light"] [class^="text-blue-100"], [class*=" text-blue-100"],
+:root[data-scheme="light"] [class^="text-blue-200"], [class*=" text-blue-200"],
+:root[data-scheme="light"] [class^="text-blue-300"], [class*=" text-blue-300"],
+:root[data-scheme="light"] [class^="text-blue-400"], [class*=" text-blue-400"] { color: #1d4ed8 !important; }
+
+:root[data-scheme="light"] [class^="text-indigo-50"], [class*=" text-indigo-50"],
+:root[data-scheme="light"] [class^="text-indigo-100"], [class*=" text-indigo-100"],
+:root[data-scheme="light"] [class^="text-indigo-200"], [class*=" text-indigo-200"],
+:root[data-scheme="light"] [class^="text-indigo-300"], [class*=" text-indigo-300"],
+:root[data-scheme="light"] [class^="text-indigo-400"], [class*=" text-indigo-400"] { color: #4338ca !important; }
+
+:root[data-scheme="light"] [class^="text-pink-50"], [class*=" text-pink-50"],
+:root[data-scheme="light"] [class^="text-pink-100"], [class*=" text-pink-100"],
+:root[data-scheme="light"] [class^="text-pink-200"], [class*=" text-pink-200"],
+:root[data-scheme="light"] [class^="text-pink-300"], [class*=" text-pink-300"],
+:root[data-scheme="light"] [class^="text-pink-400"], [class*=" text-pink-400"] { color: #be185d !important; }
+
+:root[data-scheme="light"] [class^="text-purple-50"], [class*=" text-purple-50"],
+:root[data-scheme="light"] [class^="text-purple-100"], [class*=" text-purple-100"],
+:root[data-scheme="light"] [class^="text-purple-200"], [class*=" text-purple-200"],
+:root[data-scheme="light"] [class^="text-purple-300"], [class*=" text-purple-300"],
+:root[data-scheme="light"] [class^="text-purple-400"], [class*=" text-purple-400"] { color: #7e22ce !important; }
+
+:root[data-scheme="light"] [class^="text-lime-50"], [class*=" text-lime-50"],
+:root[data-scheme="light"] [class^="text-lime-100"], [class*=" text-lime-100"],
+:root[data-scheme="light"] [class^="text-lime-200"], [class*=" text-lime-200"],
+:root[data-scheme="light"] [class^="text-lime-300"], [class*=" text-lime-300"],
+:root[data-scheme="light"] [class^="text-lime-400"], [class*=" text-lime-400"] { color: #4d7c0f !important; }
+
+:root[data-scheme="light"] [class*="text-[#FF8FA3]"] { color: #be123c !important; }
+
+
+/* 1b) Sichqoncha ustida (`hover:` / `group-hover:`) ham och tus emas — 700 */
+:root[data-scheme="light"] :is([class*="hover:text-emerald-100"]:hover, [class*="hover:text-emerald-200"]:hover, [class*="hover:text-emerald-300"]:hover, [class*="hover:text-emerald-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-emerald-100"], .group:hover [class*="group-hover:text-emerald-200"], .group:hover [class*="group-hover:text-emerald-300"], .group:hover [class*="group-hover:text-emerald-400"]) { color: #047857 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-amber-100"]:hover, [class*="hover:text-amber-200"]:hover, [class*="hover:text-amber-300"]:hover, [class*="hover:text-amber-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-amber-100"], .group:hover [class*="group-hover:text-amber-200"], .group:hover [class*="group-hover:text-amber-300"], .group:hover [class*="group-hover:text-amber-400"]) { color: #b45309 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-rose-100"]:hover, [class*="hover:text-rose-200"]:hover, [class*="hover:text-rose-300"]:hover, [class*="hover:text-rose-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-rose-100"], .group:hover [class*="group-hover:text-rose-200"], .group:hover [class*="group-hover:text-rose-300"], .group:hover [class*="group-hover:text-rose-400"]) { color: #be123c !important; }
+:root[data-scheme="light"] :is([class*="hover:text-red-100"]:hover, [class*="hover:text-red-200"]:hover, [class*="hover:text-red-300"]:hover, [class*="hover:text-red-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-red-100"], .group:hover [class*="group-hover:text-red-200"], .group:hover [class*="group-hover:text-red-300"], .group:hover [class*="group-hover:text-red-400"]) { color: #b91c1c !important; }
+:root[data-scheme="light"] :is([class*="hover:text-violet-100"]:hover, [class*="hover:text-violet-200"]:hover, [class*="hover:text-violet-300"]:hover, [class*="hover:text-violet-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-violet-100"], .group:hover [class*="group-hover:text-violet-200"], .group:hover [class*="group-hover:text-violet-300"], .group:hover [class*="group-hover:text-violet-400"]) { color: #6d28d9 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-fuchsia-100"]:hover, [class*="hover:text-fuchsia-200"]:hover, [class*="hover:text-fuchsia-300"]:hover, [class*="hover:text-fuchsia-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-fuchsia-100"], .group:hover [class*="group-hover:text-fuchsia-200"], .group:hover [class*="group-hover:text-fuchsia-300"], .group:hover [class*="group-hover:text-fuchsia-400"]) { color: #a21caf !important; }
+:root[data-scheme="light"] :is([class*="hover:text-sky-100"]:hover, [class*="hover:text-sky-200"]:hover, [class*="hover:text-sky-300"]:hover, [class*="hover:text-sky-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-sky-100"], .group:hover [class*="group-hover:text-sky-200"], .group:hover [class*="group-hover:text-sky-300"], .group:hover [class*="group-hover:text-sky-400"]) { color: #0369a1 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-green-100"]:hover, [class*="hover:text-green-200"]:hover, [class*="hover:text-green-300"]:hover, [class*="hover:text-green-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-green-100"], .group:hover [class*="group-hover:text-green-200"], .group:hover [class*="group-hover:text-green-300"], .group:hover [class*="group-hover:text-green-400"]) { color: #15803d !important; }
+:root[data-scheme="light"] :is([class*="hover:text-yellow-100"]:hover, [class*="hover:text-yellow-200"]:hover, [class*="hover:text-yellow-300"]:hover, [class*="hover:text-yellow-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-yellow-100"], .group:hover [class*="group-hover:text-yellow-200"], .group:hover [class*="group-hover:text-yellow-300"], .group:hover [class*="group-hover:text-yellow-400"]) { color: #a16207 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-orange-100"]:hover, [class*="hover:text-orange-200"]:hover, [class*="hover:text-orange-300"]:hover, [class*="hover:text-orange-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-orange-100"], .group:hover [class*="group-hover:text-orange-200"], .group:hover [class*="group-hover:text-orange-300"], .group:hover [class*="group-hover:text-orange-400"]) { color: #c2410c !important; }
+:root[data-scheme="light"] :is([class*="hover:text-teal-100"]:hover, [class*="hover:text-teal-200"]:hover, [class*="hover:text-teal-300"]:hover, [class*="hover:text-teal-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-teal-100"], .group:hover [class*="group-hover:text-teal-200"], .group:hover [class*="group-hover:text-teal-300"], .group:hover [class*="group-hover:text-teal-400"]) { color: #0f766e !important; }
+:root[data-scheme="light"] :is([class*="hover:text-blue-100"]:hover, [class*="hover:text-blue-200"]:hover, [class*="hover:text-blue-300"]:hover, [class*="hover:text-blue-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-blue-100"], .group:hover [class*="group-hover:text-blue-200"], .group:hover [class*="group-hover:text-blue-300"], .group:hover [class*="group-hover:text-blue-400"]) { color: #1d4ed8 !important; }
+:root[data-scheme="light"] :is([class*="hover:text-indigo-100"]:hover, [class*="hover:text-indigo-200"]:hover, [class*="hover:text-indigo-300"]:hover, [class*="hover:text-indigo-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-indigo-100"], .group:hover [class*="group-hover:text-indigo-200"], .group:hover [class*="group-hover:text-indigo-300"], .group:hover [class*="group-hover:text-indigo-400"]) { color: #4338ca !important; }
+:root[data-scheme="light"] :is([class*="hover:text-pink-100"]:hover, [class*="hover:text-pink-200"]:hover, [class*="hover:text-pink-300"]:hover, [class*="hover:text-pink-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-pink-100"], .group:hover [class*="group-hover:text-pink-200"], .group:hover [class*="group-hover:text-pink-300"], .group:hover [class*="group-hover:text-pink-400"]) { color: #be185d !important; }
+:root[data-scheme="light"] :is([class*="hover:text-purple-100"]:hover, [class*="hover:text-purple-200"]:hover, [class*="hover:text-purple-300"]:hover, [class*="hover:text-purple-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-purple-100"], .group:hover [class*="group-hover:text-purple-200"], .group:hover [class*="group-hover:text-purple-300"], .group:hover [class*="group-hover:text-purple-400"]) { color: #7e22ce !important; }
+:root[data-scheme="light"] :is([class*="hover:text-lime-100"]:hover, [class*="hover:text-lime-200"]:hover, [class*="hover:text-lime-300"]:hover, [class*="hover:text-lime-400"]:hover),
+:root[data-scheme="light"] :is(.group:hover [class*="group-hover:text-lime-100"], .group:hover [class*="group-hover:text-lime-200"], .group:hover [class*="group-hover:text-lime-300"], .group:hover [class*="group-hover:text-lime-400"]) { color: #4d7c0f !important; }
+
+/* 2) Media va rasm ustidagi qoplamalar — QORONG'I qoladi */
+
+:root[data-scheme="light"] [class*="absolute"][class*="bg-black/"] { background-color: rgba(2, 6, 23, 0.66) !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) [class*="bg-white/"] { background-color: rgba(255, 255, 255, 0.12) !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) [class*="border-white/"] { border-color: rgba(255, 255, 255, 0.18) !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-white,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-white { color: #ffffff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-50,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-50 { color: #f8fafc !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-100,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-100 { color: #f1f5f9 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-200,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-200 { color: #e2e8f0 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-300,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-300 { color: #cbd5e1 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-400,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-400 { color: #94a3b8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]).text-slate-500,
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) .text-slate-500 { color: #94a3b8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-emerald-50"], [class*=" text-emerald-50"]) { color: #ecfdf5 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-emerald-100"], [class*=" text-emerald-100"]) { color: #d1fae5 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-emerald-200"], [class*=" text-emerald-200"]) { color: #a7f3d0 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-emerald-300"], [class*=" text-emerald-300"]) { color: #6ee7b7 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-emerald-400"], [class*=" text-emerald-400"]) { color: #34d399 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-amber-50"], [class*=" text-amber-50"]) { color: #fffbeb !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-amber-100"], [class*=" text-amber-100"]) { color: #fef3c7 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-amber-200"], [class*=" text-amber-200"]) { color: #fde68a !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-amber-300"], [class*=" text-amber-300"]) { color: #fcd34d !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-amber-400"], [class*=" text-amber-400"]) { color: #fbbf24 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-rose-50"], [class*=" text-rose-50"]) { color: #fff1f2 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-rose-100"], [class*=" text-rose-100"]) { color: #ffe4e6 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-rose-200"], [class*=" text-rose-200"]) { color: #fecdd3 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-rose-300"], [class*=" text-rose-300"]) { color: #fda4af !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-rose-400"], [class*=" text-rose-400"]) { color: #fb7185 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-red-50"], [class*=" text-red-50"]) { color: #fef2f2 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-red-100"], [class*=" text-red-100"]) { color: #fee2e2 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-red-200"], [class*=" text-red-200"]) { color: #fecaca !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-red-300"], [class*=" text-red-300"]) { color: #fca5a5 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-red-400"], [class*=" text-red-400"]) { color: #f87171 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-violet-50"], [class*=" text-violet-50"]) { color: #f5f3ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-violet-100"], [class*=" text-violet-100"]) { color: #ede9fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-violet-200"], [class*=" text-violet-200"]) { color: #ddd6fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-violet-300"], [class*=" text-violet-300"]) { color: #c4b5fd !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-violet-400"], [class*=" text-violet-400"]) { color: #a78bfa !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-fuchsia-50"], [class*=" text-fuchsia-50"]) { color: #fdf4ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-fuchsia-100"], [class*=" text-fuchsia-100"]) { color: #fae8ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-fuchsia-200"], [class*=" text-fuchsia-200"]) { color: #f5d0fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-fuchsia-300"], [class*=" text-fuchsia-300"]) { color: #f0abfc !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-fuchsia-400"], [class*=" text-fuchsia-400"]) { color: #e879f9 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-sky-50"], [class*=" text-sky-50"]) { color: #f0f9ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-sky-100"], [class*=" text-sky-100"]) { color: #e0f2fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-sky-200"], [class*=" text-sky-200"]) { color: #bae6fd !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-sky-300"], [class*=" text-sky-300"]) { color: #7dd3fc !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-sky-400"], [class*=" text-sky-400"]) { color: #38bdf8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-green-50"], [class*=" text-green-50"]) { color: #f0fdf4 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-green-100"], [class*=" text-green-100"]) { color: #dcfce7 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-green-200"], [class*=" text-green-200"]) { color: #bbf7d0 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-green-300"], [class*=" text-green-300"]) { color: #86efac !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-green-400"], [class*=" text-green-400"]) { color: #4ade80 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-yellow-50"], [class*=" text-yellow-50"]) { color: #fefce8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-yellow-100"], [class*=" text-yellow-100"]) { color: #fef9c3 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-yellow-200"], [class*=" text-yellow-200"]) { color: #fef08a !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-yellow-300"], [class*=" text-yellow-300"]) { color: #fde047 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-yellow-400"], [class*=" text-yellow-400"]) { color: #facc15 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-orange-50"], [class*=" text-orange-50"]) { color: #fff7ed !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-orange-100"], [class*=" text-orange-100"]) { color: #ffedd5 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-orange-200"], [class*=" text-orange-200"]) { color: #fed7aa !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-orange-300"], [class*=" text-orange-300"]) { color: #fdba74 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-orange-400"], [class*=" text-orange-400"]) { color: #fb923c !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-teal-50"], [class*=" text-teal-50"]) { color: #f0fdfa !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-teal-100"], [class*=" text-teal-100"]) { color: #ccfbf1 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-teal-200"], [class*=" text-teal-200"]) { color: #99f6e4 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-teal-300"], [class*=" text-teal-300"]) { color: #5eead4 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-teal-400"], [class*=" text-teal-400"]) { color: #2dd4bf !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-blue-50"], [class*=" text-blue-50"]) { color: #eff6ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-blue-100"], [class*=" text-blue-100"]) { color: #dbeafe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-blue-200"], [class*=" text-blue-200"]) { color: #bfdbfe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-blue-300"], [class*=" text-blue-300"]) { color: #93c5fd !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-blue-400"], [class*=" text-blue-400"]) { color: #60a5fa !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-indigo-50"], [class*=" text-indigo-50"]) { color: #eef2ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-indigo-100"], [class*=" text-indigo-100"]) { color: #e0e7ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-indigo-200"], [class*=" text-indigo-200"]) { color: #c7d2fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-indigo-300"], [class*=" text-indigo-300"]) { color: #a5b4fc !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-indigo-400"], [class*=" text-indigo-400"]) { color: #818cf8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-pink-50"], [class*=" text-pink-50"]) { color: #fdf2f8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-pink-100"], [class*=" text-pink-100"]) { color: #fce7f3 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-pink-200"], [class*=" text-pink-200"]) { color: #fbcfe8 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-pink-300"], [class*=" text-pink-300"]) { color: #f9a8d4 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-pink-400"], [class*=" text-pink-400"]) { color: #f472b6 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-purple-50"], [class*=" text-purple-50"]) { color: #faf5ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-purple-100"], [class*=" text-purple-100"]) { color: #f3e8ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-purple-200"], [class*=" text-purple-200"]) { color: #e9d5ff !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-purple-300"], [class*=" text-purple-300"]) { color: #d8b4fe !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-purple-400"], [class*=" text-purple-400"]) { color: #c084fc !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-lime-50"], [class*=" text-lime-50"]) { color: #f7fee7 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-lime-100"], [class*=" text-lime-100"]) { color: #ecfccb !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-lime-200"], [class*=" text-lime-200"]) { color: #d9f99d !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-lime-300"], [class*=" text-lime-300"]) { color: #bef264 !important; }
+
+:root[data-scheme="light"] :is(.nvr-card-media, .nvr-dsr-shot, .nvr-dsr-feed, .nvr-visit-item, .cam-card, .cam-live, .cam-live-stage, .nvr-video-stage, [class*="bg-[#04070f]"], [class*="bg-[#06192c]"], [class*="absolute"][class*="bg-black/"]) :is([class^="text-lime-400"], [class*=" text-lime-400"]) { color: #a3e635 !important; }

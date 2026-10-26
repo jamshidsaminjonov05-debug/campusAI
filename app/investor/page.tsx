@@ -5,8 +5,8 @@ import InvestorPage from "@/components/investor/InvestorPage";
  * `/investor` — Campus AI investor taqdimoti.
  *
  * To'liq ekranli, klaviaturadan boshqariladigan sahna (taqdimot pulti ham
- * ishlaydi). Login talab qilmaydi: uni uchrashuvda, mehmon kompyuterida
- * ochish mumkin bo'lishi kerak.
+ * ishlaydi). Backend loginini talab qiladi (`middleware.ts`) — panel bilan
+ * AYNI hisob, alohida login/parol yo'q.
  *
  * ⚠️ Saytning menyusida ATAYLAB ko'rsatilmaydi va indekslanmaydi: bu
  * hujjat moliyaviy prognoz va so'rov summasini o'z ichiga oladi, ya'ni

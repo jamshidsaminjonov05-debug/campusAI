@@ -33,7 +33,7 @@ const ROLES: NvrPersonRole[] = ["student", "teacher"];
  *      posti yuz bazasiga qo'shadi (aynan shu yerga kerak bo'lgan narsa);
  *   2. bizning backend esa `onnxruntime` o'rnatilmagani sabab rasm
  *      biriktirilgan `POST /persons` so'rovini **doim** `400` bilan rad
- *      etadi (`lib/api.ts` `FACE_ENGINE_HINT` izohiga qarang) — ya'ni
+ *      etadi (o'sha backend va uning `/persons` klienti 2026-10-26 da olib tashlandi) — ya'ni
  *      "Bazaga qo'shish" tugmasi ULARDAN BIRINI HAM ISHLATMASDI:
  *      operator ismni saqlardi-yu, kamera hech qachon o'sha odamni
  *      TANIMASDI (rasm bosqichi jim yiqilardi).
@@ -143,7 +143,7 @@ export function EnrollPerson({ ev }: { ev: NvrEvent }) {
      `z-[95]`, ya'ni hodisa ma'lumotlaridan (`z-[60]`) YUQORIDA. */
   const form = (
     <div
-      className="fixed inset-0 z-[95] grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[100] grid place-items-center bg-[#03060E]/85 p-4 backdrop-blur-md"
       onClick={() => requestClose()}
     >
       <div

@@ -54,6 +54,8 @@ export interface CategoryAttendance {
 
 export interface AttendanceBoard {
   date: string;
+  /** Davomat so'rovi hali kelmagan — KPI'larda skelet ko'rsatiladi. */
+  isLoading: boolean;
   categories: CategoryAttendance[];
   /** Uch toifa yig'indisi. */
   totals: Omit<CategoryAttendance, "type" | "absentees" | "live" | "supported">;
@@ -171,8 +173,10 @@ export function useAttendanceBoard(date = isoDate()): AttendanceBoard {
       live: categories.some((c) => c.live),
       hasData: categories.some((c) => c.present > 0),
       isWeekend: att.isWeekend,
+      /** Davomat so'rovi hali kelmagan — KPI'larda skelet. */
+      isLoading: att.isLoading,
     };
     // `registry` — sabab reyestri o'zgarganda qayta hisoblanadi
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [att.rows, att.byRole, att.isWeekend, date, registry]);
+  }, [att.rows, att.byRole, att.isWeekend, att.isLoading, date, registry]);
 }

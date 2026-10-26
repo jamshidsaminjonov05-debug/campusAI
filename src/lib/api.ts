@@ -58,6 +58,12 @@ export type PersonType = "student" | "teacher" | "staff";
 export const isBackendPersonId = (id: string | null | undefined): boolean =>
   !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
+export interface PersonListOut {
+  total: number;
+  page: number;
+  page_size: number;
+  items: PersonOut[];
+}
 
 export interface PersonOut {
   id: string;
@@ -81,37 +87,6 @@ export interface PersonOut {
   created_at: string;
 }
 
-export interface PersonListOut {
-  total: number;
-  page: number;
-  page_size: number;
-  items: PersonOut[];
-}
-
-export interface PersonPayload {
-  first_name: string;
-  last_name: string;
-  middle_name?: string;
-  person_code?: string;
-  person_type?: PersonType;
-  group_name?: string;
-  course?: number;
-  department?: string;
-  position?: string;
-  phone?: string;
-  email?: string;
-  birth_date?: string;
-}
-
-export interface ImportReport {
-  total_rows: number;
-  created: number;
-  updated: number;
-  failed: number;
-  without_face: number;
-  errors: { row: number; error: string }[];
-}
-
 export interface AttendanceOut {
   id: string;
   person_id: string;
@@ -121,71 +96,6 @@ export interface AttendanceOut {
   emotion_label: string | null;
   emotion_group: string | null;
   timestamp: string;
-}
-
-export interface RecentEntry {
-  person_id: string;
-  person_code: string;
-  full_name: string;
-  person_type: string;
-  group_name: string | null;
-  photo_path: string | null;
-  emotion_group: string | null;
-  emotion_label: string | null;
-  timestamp: string;
-}
-
-export interface EmotionStats {
-  positive: number;
-  neutral: number;
-  negative: number;
-  total: number;
-  positive_pct: number;
-  neutral_pct: number;
-  negative_pct: number;
-}
-
-export interface AttendanceStats {
-  total: number;
-  present: number;
-  absent: number;
-}
-
-export interface DashboardStats {
-  date: string;
-  students: AttendanceStats;
-  teachers: AttendanceStats;
-  emotions_today: EmotionStats;
-  recent_entries: RecentEntry[];
-  unresolved_alarms: number;
-  active_cameras: number;
-  total_cameras: number;
-}
-
-export interface DayAttendance {
-  date: string;
-  entry_time: string | null;
-  late: boolean;
-  emotion_group: string | null;
-  emotion_label: string | null;
-}
-
-export interface MonthlyAttendance {
-  person_id: string;
-  person_code: string | null;
-  full_name: string | null;
-  year: number;
-  month: number;
-  working_days: number;
-  present_days: number;
-  late_days: number;
-  absent_days: number;
-  emotions?: EmotionStats;
-  days?: DayAttendance[];
-}
-
-export interface EmotionDaily extends EmotionStats {
-  date: string;
 }
 
 export type CameraBrand = "hikvision" | "dahua" | "other";
@@ -206,21 +116,6 @@ export interface CameraOut {
   stream_url_masked: string | null;
 }
 
-export interface CameraPayload {
-  name: string;
-  brand?: CameraBrand;
-  location?: string;
-  ip_address?: string;
-  port?: number;
-  username?: string;
-  password?: string;
-  channel?: number;
-  stream_quality?: "main" | "sub";
-  rtsp_url?: string;
-  direction?: "entry" | "exit" | "area";
-  is_active?: boolean;
-}
-
 export interface AlarmEventOut {
   id: string;
   event_type: string;
@@ -232,46 +127,6 @@ export interface AlarmEventOut {
   detected_at: string;
   is_resolved: boolean;
   resolved_at: string | null;
-}
-
-export interface EventStats {
-  date: string;
-  total: number;
-  by_type: Record<string, number>;
-}
-
-/** Backend moduli holati. `error` — Python xatosi (`ModuleNotFoundError: …`),
- *  u EKRANGA CHIQARILMAYDI: UI undan odam o'qiydigan holat yasaydi. */
-export interface EngineStatus {
-  available: boolean;
-  error?: string;
-}
-
-export interface AdminStatus {
-  postgres_available: boolean;
-  needs_resync: boolean;
-  face_engine: EngineStatus;
-  emotion_engine: EngineStatus;
-  /** Ovoz modullari — serverda bor, lekin eski javoblarda bo'lmasligi mumkin. */
-  stt_engine?: EngineStatus;
-  tts_engine?: EngineStatus;
-  face_index_size: number;
-  active_streams: unknown[];
-}
-
-export interface FaceResult {
-  bbox: number[];
-  matched: boolean;
-  similarity: number | null;
-  person: PersonOut | null;
-  emotion: { label: string; group: string; scores: Record<string, number> } | null;
-  attendance_recorded: boolean;
-  allowed: boolean;
-}
-
-export interface RecognitionResponse {
-  faces_detected: number;
-  results: FaceResult[];
 }
 
 /* ------------------------------- Token saqlash ------------------------------- */
@@ -433,20 +288,6 @@ async function tryRefresh(): Promise<boolean> {
  *  15 soniyadan keyin so'rov bekor qilinib, aniq xato ko'rsatiladi. */
 const REQUEST_TIMEOUT_MS = 15_000;
 
-/**
- * OMMAVIY IMPORT uchun alohida, UZUN chegara.
- *
- * ⚠️ 15 soniya bu yerda YETMAYDI: 1 000 qatorli Excel + rasm arxivi
- * yuklanadi va server har bir rasm uchun yuz vektorini hisoblaydi. Umumiy
- * chegara bilan brauzer so'rovni yarim yo'lda bekor qilardi ("Server javob
- * bermadi (15s)"), SERVER esa importni davom ettirardi — operator xatoni
- * ko'rib qayta yuborsa, yozuvlar IKKI MARTA qo'shilardi.
- */
-const IMPORT_TIMEOUT_MS = 10 * 60_000;
-
-/** Bitta rasm — yuz vektori hisoblanishi bir necha soniya olishi mumkin. */
-const PHOTO_TIMEOUT_MS = 60_000;
-
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -502,28 +343,6 @@ async function request<T>(
   return (await res.json()) as T;
 }
 
-/**
- * YUZ TANISH DVIGATELI xatosini odam o'qiydigan matnga aylantirish.
- *
- * ⚠️ O'LCHANGAN (2026-09-02, `<backend-server-ip>:7005`): backendda `onnxruntime`
- * o'rnatilmagan va shu sababli **rasm biriktirilgan har qanday so'rov
- * 400 qaytaradi**:
- *   · `POST /persons` (photo bilan)  → 400, shaxs UMUMAN yaratilmaydi;
- *   · `POST /persons/{id}/photo`     → 400.
- * Rasmsiz `POST /persons` esa **201** — ya'ni muammo faqat yuz qismida.
- *
- * Xom Python xatosi (`ModuleNotFoundError: No module named 'onnxruntime'`)
- * foydalanuvchiga hech narsa aytmaydi, shuning uchun u shu yerda
- * tushunarli jumlaga aylantiriladi. Asl matn `cause` da qoladi.
- */
-export function isFaceEngineError(message: string): boolean {
-  return /onnxruntime|yuz tanish dvigateli|face engine/i.test(message);
-}
-
-export const FACE_ENGINE_HINT =
-  "Yuz tanish hali jarayonda — ma'lumotlar qo'shilmoqda, surat hozircha saqlanmadi. " +
-  "Shaxs ro'yxatga qo'shildi; rasmni keyinroq biriktirish mumkin.";
-
 function qs(params: Record<string, string | number | boolean | undefined | null>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -531,15 +350,6 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
   }
   const s = sp.toString();
   return s ? `?${s}` : "";
-}
-
-function form(data: Record<string, string | number | Blob | undefined | null>): FormData {
-  const fd = new FormData();
-  for (const [k, v] of Object.entries(data)) {
-    if (v === undefined || v === null || v === "") continue;
-    fd.append(k, v instanceof Blob ? v : String(v));
-  }
-  return fd;
 }
 
 /* --------------------------------- Endpointlar --------------------------------- */
@@ -634,61 +444,6 @@ export const api = {
         })
     ),
 
-  /* Shaxslar */
-  listPersons: (p: {
-    person_type?: PersonType;
-    group_name?: string;
-    search?: string;
-    is_active?: boolean;
-    page?: number;
-    page_size?: number;
-  }) => request<PersonListOut>(`/persons${qs(p)}`),
-  getPerson: (id: string) => request<PersonOut>(`/persons/${id}`),
-  createPerson: (data: PersonPayload, photo?: File | null) =>
-    request<PersonOut>("/persons", {
-      method: "POST",
-      body: form({ ...data, photo: photo ?? undefined }),
-    }),
-  updatePerson: (id: string, data: Partial<PersonPayload> & { is_active?: boolean }) =>
-    request<PersonOut>(`/persons/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-  deletePerson: (id: string) => request<void>(`/persons/${id}`, { method: "DELETE" }),
-  setPersonPhoto: (id: string, photo: File) =>
-    request<PersonOut>(`/persons/${id}/photo`, { method: "POST", body: form({ photo }) }, true, PHOTO_TIMEOUT_MS),
-  importPersons: (file: File, photos?: File | null) =>
-    request<ImportReport>(
-      "/persons/import",
-      { method: "POST", body: form({ file, photos: photos ?? undefined }) },
-      true,
-      IMPORT_TIMEOUT_MS
-    ),
-  downloadImportTemplate: () => request<Blob>("/persons/import/template"),
-
-  /* Yuz tanish */
-  identify: (image: File, opts?: { camera_id?: string; event_type?: string; record?: boolean }) =>
-    request<RecognitionResponse>("/recognition/identify", {
-      method: "POST",
-      body: form({ image, ...opts, record: opts?.record === undefined ? undefined : String(opts.record) }),
-    }),
-  verify: (person_id: string, image: File) =>
-    request<{ person_id: string; matched: boolean; similarity: number }>("/recognition/verify", {
-      method: "POST",
-      body: form({ person_id, image }),
-    }),
-
-  /* Davomat */
-  listAttendance: (p: {
-    person_id?: string;
-    date_from?: string;
-    date_to?: string;
-    event_type?: "entry" | "exit";
-    limit?: number;
-    offset?: number;
-  }) => request<AttendanceOut[]>(`/attendance${qs(p)}`),
-
   /**
    * BUTUN ro'yxat — sahifama-sahifa (`page_size` chegarasi bor).
    *
@@ -708,6 +463,7 @@ export const api = {
     const first = await request<PersonListOut>(
       `/persons${qs({ ...p, page: 1, page_size: PERSONS_MAX_PAGE_SIZE })}`
     );
+    if (!Array.isArray(first?.items)) return { total: 0, page: 1, page_size: 0, items: [] };
     const total = first.total ?? first.items.length;
     const items = [...first.items];
     const pages = Math.min(Math.ceil(total / PERSONS_MAX_PAGE_SIZE), PERSONS_MAX_PAGES);
@@ -741,76 +497,42 @@ export const api = {
       const batch = await request<AttendanceOut[]>(
         `/attendance${qs({ ...p, limit: ATTENDANCE_MAX_LIMIT, offset: page * ATTENDANCE_MAX_LIMIT })}`
       );
-      out.push(...(batch ?? []));
-      if (!batch || batch.length < ATTENDANCE_MAX_LIMIT) break;
+      /* Kuzatuv posti serverida `/attendance` — KUNLIK holat obyekti (`rows`,
+         `summary`…), eski backenddagi yozuvlar massivi EMAS; obyektni
+         yoyish (`...batch`) TypeError berardi. Massiv bo'lmasa — bo'sh. */
+      if (!Array.isArray(batch)) break;
+      out.push(...batch);
+      if (batch.length < ATTENDANCE_MAX_LIMIT) break;
     }
     return out;
   },
-  monthlyAttendance: (personId: string, year?: number, month?: number) =>
-    request<MonthlyAttendance>(`/attendance/person/${personId}/monthly${qs({ year, month })}`),
-
-  /* Statistika */
-  dashboard: () => request<DashboardStats>("/statistics/dashboard"),
-  emotions: (date_from: string, date_to: string) =>
-    request<EmotionStats>(`/statistics/emotions${qs({ date_from, date_to })}`),
-  emotionsDaily: (days = 7) => request<EmotionDaily[]>(`/statistics/emotions/daily${qs({ days })}`),
-
-  /* Kameralar */
-  cameraBrands: () => request<string[]>("/cameras/brands"),
-  activeStreams: () => request<unknown[]>("/cameras/streams/active"),
-  listCameras: (brand?: CameraBrand) => request<CameraOut[]>(`/cameras${qs({ brand })}`),
-  getCamera: (id: string) => request<CameraOut>(`/cameras/${id}`),
-  createCamera: (data: CameraPayload) =>
-    request<CameraOut>("/cameras", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-  updateCamera: (id: string, data: Partial<CameraPayload>) =>
-    request<CameraOut>(`/cameras/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-  deleteCamera: (id: string) => request<void>(`/cameras/${id}`, { method: "DELETE" }),
-  cameraStreamUrl: (id: string) => request<{ stream_url?: string; url?: string }>(`/cameras/${id}/stream-url`),
-  /** MJPEG jonli oqim — <img src> uchun; header yuborib bo'lmagani sabab token query'da */
-  cameraMjpegUrl: (id: string) => {
-    const t = loadTokens();
-    return `${BASE}/cameras/${id}/mjpeg${t?.access ? `?token=${encodeURIComponent(t.access)}` : ""}`;
+  /* Kameralar (zaxira ro'yxat).
+     🔴 2026-10-23: `NEXT_PUBLIC_API_ORIGIN` endi kuzatuv posti serveriga (7007)
+     qaraydi; u `/cameras` ga eski backend kabi MASSIV emas, `{cameras:[{id,
+     name,count,last}]}` qaytaradi. Ilgari bu obyekt `CameraOut[]` deb
+     chaqiruvchiga ketib, `.map`/`.filter` da butun bo'limni ("Shaxslar →
+     Xodimlar") yiqitardi. Endi ikkala shakl ham `CameraOut[]`ga keltiriladi. */
+  listCameras: async (brand?: CameraBrand): Promise<CameraOut[]> => {
+    const r = await request<unknown>(`/cameras${qs({ brand })}`);
+    if (Array.isArray(r)) return r as CameraOut[];
+    const list = (r as { cameras?: unknown } | null)?.cameras;
+    if (!Array.isArray(list)) return [];
+    return (list as { id: string | number; name?: string }[]).map((c) => ({
+      id: String(c.id),
+      name: c.name ?? String(c.id),
+      brand: "",
+      location: null,
+      ip_address: null,
+      port: 0,
+      username: null,
+      channel: Number(c.id) || 0,
+      stream_quality: "",
+      direction: "",
+      is_active: true,
+      created_at: "",
+      stream_url_masked: null,
+    })) as CameraOut[];
   },
-  checkCamera: (id: string) => request<Record<string, unknown>>(`/cameras/${id}/check`, { method: "POST" }),
-  startStream: (id: string) => request<Record<string, unknown>>(`/cameras/${id}/stream/start`, { method: "POST" }),
-  stopStream: (id: string) => request<Record<string, unknown>>(`/cameras/${id}/stream/stop`, { method: "POST" }),
-  streamStatus: (id: string) => request<Record<string, unknown>>(`/cameras/${id}/stream/status`),
-
-  /* Xavfli hodisalar */
-  listEvents: (p: { event_type?: string; is_resolved?: boolean; date_from?: string; limit?: number }) =>
-    request<AlarmEventOut[]>(`/events${qs(p)}`),
-  createEvent: (data: {
-    event_type: string;
-    camera_id?: string;
-    description?: string;
-    severity?: string;
-    participants_count?: number;
-  }) =>
-    request<AlarmEventOut>("/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-  eventStats: () => request<EventStats>("/events/stats"),
-  resolveEvent: (id: string) => request<AlarmEventOut>(`/events/${id}/resolve`, { method: "PATCH" }),
-
-  /* Administrator */
-  adminStatus: () => request<AdminStatus>("/admin/status"),
-  resync: (direction: "to_backup" | "to_primary" = "to_backup") =>
-    request<Record<string, unknown>>(`/admin/resync${qs({ direction })}`, { method: "POST" }),
-  reloadFaceIndex: () => request<Record<string, unknown>>("/admin/face-index/reload", { method: "POST" }),
-
-  /* Tizim holati — `/admin/status` (auth talab qiladi). FastAPI'ning ildizdagi
-     `/health` yo'li ATAYLAB ishlatilmaydi: nginx uni backendga uzatmaydi,
-     frontend'ning o'ziga tushib 404 qaytaradi. */
 };
 
 /** Shaxs fotosi uchun URL. photo_path bo'sh bo'lsa null.

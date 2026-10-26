@@ -151,10 +151,14 @@ export function AlertsOverviewPanel({
                   kerak emas. */}
               <div className="flex flex-col gap-1">
                 {timeline.length === 0 ? (
+                  /* Yuklanish paytida "signal yo'q" deb YOZILMAYDI (2026-10-26) —
+                     so'rov 1–2 s bo'lsa operator yolg'on "tinch" holatni ko'rardi. */
                   <p className="py-4 text-center text-[11px] leading-snug text-slate-500">
-                    {pending.length === 0 && q.events.length > 0
-                      ? u.alerts.allConfirmed
-                      : u.alerts.none}
+                    {q.isLoading && q.events.length === 0
+                      ? t.common.loading
+                      : pending.length === 0 && q.events.length > 0
+                        ? u.alerts.allConfirmed
+                        : u.alerts.none}
                   </p>
                 ) : (
                   timeline.map((ev) => (

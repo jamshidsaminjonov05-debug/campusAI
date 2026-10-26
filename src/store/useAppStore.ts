@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { PersonType } from "@/lib/api";
 import type { MapEvent } from "@/map/types";
-import type { VoiceCameraCommand, VoiceEventFilter, VoiceMapAction, VoicePersonSearch } from "@/services/voice/VoiceCommands";
+import type { VoiceCameraCommand, VoiceMapAction, VoicePersonSearch } from "@/services/voice/VoiceCommands";
 import { initialPage } from "@/lib/pageRoute";
 
 /** Bir marta ishlaydigan buyruq — qiymat o'zgarmasa ham `nonce` orqali qayta trigger bo'ladi. */
@@ -46,8 +46,6 @@ interface AppState {
   setVoiceMapAction: (action: VoiceMapAction | null) => void;
   voiceCameraCommand: VoiceTrigger<VoiceCameraCommand> | null;
   setVoiceCameraCommand: (cmd: VoiceCameraCommand | null) => void;
-  voiceEventFilter: VoiceTrigger<VoiceEventFilter> | null;
-  setVoiceEventFilter: (filter: VoiceEventFilter | null) => void;
   voicePersonSearch: VoiceTrigger<VoicePersonSearch> | null;
   setVoicePersonSearch: (search: VoicePersonSearch | null) => void;
 
@@ -145,8 +143,6 @@ export const useAppStore = create<AppState>((set) => ({
   setVoiceMapAction: (action) => set({ voiceMapAction: trigger(action) }),
   voiceCameraCommand: null,
   setVoiceCameraCommand: (cmd) => set({ voiceCameraCommand: trigger(cmd) }),
-  voiceEventFilter: null,
-  setVoiceEventFilter: (filter) => set({ voiceEventFilter: trigger(filter) }),
   voicePersonSearch: null,
   setVoicePersonSearch: (search) => set({ voicePersonSearch: trigger(search) }),
 

@@ -5,13 +5,14 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell, BellRinging, BellSlash, Checks, ImageBroken } from "@phosphor-icons/react";
 import { useDetections } from "@/hooks/useDetections";
-import { detectSubject, nvrDateTime, nvrImageUrl, type NvrEvent } from "@/lib/nvr/nvrApi";
+import { detectSubject, nvrDateTime, nvrThumbUrl, type NvrEvent } from "@/lib/nvr/nvrApi";
 import { isSeen, markSeen, seenVersion, subscribeSeen, unseenOf } from "@/lib/nvr/detectionSeen";
 import { LEVEL_TONE, detectionLevel } from "@/lib/nvr/detectionLevel";
 import { isNotifyMuted, setNotifyMuted, subscribeNotifyMuted } from "@/lib/nvr/notifyMute";
 import { useAppStore } from "@/store/useAppStore";
 import { useT } from "@/i18n";
 import type { Messages } from "@/i18n";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Ro'yxatda ushlab turiladigan maksimal yozuv (menyu cheksiz o'smasin). */
 const MAX_ROWS = 12;
@@ -271,7 +272,7 @@ export function NotificationBell() {
 
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
               {rows.length === 0 && (
-                <p className="py-8 text-center text-[11.5px] text-slate-500">{t.notify.empty}</p>
+                <EmptyState compact className="py-8" title={t.notify.empty} />
               )}
 
               {rows.map(({ ev, seen }) => {
@@ -280,7 +281,7 @@ export function NotificationBell() {
                 const subject = detectSubject(ev);
                 /* Kichik surat — yuzda `index=0` (kesilgan yuz) eng aniq
                    ko'rinadi, qolgan turlarda birinchi kadr. */
-                const shot = nvrImageUrl(ev, 0);
+                const shot = nvrThumbUrl(ev);
                 return (
                   <button
                     key={ev.id}

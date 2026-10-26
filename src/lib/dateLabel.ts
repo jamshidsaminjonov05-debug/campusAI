@@ -39,3 +39,8 @@ export function dayMonthLongLabel(d: Date, t: Messages): string {
 export function weekdayLabel(d: Date, t: Messages): string {
   return t.chart.weekdays[(d.getDay() + 6) % 7];
 }
+
+/** To'liq hafta kuni nomi — `Shanba` · `Суббота` · `Saturday` (sarlavhalar uchun). */
+export function weekdayLongLabel(d: Date, t: Messages): string {
+  return t.chart.weekdaysLong[(d.getDay() + 6) % 7];
+}

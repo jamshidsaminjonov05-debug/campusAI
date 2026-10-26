@@ -4,9 +4,9 @@
  * Model MapLibre xaritasiga `three.js` custom layer orqali qo'yiladi
  * (`src/map/maplibre/glbModelLayer.ts`). Model bor kampusda shu kampus
  * binolarining `fill-extrusion` tanasi va protsedural fasadi CHIZILMAYDI
- * (ikkisi ustma-ust tushardi) — o'rniga ko'rinmas "urilish" qatlami
- * (`app-campus-model-hit`) turadi, ya'ni bino bosilganda ichki ko'rinish
- * (`BuildingInterior`) avvalgidek ochiladi.
+ * (ikkisi ustma-ust tushardi). Bino bosilganda kampus tanlanadi
+ * (`app-campus-hit`); ichki ko'rinish (`BuildingInterior`) va uning
+ * ko'rinmas `app-campus-model-hit` qatlami 2026-10-26 da olib tashlandi.
  *
  * Model qayerdan keladi:
  *   `tools/campus3d/blender/mk179_generator.py` — Blender skripti,

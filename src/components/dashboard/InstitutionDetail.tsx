@@ -9,7 +9,10 @@ import { useLiveInstitution } from "@/hooks/useLiveInstitutions";
 import { Missing } from "@/components/common/Missing";
 import { useAppStore } from "@/store/useAppStore";
 import { AttendanceListModal } from "./AttendanceListModal";
-import { AlertsListModal, CamerasListModal } from "./InstitutionStatModals";
+import { CamerasListModal } from "./InstitutionStatModals";
+import { ViolationListModal } from "@/components/statistics/ViolationListModal";
+import { useEventStats } from "@/hooks/useEventStats";
+import { NVR_DEFAULT_CAMPUS_ID } from "@/config/nvrCameras";
 import { isoDate } from "@/hooks/useStudentDay";
 import type { PersonType } from "@/lib/api";
 import { DashPanel } from "./DashPanel";
@@ -62,6 +65,18 @@ export function InstitutionDetail({ inst }: Props) {
   const live = useLiveInstitution(inst.id);
   const row = live ?? inst;
   const fmt = (n: number) => n.toLocaleString(t.locale).replace(/,/g, " ");
+  /* 🔵 "SIGNALLAR" → "HODISALAR" (2026-10-26, foydalanuvchi: "aniqlangan
+     hodisalar — janjal, telefon, qurol, chekish; aniqlangan yuzlar/shaxslar
+     qo'shilmaydi"). BUGUNGI son, server hisobi (`/events/stats`):
+     janjal + qurol + chekish/telefon (serverda `smoking` bitta). Kuzatuv
+     posti bitta — son faqat o'sha muassasaga tegishli, boshqasida `null`. */
+  const today = isoDate();
+  const dayStats = useEventStats({ from: today, to: today });
+  const covered = inst.id === NVR_DEFAULT_CAMPUS_ID;
+  const eventsToday: Metric =
+    !covered || dayStats.isLoading || dayStats.error
+      ? null
+      : dayStats.byCategory.janjal + dayStats.byCategory.gun + dayStats.byCategory.smoking;
 
   return (
     <DashPanel
@@ -155,8 +170,8 @@ export function InstitutionDetail({ inst }: Props) {
           />
           <Stat
             Icon={Warning}
-            label={t.institutions.stat.alerts}
-            v={row.alerts}
+            label={t.institutions.stat.events}
+            v={eventsToday}
             fmt={String}
             tone="#FB7185"
             onOpen={() => setModal("alerts")}
@@ -186,7 +201,16 @@ export function InstitutionDetail({ inst }: Props) {
         />
       )}
       {modal === "cameras" && <CamerasListModal onClose={() => setModal(null)} />}
-      {modal === "alerts" && <AlertsListModal onClose={() => setModal(null)} />}
+      {modal === "alerts" && (
+        <ViolationListModal
+          kind="all"
+          label={t.institutions.stat.eventsModal}
+          color="#FB7185"
+          from={today}
+          to={today}
+          onClose={() => setModal(null)}
+        />
+      )}
     </DashPanel>
   );
 }

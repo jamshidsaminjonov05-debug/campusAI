@@ -50,7 +50,13 @@ function writeQueue(items: ClientErrorReport[]): void {
 }
 
 /** Bitta hisobotni yuborish. `false` — yuborilmadi (navbatga qaytariladi). */
+/* Server bu yo'lni qabul qilmasligi bir marta ma'lum bo'lsa, shu tabda
+   qayta urinilmaydi — aks holda HAR xatoda konsolga yangi
+   `POST …/client-errors 401` qatori tushardi (2026-10-21). */
+let unsupported = false;
+
 async function send(report: ClientErrorReport): Promise<boolean> {
+  if (unsupported) return true;
   try {
     const res = await fetch(`${API_BASE}/client-errors`, {
       method: "POST",
@@ -64,7 +70,10 @@ async function send(report: ClientErrorReport): Promise<boolean> {
        va u tokensiz `401`, kalit bilan `405` qaytaradi (o'lchandi). Ilgari
        `401` navbatga qaytarilib, HAR yangi xatoda qayta yuborilardi —
        konsol `POST …/client-errors 401` bilan to'lardi. */
-    if ([401, 403, 404, 405].includes(res.status)) return true;
+    if ([401, 403, 404, 405].includes(res.status)) {
+      unsupported = true;
+      return true;
+    }
     return res.ok;
   } catch {
     return false; // tarmoq yo'q — navbatda qoladi

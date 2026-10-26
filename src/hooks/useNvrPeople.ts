@@ -8,7 +8,6 @@
  * `Person` (`/persons`, `id` — UUID) bilan ARALASHTIRILMAYDI: ikkalasi
  * har xil hayot davri va har xil tizimda.
  */
-import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createNvrPerson,
@@ -16,19 +15,20 @@ import {
   listClasses,
   listPeople,
   updateNvrPerson,
-  type NvrPerson,
   type NvrPersonPayload,
   type NvrPersonRole,
 } from "@/lib/nvr/nvrApi";
 
 export function useNvrPeople(
-  q: { role?: NvrPersonRole; search?: string; klass?: string; limit?: number; offset?: number } = {}
+  q: { role?: NvrPersonRole; search?: string; klass?: string; limit?: number; offset?: number } = {},
+  opts: { enabled?: boolean } = {}
 ) {
   return useQuery({
     queryKey: ["nvr-people", q],
     queryFn: () => listPeople(q),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+    enabled: opts.enabled ?? true,
   });
 }
 
@@ -60,34 +60,11 @@ export function useNvrPeopleMutations() {
    (`lib/nvrApi.ts`): rasmni kuzatuv posti serverining O'ZI beradi, batafsil izoh
    o'sha faylda. */
 
-/**
- * BUTUN yuz bazasi, `id → NvrPerson` xaritasi.
- *
- * NEGA KERAK: `NvrFaceRow.person` (`useFaces()`, "Hammasi" ro'yxati)
- * faqat `{id, full_name, role, role_label}` beradi — SINF/GURUH
- * (`note`) yo'q. `id` esa AYNI shu ro'yxatdagi `NvrPerson.id` bilan bir
- * xil (ikkalasi ham kuzatuv postining o'z tizimi, aniq FK BOR — bu
- * `FaceHistoryModalByName`dagi ism bo'yicha taxminiy qidiruvdan farqli).
- */
-export function useNvrPeopleMap() {
-  const q = useQuery({
-    queryKey: ["nvr-people-map"],
-    queryFn: async () => {
-      const out: NvrPerson[] = [];
-      let offset = 0;
-      for (let page = 0; page < 10; page++) {
-        const res = await listPeople({ limit: 200, offset });
-        out.push(...res.people);
-        offset += res.people.length;
-        if (res.people.length === 0 || offset >= res.total) break;
-      }
-      return out;
-    },
-    staleTime: 60_000,
-  });
-
-  return useMemo(() => new Map((q.data ?? []).map((p) => [p.id, p])), [q.data]);
-}
+/* `useNvrPeopleMap()` (BUTUN bazani 200 tadan sahifalab tortib `id → odam`
+   xaritasi qurardi) 2026-10-26 da O'CHIRILDI — yagona chaqiruvchisi
+   `AllPeoplePage` 2026-10-23 da o'chirilgan edi; `/people` so'rovi esa
+   7–15 s (o'lchandi 2026-10-19), bunday to'liq skan qayta kerak bo'lsa
+   serverdan `id` bo'yicha alohida so'rang. */
 
 /**
  * SINFLAR RO'YXATI — `GET /nvr/classes`.

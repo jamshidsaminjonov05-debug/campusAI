@@ -12,7 +12,6 @@ export type IntentId =
   | "nav.students"
   | "nav.teachers"
   | "nav.geo"
-  | "nav.events"
   | "nav.reports"
   | "nav.settings"
   | "search.person"
@@ -21,7 +20,6 @@ export type IntentId =
   | "camera.play"
   | "camera.pause"
   | "camera.fullscreen"
-  | "events.filter"
   | "map.open"
   | "map.zoomIn"
   | "map.zoomOut"
@@ -61,8 +59,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   { id: "nav.students", title: "Talabalar", category: "Navigatsiya", keywords: ["talaba", "talabalar", "student"], sample: "Talabalarni och" },
   { id: "nav.teachers", title: "O'qituvchilar", category: "Navigatsiya", keywords: ["o'qituvchi", "o'qituvchilar", "muallim"], sample: "O'qituvchilarni och" },
   { id: "nav.geo", title: "Geo Analitika", category: "Navigatsiya", keywords: ["geo analitika", "analitika", "geo", "hudud statistika"], sample: "Geo analitikani och" },
-  { id: "nav.events", title: "Hodisalar", category: "Navigatsiya", keywords: ["hodisa", "hodisalar", "trevoga"], sample: "Hodisalarni och" },
-  { id: "nav.reports", title: "Hisobotlar", category: "Navigatsiya", keywords: ["hisobot", "hisobotlar"], sample: "Hisobotlarni och" },
+  { id: "nav.reports", title: "Davomat (Statistika)", category: "Navigatsiya", keywords: ["hisobot", "hisobotlar", "davomat"], sample: "Davomat hisobotini och" },
   { id: "nav.settings", title: "Sozlamalar", category: "Navigatsiya", keywords: ["sozlama", "sozlamalar", "profil"], sample: "Sozlamalarni och" },
 
   // — Qidiruv —
@@ -74,9 +71,6 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   { id: "camera.play", title: "Jonli efirni yoqish", category: "Kamera", keywords: ["jonli efir", "efirni yoq", "jonli"], sample: "Jonli efirni och" },
   { id: "camera.pause", title: "Jonli efirni to'xtatish", category: "Kamera", keywords: ["efirni to'xtat", "jonli efirni to'xtat"], sample: "Jonli efirni to'xtat" },
   { id: "camera.fullscreen", title: "To'liq ekran", category: "Kamera", keywords: ["to'liq ekran"], sample: "To'liq ekranga o't" },
-
-  // — Hodisa filtri —
-  { id: "events.filter", title: "Hodisalarni filtrlash", category: "Hodisa", keywords: ["janjal", "chekish", "ruxsatsiz", "notanish", "qurol", "telefon"], requires: "eventType", sample: "Janjallarni ko'rsat" },
 
   // — Xarita —
   { id: "map.open", title: "Xaritani ochish", category: "Xarita", keywords: ["xarita"], sample: "Xaritani och" },

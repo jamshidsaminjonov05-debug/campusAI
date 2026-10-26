@@ -2,7 +2,6 @@ import {
   PAGE_FEEDBACK,
   type PageName,
   type VoiceCameraCommand,
-  type VoiceEventFilter,
   type VoiceMapAction,
   type VoicePersonSearch,
 } from "./VoiceCommands";
@@ -26,7 +25,6 @@ export interface ExecutorDeps {
   setVoiceRegionTarget: (r: string) => void;
   setVoiceMapAction: (a: VoiceMapAction) => void;
   setVoiceCameraCommand: (c: VoiceCameraCommand) => void;
-  setVoiceEventFilter: (f: VoiceEventFilter) => void;
   setVoicePersonSearch: (s: VoicePersonSearch) => void;
 }
 
@@ -45,8 +43,8 @@ const HANDLERS: Record<IntentId, Handler> = {
   "nav.students": (_e, d) => { d.setActivePage("Shaxslar"); return { ok: true, message: PAGE_FEEDBACK.Shaxslar }; },
   "nav.teachers": (_e, d) => { d.setActivePage("Shaxslar"); return { ok: true, message: PAGE_FEEDBACK.Shaxslar }; },
   "nav.geo": (_e, d) => { d.setActivePage("Geo Analitika"); return { ok: true, message: PAGE_FEEDBACK["Geo Analitika"] }; },
-  "nav.events": (_e, d) => { d.setActivePage("Hodisalar"); return { ok: true, message: PAGE_FEEDBACK.Hodisalar }; },
-  "nav.reports": (_e, d) => { d.setActivePage("Hisobotlar"); return { ok: true, message: PAGE_FEEDBACK.Hisobotlar }; },
+  /* "Hisobotlar" sahifasi 2026-10-26 da O'CHIRILDI (eski backend davomati, bo'lim yiqilardi) — davomat Statistikada. */
+  "nav.reports": (_e, d) => { d.setActivePage("Statistika"); return { ok: true, message: "Statistika ochildi — Davomat kesimini tanlang." }; },
   "nav.settings": (_e, d) => { d.setActivePage("Sozlamalar"); return { ok: true, message: PAGE_FEEDBACK.Sozlamalar }; },
 
   "search.person": (e, d) => {
@@ -67,13 +65,6 @@ const HANDLERS: Record<IntentId, Handler> = {
   "camera.play": (_e, d) => { d.setActivePage("Kameralar"); d.setVoiceCameraCommand({ action: "play" }); return { ok: true, message: "Jonli efir ishga tushirildi." }; },
   "camera.pause": (_e, d) => { d.setActivePage("Kameralar"); d.setVoiceCameraCommand({ action: "pause" }); return { ok: true, message: "Jonli efir to'xtatildi." }; },
   "camera.fullscreen": (_e, d) => { d.setActivePage("Kameralar"); d.setVoiceCameraCommand({ action: "fullscreen" }); return { ok: true, message: "To'liq ekran rejimi yoqildi." }; },
-
-  "events.filter": (e, d) => {
-    if (!e.eventType) return { ok: false, message: "Hodisa turini tushunolmadim." };
-    d.setActivePage("Hodisalar");
-    d.setVoiceEventFilter({ eventType: e.eventType });
-    return { ok: true, message: "Hodisalar filtrlandi." };
-  },
 
   "map.open": (_e, d) => { ensureMapPage(d); return { ok: true, message: "Xarita ochildi." }; },
   "map.zoomIn": (_e, d) => { ensureMapPage(d); d.setVoiceMapAction({ type: "zoomIn" }); return { ok: true, message: "Masshtab kattalashtirildi." }; },
@@ -104,8 +95,8 @@ const HANDLERS: Record<IntentId, Handler> = {
     return { ok: false, message: "Hudud yoki texnikum topilmadi." };
   },
 
-  "attendance.today": (_e, d) => { d.setActivePage("Hisobotlar"); return { ok: true, message: "Bugungi davomat ochildi." }; },
-  "attendance.absent": (_e, d) => { d.setActivePage("Hisobotlar"); return { ok: true, message: "Davomat ochildi — kelmaganlarni ko'ring." }; },
+  "attendance.today": (_e, d) => { d.setActivePage("Statistika"); return { ok: true, message: "Statistika ochildi — bugungi davomat Davomat kesimida." }; },
+  "attendance.absent": (_e, d) => { d.setActivePage("Statistika"); return { ok: true, message: "Statistika ochildi — kelmaganlar Davomat kesimida." }; },
 
   "ai.today": (_e, d) => { d.setActivePage("Boshqaruv paneli"); return { ok: true, message: "Bugungi umumiy holat ko'rsatildi." }; },
   "ai.topEvents": (_e, d) => { d.setActivePage("Geo Analitika"); return { ok: true, message: "Geo analitika — hodisalar bo'yicha ko'ring." }; },

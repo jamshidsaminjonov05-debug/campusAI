@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowsClockwise as RefreshCw, Broadcast as Radio, CircleNotch as Loader2, DownloadSimple as Download, Play, VideoCameraSlash as VideoOff } from "@phosphor-icons/react";
 import { getVideoInfo, nvrPanelUrl, probeVideo, type NvrVideoState } from "@/lib/nvr/nvrApi";
 import { useT } from "@/i18n";
+import { VideoPlayer } from "./VideoPlayer";
 
 /**
  * Hodisa VIDEOSI — "Aniqlanganlar" tafsilot oynasining pastki bo'limi.
@@ -66,8 +67,17 @@ export function EventVideo({
   ready,
   videoUrl,
   external = false,
+  minimal = false,
+  heading,
+  trailing,
 }: {
   eventId: number;
+  /** Sarlavhaning chap qismi ("VIDEO" o'rniga) — `minimal` oynada nom va izoh. */
+  heading?: ReactNode;
+  /** Tugmalardan KEYIN (o'ng chetda) — masalan oynani yopish tugmasi. */
+  trailing?: ReactNode;
+  /** `true` — faqat video + "Jonli ko'rish" va "Yuklab olish" (Yangilash va kanal/kodek/kadr izohi YO'Q). */
+  minimal?: boolean;
   ready?: boolean;
   /** To'liq `<video src>` manzili — `nvrEventVideoUrl(ev)` (chaqiruvchida hisoblanadi). */
   videoUrl: string;
@@ -167,16 +177,22 @@ export function EventVideo({
   }, [state, downloading, eventId, videoUrl]);
 
   return (
-    <section className="nvr-video">
-      <header className="nvr-video-head">
-        <b>VIDEO</b>
-        <div className="ml-auto flex items-center gap-1">
+    /* `minimal` — o'z oynasi (davomat "Video" tugmasi): sarlavha MODAL
+       sarlavhasi bo'lib turadi (pastki chiziq, ichki chekinish), sahna esa
+       chetlarga yaqin, katta. Oddiy holatda — dossiye ichidagi bo'lim. */
+    <section className={minimal ? "flex h-full min-h-0 flex-col" : "nvr-video"}>
+      <header
+        className={minimal ? "flex flex-none flex-wrap items-center gap-3 px-5 py-3" : "nvr-video-head"}
+      >
+        {heading ?? <b>VIDEO</b>}
+        <div className="ml-auto flex items-center gap-1.5">
           {liveUrl && (
             <button type="button" onClick={toggleLive} className={`nvr-video-btn${live ? " is-on" : ""}`}>
               {live ? <Radio size={12} /> : <Play size={12} />}
               {live ? v.backToRecord : v.live}
             </button>
           )}
+          {!minimal && (
           <button
             type="button"
             onClick={() => {
@@ -196,6 +212,7 @@ export function EventVideo({
             <RefreshCw size={12} className={q.isFetching ? "animate-spin" : undefined} />
             {v.refresh}
           </button>
+          )}
           {/* ⚠️ FAQAT `state === "ready"` — video hali "tayyorlanmoqda" yoki
               UMUMAN yo'q bo'lsa yuklab olinadigan MP4 fayl ham yo'q (server
               `202`/`404` qaytaradi). Tugma bo'lsa-yu, bosilganda xato
@@ -214,10 +231,21 @@ export function EventVideo({
               {downloading ? v.downloading : downloadError ? v.retry : v.download}
             </button>
           )}
+          {trailing && (
+            <>
+              <span className="mx-1 h-6 w-px bg-white/10" />
+              {trailing}
+            </>
+          )}
         </div>
       </header>
 
-      <div className="nvr-video-stage">
+      {/* To'liq ekranda sahna qolgan BUTUN joyni egallaydi, ramka/fon yo'q —
+          video qorong'i parda ustida turadi (rasm ko'ruvchisidagi kabi). */}
+      <div className={minimal ? "min-h-0 flex-1 px-5 pb-5" : "contents"}>
+      <div
+        className={`nvr-video-stage ${minimal ? "!h-full !max-h-none !min-h-0 ![aspect-ratio:auto] !rounded-lg !border-0 !bg-transparent" : ""}`}
+      >
         {state == null && q.isLoading && (
           <div className="nvr-video-note">
             <Loader2 size={18} className="animate-spin" />
@@ -233,23 +261,34 @@ export function EventVideo({
         )}
 
         {/* Jonli oqim — MJPEG, oddiy `<img>` bilan ko'rsatiladi */}
-        {live && liveUrl && <img src={liveUrl} alt={v.liveAlt} className="nvr-video-el" />}
+        {live && liveUrl && <img src={liveUrl} alt={v.liveAlt} className={`nvr-video-el ${minimal ? "!h-full !max-h-full !bg-transparent" : ""}`} />}
 
         {/* Yozuv — MP4 tayyor bo'lganda. Fayl kelguncha (`buffering`) ustidan
             aylanuvchi belgi turadi — foydalanuvchi ekran qop-qora ko'rinsa
             ham video YO'Q deb o'ylamasin, u shunchaki yuklanmoqda. */}
         {!live && state === "ready" && (
           <>
-            <video
+            {/* 🔵 2026-10-26 — HAMMA JOYDA o'z pleerimiz (`VideoPlayer`):
+                tortib suriladigan vaqt chizig'i (yuklangan qism bilan), ±10 s,
+                ovoz, tezlik sozlamasi (⚙), to'liq ekran, klaviatura. Ilgari
+                batafsil oynada brauzerning standart paneli turardi (foydalanuvchi:
+                "videoni slider kabi surib o'tkazish, o'zimiz setting va
+                qo'shimcha narsalar qo'shamiz, video uchun alohida ramka").
+                Dossiye ichida balandlik avvalgidek ≤46vh (`nvr-video-el`). */}
+            <VideoPlayer
               key={eventId}
               ref={videoRef}
               src={videoUrl}
-              controls
-              playsInline
               preload="auto"
-              className="nvr-video-el"
+              wrapClassName={minimal ? "" : "ring-1 ring-cyan-400/20"}
               onLoadStart={() => setBuffering(true)}
-              onWaiting={() => setBuffering(true)}
+              /* ⚠️ Surish (seek) paytidagi qisqa `waiting` — "yuklanmoqda" EMAS:
+                 qoplama faqat haqiqiy bufer kutishida chiqadi (2026-10-26,
+                 foydalanuvchi: "surmoqchi bo'lsam «video yuklanmoqda» chiqyapti"). */
+              onWaiting={(e) => {
+                if (!e.currentTarget.seeking) setBuffering(true);
+              }}
+              onSeeked={() => setBuffering(false)}
               onCanPlay={() => setBuffering(false)}
               onLoadedData={() => setBuffering(false)}
               onPlaying={() => setBuffering(false)}
@@ -299,7 +338,9 @@ export function EventVideo({
         )}
       </div>
 
-      {info && (
+      </div>
+
+      {info && !minimal && (
         <footer className="nvr-video-foot">
           <span>
             {v.channel}: <b>{info.channel_name || info.channel}</b>

@@ -5,7 +5,6 @@ import {
   Camera,
   Users,
   Globe,
-  AlertTriangle,
   BellRing,
   ScanFace,
   BarChart3,
@@ -50,14 +49,11 @@ const NAV_ITEMS = [
      tegishli bo'lgan tashkilotlar. Statistika sahifasidan ko'chirilgan
      "Hududlar"/"Muassasalar" kesimlari shu yerda. */
   { id: "Muassasalar", Icon: Building2 },
-  { id: "Hodisalar", Icon: AlertTriangle },
   { id: "Geo Analitika", Icon: Globe },
   { id: "Kameralar", Icon: Camera },
-  /* ⚠️ **"Hisobotlar" SIDEBARDAN OLIB TASHLANDI** (2026-09-14,
-     foydalanuvchi so'rovi). Sahifaning O'ZI (`ReportsPage`) va uning
-     `activePage` id'si TEGILMAGAN — loyiha konvensiyasi bo'yicha
-     ishlatilmay qolgan fayl o'chirilmaydi, qaytarish uchun shu
-     ro'yxatga bitta qator qo'shish kifoya. */
+  /* "Hisobotlar" 2026-09-14 da sidebardan, 2026-10-26 da BUTUNLAY olib
+     tashlandi (`ReportsPage` eski backend davomatiga qarab yiqilardi) —
+     davomat hisoboti Statistika → Davomat kesimida. */
   { id: "Sozlamalar", Icon: Settings },
 ] as const;
 

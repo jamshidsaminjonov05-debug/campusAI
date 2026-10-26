@@ -46,6 +46,7 @@ export function DetectionThumb({
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(eager);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (visible) return;
@@ -66,13 +67,16 @@ export function DetectionThumb({
   }, [visible]);
 
   // Hodisa almashsa oldingi xato holati qolib ketmasin
-  useEffect(() => setFailed(false), [id, index]);
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [id, index]);
 
   const src = nvrUrl(`/events/${id}/image${index ? `?index=${index}` : ""}`);
   const dead = pictureLost || failed;
 
   return (
-    <div ref={ref} className={`relative overflow-hidden ${className}`}>
+    <div ref={ref} className={`relative overflow-hidden ${visible && !dead && !loaded ? "skeleton-shimmer bg-white/[0.04]" : ""} ${className}`}>
       {visible && !dead ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,6 +84,7 @@ export function DetectionThumb({
             src={src}
             alt={alt}
             draggable={false}
+            onLoad={() => setLoaded(true)}
             onError={() => setFailed(true)}
             /* ⚠️ `text-transparent`: rasm yuklanmay turgan (yoki buzilgan)
                paytda brauzer `alt` MATNINI kadr ustiga chizadi va u

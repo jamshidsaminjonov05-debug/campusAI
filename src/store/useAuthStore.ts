@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api, loadTokens, saveTokens, setUnauthorizedHandler, syncNvrSession, type UserOut } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
+import { warmLocalModelTokens } from "@/lib/nvr/warmTokens";
 
 interface AuthState {
   /** Tokenlar mavjudmi (sessiya bor deb hisoblanadi). */
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (username, password) => {
     await api.login(username, password);
+    warmLocalModelTokens();
     const user = await api.me().catch(() => null);
     set({ authenticated: true, user, checking: false });
     // Rahbar (admin) kirganda statistika (Boshqaruv paneli) darhol ochilsin —
@@ -50,6 +52,8 @@ export const useAuthStore = create<AuthState>((set) => ({
          "kirgan" ko'rinardi-yu, kuzatuv posti bo'limlari (Aniqlanganlar, Kameralar,
          xarita) 401 bilan bo'sh turaverardi. */
       syncNvrSession(true);
+      /* Saqlangan token bilan qaytganda ham 2-versiya tokenlari tayyor bo'lsin */
+      warmLocalModelTokens();
     } catch {
       // Token yaroqsiz — request() ichida refresh ham urinib bo'lindi
       saveTokens(null);

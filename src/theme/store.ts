@@ -136,12 +136,15 @@ export const THEMES: ThemeDef[] = [
 
 export const THEME_BY_ID = new Map(THEMES.map((t) => [t.id, t]));
 
-/* ⚠️ Kalit "-v2" (2026-09-11): default yorug'ga o'tganda eski cookie'dagi
-   `dark` tanlovi uni bosib ketardi — kalit almashgani uchun HAMMA bir
-   marta "Kunduzgi"dan boshlaydi, keyingi tanlov esa odatdagidek saqlanadi. */
-export const THEME_STORAGE_KEY = "campus-theme-v2";
+/* 🔴 2026-10-26 — DEFAULT YANA "TUNGI" (foydalanuvchi: "loyihada asosan dark
+   mode bo'lishi kerak"). Kalit "-v3": eski "-v2" cookie'dagi `light` (u
+   2026-09-11 dan beri HAMMAGA majburan yozilgan default edi) yangi
+   standartni bosib ketmasin — hamma bir marta "Tungi"dan boshlaydi, keyingi
+   tanlov odatdagidek saqlanadi.
+   (Tarix: "-v2" 2026-09-11 da default yorug'ga o'tganda kiritilgan edi.) */
+export const THEME_STORAGE_KEY = "campus-theme-v3";
 export const ACCENT_STORAGE_KEY = "campus-accent";
-export const DEFAULT_THEME: Theme = "light";
+export const DEFAULT_THEME: Theme = "dark";
 
 export const isTheme = (v: unknown): v is Theme => typeof v === "string" && THEME_BY_ID.has(v as Theme);
 
@@ -153,7 +156,7 @@ function readInitialTheme(): Theme {
   // SSR allaqachon qo'ygan bo'lsa — o'shani olamiz (eng ishonchli manba)
   const fromDom = document.documentElement.dataset.theme;
   if (isTheme(fromDom)) return fromDom;
-  const fromCookie = document.cookie.match(/(?:^|;\s*)campus-theme-v2=([^;]+)/)?.[1];
+  const fromCookie = document.cookie.match(new RegExp(`(?:^|;\\s*)${THEME_STORAGE_KEY}=([^;]+)`))?.[1];
   if (isTheme(fromCookie)) return fromCookie;
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);

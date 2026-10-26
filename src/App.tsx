@@ -7,13 +7,11 @@ import { PageHeading } from "@/components/layout/PageHeading";
 import { CamerasPage } from "@/components/cameras/CamerasPage";
 import { AiAnalysisPage } from "@/components/ai/AiAnalysisPage";
 import { AlertsPage } from "@/components/alerts/AlertsPage";
-import { EventsHudScreen } from "@/components/events/hud/EventsHudScreen";
 import { GeoAnalyticsPage } from "@/components/geo/GeoAnalyticsPage";
 import { DetectionsPage } from "@/components/detections/DetectionsPage";
 import { PersonsPage } from "@/components/people/PersonsPage";
 import { InstitutionsPage } from "@/components/institutions/InstitutionsPage";
 import { StatisticsPage } from "@/components/statistics/StatisticsPage";
-import { ReportsPage } from "@/components/reports/ReportsPage";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import { AuthPage } from "@/components/auth/AuthPage";
 import { SpaceBackground } from "@/components/common/SpaceBackground";
@@ -59,6 +57,15 @@ export default function App() {
   useEffect(() => {
     restore();
   }, [restore]);
+
+  /* YENGIL REJIM (2026-10-26): panel ochiq ekan `<html>`da `perf-flat` —
+     `index.css` shu sinf ostida HAMMA `backdrop-filter`ni va bezak
+     animatsiyalarini o'chiradi (portal'dagi modallar ham qamraladi).
+     Landing/login bu komponentdan tashqarida — ularga tegmaydi. */
+  useEffect(() => {
+    document.documentElement.classList.add("perf-flat");
+    return () => document.documentElement.classList.remove("perf-flat");
+  }, []);
 
   if (checking) {
     return (
@@ -193,10 +200,6 @@ export default function App() {
                 <AiAnalysisPage />
               ) : activePage === "Kameralar" ? (
                 <CamerasPage />
-              ) : activePage === "Hodisalar" ? (
-                /* Yagona HUD ("katta ekran") ko'rinishi — faqat shu bo'limda.
-                   Eski jadval ko'rinishi: `components/events/EventsPage.tsx` */
-                <EventsHudScreen />
               ) : activePage === "Aniqlanganlar" ? (
                 /* kuzatuv posti aniqlagan barcha hodisalar (yuz/qurol/chekish/sanoq) */
                 <DetectionsPage />
@@ -212,8 +215,6 @@ export default function App() {
                 <InstitutionsPage />
               ) : activePage === "Statistika" ? (
                 <StatisticsPage />
-              ) : activePage === "Hisobotlar" ? (
-                <ReportsPage />
               ) : activePage === "Sozlamalar" ? (
                 <SettingsPage />
               ) : (

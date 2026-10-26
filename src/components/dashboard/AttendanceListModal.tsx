@@ -30,7 +30,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, CaretLeft, CaretRight, Clock, MagnifyingGlass, X } from "@phosphor-icons/react";
+import { ArrowRight, CaretLeft, CaretRight, ClockCounterClockwise, Clock, Image as ImageIcon, MagnifyingGlass, Play, SecurityCamera, SquaresFour, X } from "@phosphor-icons/react";
 import { useViewMode, ViewToggle } from "@/components/common/ViewToggle";
 import { useT, type Messages } from "@/i18n";
 import type { PersonType } from "@/lib/api";
@@ -43,8 +43,13 @@ import { LibraryPhoto, classOrder } from "@/components/people/FaceDatabasePage";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { EventVideo } from "@/components/detections/EventVideo";
 import { AbsenceReasonModal } from "./AbsenceReasonModal";
+import { cameraPlaceLabel } from "@/config/cameraPlacements";
 import type { PersonBrief } from "@/lib/nvr/studentStats";
+import { ImageLightbox } from "@/components/common/ImageLightbox";
+import { nvrUrl } from "@/config/endpoints";
 import { nvrEventVideoUrl, type NvrAttendanceRow, type NvrAttendanceSettings, type NvrAttendanceStatus } from "@/lib/nvr/nvrApi";
+import { ListSkeleton } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /**
  * Holat RANGI — Statistikadagi davomat jadvali bilan bir xil.
@@ -91,7 +96,7 @@ export function AttendanceListModal({
   const [only, setOnly] = useState<NvrAttendanceStatus | "all">("all");
   const [page, setPage] = useState(1);
   /** Ochilgan shaxs (`NvrPerson.id`) — "Umumiy ma'lumot" bosilganda TO'LIQ tarix oynasi. */
-  const [openPersonId, setOpenPersonId] = useState<number | null>(null);
+  const [openPerson, setOpenPerson] = useState<NvrAttendanceRow | null>(null);
   /**
    * Qator bosilganda — ENDI TO'LIQ tarix (`FaceHistoryModal`) emas,
    * KICHIK tezkor ko'rinish (2026-09-10, foydalanuvchi so'rovi: "uning
@@ -101,6 +106,8 @@ export function AttendanceListModal({
    * tursa yetarli"). To'liq tarix o'sha oynadagi "Umumiy ma'lumotni
    * ko'rish" tugmasidan — o'sha yerda `setOpenPersonId` chaqiriladi. */
   const [quickRow, setQuickRow] = useState<NvrAttendanceRow | null>(null);
+  /** "Kadr" tugmasi — bugungi kadr rasmi (ko'ruvchi). */
+  const [frameRow, setFrameRow] = useState<NvrAttendanceRow | null>(null);
   /**
    * Kelmaganlar sababini belgilash oynasi.
    *
@@ -136,6 +143,8 @@ export function AttendanceListModal({
    * ishlatadi, naqsh ikki marta yozilmaydi.
    */
   const [viewMode, setViewMode] = useViewMode("attendance-list");
+  /** Kartochka panjarasida qatordagi ustunlar soni (2…6) — tepadagi slayder. */
+  const [cols, setCols] = useCardCols();
 
   /* Filtr yoki qidiruv o'zgarsa 1-sahifaga qaytamiz — aks holda
      3-sahifada turib filtr tanlansa ro'yxat BO'SH ko'rinardi. */
@@ -276,7 +285,10 @@ export function AttendanceListModal({
            "modal kichkina ochilyabdi, height va widthini kattalashtir
            200px ga". `680px → 880px`, `720px → 920px` (`vh`/`vw`
            chegaralari kichik ekranlar uchun xavfsizlik sifatida qoladi). */
-        className="neon-modal neon-modal--cyan flex h-[min(880px,86vh)] w-[min(920px,96vw)] flex-col overflow-hidden"
+        /* 🔵 YANA KATTALASHTIRILDI (2026-10-23, foydalanuvchi skrinshot
+           bilan) — deyarli to'liq ekran: kartochkalar katta rasmli bo'lgani
+           uchun 920 px da faqat 3 ustun va 1.5 qator sig'ardi. */
+        className="neon-modal neon-modal--cyan flex h-[94vh] w-[min(1480px,97vw)] flex-col overflow-hidden"
       >
         <header className="flex flex-none items-start gap-3 border-b border-white/[0.08] px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -394,17 +406,55 @@ export function AttendanceListModal({
               {/* Ko'rinish tanlagich — sinf kartochkalari ekranida
                   ma'nosiz (u allaqachon kartochka), shuning uchun faqat
                   haqiqiy ro'yxatda ko'rinadi. */}
+              {!showClassCards && viewMode === "card" && (
+                /* 🔵 Ustunlar soni — SEGMENTLI tugmalar (2026-10-23): oddiy brauzer
+                   `range` slayderi tizim rangida chizilib, neon dizaynga zid edi
+                   ("4 / qator" yozuvi ham ikki qatorga sinardi). Statistikadagi
+                   "DAVR" paneli bilan AYNI naqsh: ramka, ikonka, aktivi gradient. */
+                <div
+                  role="radiogroup"
+                  aria-label={u.cardSize}
+                  title={u.cardSize}
+                  className="flex flex-none items-center gap-0.5 rounded-xl border border-white/10 bg-black/25 p-1"
+                >
+                  <SquaresFour size={14} weight="duotone" className="mx-1.5 flex-none text-ice-cyan/70" />
+                  {Array.from({ length: CARD_COLS_MAX - CARD_COLS_MIN + 1 }, (_, i) => CARD_COLS_MIN + i).map((c) => {
+                    const active = cols === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setCols(c)}
+                        title={u.perRow(c)}
+                        className={`relative h-6 w-7 rounded-lg font-mono text-[11px] font-bold transition-colors ${
+                          active ? "text-white" : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
+                        }`}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="att-card-cols"
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            className="absolute inset-0 rounded-lg shadow-[0_8px_20px_-10px_#22d3ee]"
+                            style={{ background: "linear-gradient(90deg, #22d3ee, #818cf8)" }}
+                          />
+                        )}
+                        <span className="relative">{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {!showClassCards && <ViewToggle mode={viewMode} onChange={setViewMode} />}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
               {att.isLoading ? (
-                <div className="grid h-32 place-items-center">
-                  <span className="h-6 w-6 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-                </div>
+                <ListSkeleton rows={6} />
               ) : showClassCards ? (
                 classRows.length === 0 ? (
-                  <p className="py-10 text-center text-[11.5px] text-slate-500">{t.board.noData}</p>
+                  <EmptyState fill title={t.board.noData} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {classRows.map((c) => (
@@ -418,13 +468,19 @@ export function AttendanceListModal({
                   </div>
                 )
               ) : rows.length === 0 ? (
-                <p className="py-10 text-center text-[11.5px] text-slate-500">
-                  {search ? u.noMatch : t.board.noData}
-                </p>
+                <EmptyState fill title={search ? u.noMatch : t.board.noData} />
               ) : viewMode === "card" ? (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {pageRows.map((r) => (
-                    <CardTile key={r.person_id} r={r} settings={att.settings} onOpen={() => setQuickRow(r)} />
+                    <CardTile
+                      key={r.person_id}
+                      r={r}
+                      settings={att.settings}
+                      onOpenFrame={() => setFrameRow(r)}
+                      onOpenVideo={() => setQuickRow(r)}
+                      onOpenPerson={() => setOpenPerson(r)}
+                      compact={cols >= 5}
+                    />
                   ))}
                 </div>
               ) : (
@@ -457,14 +513,30 @@ export function AttendanceListModal({
       {/* Qator bosilganda — TEZKOR ko'rinish (2026-09-10). Oyna USTIDA
           oyna, shu sabab `stopPropagation` SHART (yuqoridagi izohga
           qarang — portal orqali ham klik DARAXT bo'yicha ko'tariladi). */}
+      {frameRow && frameRow.event_id != null && (
+        <div className="fixed inset-0 z-[95]" onClick={(e) => e.stopPropagation()}>
+          {/* Birinchi — BUTUN kadr (`index=1`), ikkinchi — kesilgan yuz. Ramka
+              (`boxes`) BERILMAYDI: kadr toza ko'rinsin. */}
+          <ImageLightbox
+            images={[
+              { src: nvrUrl(`/events/${frameRow.event_id}/image?index=1`), label: `${frameRow.full_name} · ${frameRow.time}` },
+              { src: nvrUrl(`/events/${frameRow.event_id}/image`), label: frameRow.full_name },
+            ]}
+            initialIndex={0}
+            onClose={() => setFrameRow(null)}
+          />
+        </div>
+      )}
+
       {quickRow && (
         <div onClick={(e) => e.stopPropagation()}>
           <AttendanceQuickView
             r={quickRow}
+            videoOnly={viewMode === "card"}
             settings={att.settings}
             onClose={() => setQuickRow(null)}
             onOpenFull={() => {
-              setOpenPersonId(quickRow.person_id);
+              setOpenPerson(quickRow);
               setQuickRow(null);
             }}
           />
@@ -475,9 +547,15 @@ export function AttendanceListModal({
           ⚠️ `person_id` — `NvrPerson.id` bilan AYNI raqam, ya'ni
           `FaceHistoryModal` uni ANIQ FK sifatida oladi (ism bo'yicha
           taxminiy qidirish SHART EMAS). */}
-      {openPersonId != null && (
+      {openPerson && (
         <div onClick={(e) => e.stopPropagation()}>
-          <FaceHistoryModal personId={openPersonId} onClose={() => setOpenPersonId(null)} />
+          {/* `initial` — ism va sinf ro'yxatdan ALLAQACHON ma'lum: oyna
+              ochilgan zahoti sarlavhada turadi, server javobini kutmaydi. */}
+          <FaceHistoryModal
+            personId={openPerson.person_id}
+            initial={{ name: openPerson.full_name, subtitle: openPerson.note ?? openPerson.role_label }}
+            onClose={() => setOpenPerson(null)}
+          />
         </div>
       )}
 
@@ -590,7 +668,6 @@ function Row({
   onOpen: () => void;
 }) {
   const u = useT().dashboard.ui.att;
-  const st = { label: u.status[r.status], cls: STATUS_CLS[r.status] };
   /**
    * 🔴 TOPILDI VA TUZATILDI (2026-09-10, foydalanuvchi so'rovi:
    * "o'quvchilarni qancha vaqt kech qolgani chiqmayabdi ... shunda
@@ -598,10 +675,32 @@ function Row({
    * qatorda faqat KELISH VAQTI (`r.time`, masalan "08:00") va holat
    * nishoni ("Kechikdi") ko'rinardi — ikkalasi ham bir xil bo'lgani
    * uchun (ko'p o'quvchi bir vaqtda "birinchi ko'rindi") qatorlar
-   * FARQSIZ tuyulardi. Endi vaqt ostida FARQ (`+N daq` / `-N daq`)
-   * ham chiqadi — `arrival_deadline`dan necha daqiqa keyin/oldin.
+   * FARQSIZ tuyulardi. Endi FARQ (`+N` / `-N`) alohida chipda —
+   * `arrival_deadline`dan necha daqiqa keyin/oldin.
+   *
+   * 🔵 **KENG "JADVAL" QATORI (2026-10-22, foydalanuvchi skrinshot bilan):**
+   * ustunlar — rasm + ism (ostida `ID: #person_id`) · sinf chipi · kelish
+   * vaqti · kech/erta chipi (soat ikonkasi bilan) · kamera (`cameraPlaceLabel`
+   * + `#kanal`) · "Ko'rish" tugmasi. Har ustun CHAPGA tekis (ustun
+   * kengligi qat'iy, matn markazda "suzib" turmasin — 2026-10-22). Ilgari ism/vaqt/holat uchtasi siqilib
+   * turardi, sinf esa ism ostidagi mayda satr edi.
+   *
+   * ⚠️ Rang/ishora `r.status`dan (SERVER hisoblagan), `diff`ning o'zidan
+   * EMAS — chegara holatida (`diff === 0`) server "kech" desa bu yer ham
+   * "kech" deb yozishi kerak, aks holda nishon bilan ziddiyatli ko'rinardi.
    */
   const diff = attendanceDiffMinutes(r, settings);
+  /* Sinf (`10-A`) → "10-A sinf"; raqamsiz guruh (`Uqituvchilar`) → rol nomi. */
+  const klass = r.note && /^\d/.test(r.note) ? u.classChip(r.note) : (r.note ?? r.role_label);
+  const chip =
+    diff != null
+      ? r.status === "late"
+        ? { text: `+${formatMinutes(Math.abs(diff), u)}`, cls: "border-amber-400/40 bg-amber-500/10 text-amber-300" }
+        : { text: `-${formatMinutes(Math.abs(diff), u)}`, cls: "border-emerald-400/40 bg-emerald-500/10 text-emerald-300" }
+      : { text: u.status[r.status], cls: `border-transparent ${STATUS_CLS[r.status]}` };
+  /* Kamera — faqat kadr kelgan qatorda; `channel_name` ko'pincha "Camera 01"
+     bo'lgani uchun odam o'qiydigan joy (`cameraPlaceLabel`) + kanal raqami. */
+  const camera = r.channel_id ? `${cameraPlaceLabel(r.channel_id, r.channel_name)} #${r.channel_id}` : null;
   return (
     <li>
       <button type="button" onClick={onOpen} title={u.quick(r.full_name)} className="neon-row is-link w-full">
@@ -617,27 +716,37 @@ function Row({
         className="h-10 w-10 flex-none rounded-lg object-cover ring-1 ring-white/10"
       />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-left text-[12px] font-semibold text-slate-100">{r.full_name}</span>
-        <span className="block truncate text-left text-[9.5px] text-slate-500">{r.note ?? r.role_label}</span>
+        <span className="block truncate text-left text-[12.5px] font-semibold text-slate-100">{r.full_name}</span>
+        <span className="block truncate text-left font-mono text-[9.5px] font-semibold text-amber-400/80">{u.idLabel(r.person_id)}</span>
+      </span>
+      <span className="hidden w-[104px] flex-none justify-start sm:flex">
+        <span className="truncate rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+          {klass}
+        </span>
       </span>
       {/* Kelmagan odamda vaqt yo'q — bo'sh satr kelmaydi, `—` chiziladi */}
-      <span className="flex-none text-right">
-        <span className={`block font-mono text-[11px] ${r.time ? "neon-num font-bold" : "text-slate-500"}`}>
-          {r.time || "—"}
+      <span className={`w-[64px] flex-none text-left font-mono text-[11.5px] ${r.time ? "neon-num font-bold" : "text-slate-500"}`}>
+        {r.time || "—"}
+      </span>
+      <span className="flex w-[150px] flex-none justify-start">
+        <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 font-mono text-[10.5px] font-bold ${chip.cls}`}>
+          {diff != null && <Clock size={12} weight="bold" />}
+          {chip.text}
         </span>
-        {/* ⚠️ Rang/ishora `r.status`dan (SERVER hisoblagan), `diff`ning
-            o'zidan EMAS — chegara holatida (aniq `arrival_deadline`
-            daqiqasida kelgan, `diff === 0`) server buni "kech" deb
-            hisoblasa, bu yer ham "kech" deb yozishi kerak, aks holda
-            yashil "aniq vaqtida" qizil/amber "Kechikdi" nishoni bilan
-            ZIDDIYATLI ko'rinardi. */}
-        {diff != null && (
-          <span className={`block font-mono text-[9px] font-semibold ${r.status === "late" ? "text-amber-400" : "text-emerald-400"}`}>
-            {r.status === "late" ? `+${formatMinutes(Math.abs(diff), u)}` : `-${formatMinutes(Math.abs(diff), u)}`}
-          </span>
+      </span>
+      <span className="hidden w-[160px] flex-none items-center justify-start gap-1.5 truncate text-[10.5px] text-slate-400 md:flex">
+        {camera ? (
+          <>
+            <SecurityCamera size={13} className="flex-none text-slate-500" />
+            <span className="truncate">{camera}</span>
+          </>
+        ) : (
+          "—"
         )}
       </span>
-      <span className={`flex-none rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${st.cls}`}>{u.status[r.status]}</span>
+      <span className="flex-none rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1 text-[10.5px] font-semibold text-slate-100">
+        {u.view}
+      </span>
       </button>
     </li>
   );
@@ -651,60 +760,127 @@ function Row({
 function CardTile({
   r,
   settings,
-  onOpen,
+  onOpenFrame,
+  onOpenVideo,
+  onOpenPerson,
+  compact = false,
 }: {
   r: NvrAttendanceRow;
   settings: NvrAttendanceSettings | null;
-  onOpen: () => void;
+  /** "Kadr" — bugungi kadr rasmi. */
+  onOpenFrame: () => void;
+  /** "Video" — bugungi hodisa videosi. */
+  onOpenVideo: () => void;
+  /** "Tarix" — shaxs profili (bugungi kun avtomatik tanlangan). */
+  onOpenPerson: () => void;
+  /** Qatorda 5–6 ta kartochka — tugmalarda faqat ikonka, matnlar kichikroq. */
+  compact?: boolean;
 }) {
   const u = useT().dashboard.ui.att;
-  const st = { label: u.status[r.status], cls: STATUS_CLS[r.status] };
   const diff = attendanceDiffMinutes(r, settings);
+  const late = r.status === "late";
+  /* O'ng-yuqori chip: yashil/sariq nuqta + kelish vaqti + (farq). Kelmagan
+     odamda vaqt yo'q — holat nomi. Rang `r.status`dan (SERVER hisoblagan). */
+  const dot = late ? "bg-amber-400" : r.status === "early" ? "bg-emerald-400" : "bg-slate-500";
+  const diffTxt =
+    diff != null ? `${late ? "+" : "-"}${formatMinutes(Math.abs(diff), u)}` : null;
+  const camera = r.channel_id ? `${cameraPlaceLabel(r.channel_id, r.channel_name)} #${r.channel_id}` : null;
+  const klass = r.note ?? r.role_label;
+  const noFrame = r.event_id == null;
+  const btn = `neon-btn flex-1 justify-center ${compact ? "px-0 py-1.5" : "py-2"}`;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      title={u.quick(r.full_name)}
-      className="flex flex-col items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-2.5 text-center transition-colors hover:border-ice/30 hover:bg-ice/[0.06]"
-    >
-      {/* ⚠️ Tashqi QUTI o'lchamni belgilaydi, `LibraryPhoto`ning O'ZI
-          EMAS (2026-09-11 da topildi va tuzatildi, foydalanuvchi xabar
-          qildi: "card holatida width birxil lekin height xar xil").
-          Ikki sabab birga edi: (1) ilgari `h-30 w-40` yozilgan edi —
-          `h-30` Tailwind standart shkalasida UMUMAN yo'q (28 dan keyin
-          32 keladi), sinfsiz qoldi; (2) rasm topilmagan odamda
-          `LibraryPhoto` `Avatar`ga qaytadi (`FaceDatabasePage.tsx`), u
-          esa DOIM belgilangan piksel razmerida DUMALOQ chizadi —
-          konteynerning `w-full`/`aspect-[3/4]`sinflariga MUTLAQO quloq
-          solmaydi. Ya'ni rasmi bor va yo'q odamlar kartochkasi ikki
-          xil balandlikda chiqardi. Endi nisbat QUTIDA qotirilgan —
-          ichida qanday element bo'lmasin (haqiqiy surat yoki
-          zaxira doira), quti balandligi DOIM bir xil. */}
-      <span className="grid aspect-[3/4] w-full flex-none place-items-center overflow-hidden rounded-lg bg-white/[0.03] ring-1 ring-white/10">
-        <LibraryPhoto personId={r.person_id} name={r.full_name} size={0} className="h-full w-full object-cover" />
-      </span>
-      {/* Ism — QAT'IY 2 QATOR balandligida (`line-clamp-2` + `h-[...]`):
-          1 qatorli va 2 qatorli ism bo'lgan kartochkalar bir xil
-          balandlikda tursin (aks holda bitta qator qisqaroq bo'lib,
-          panjara "tishli" ko'rinardi). */}
-      <span className="line-clamp-2 flex h-[28px] w-full items-center justify-center text-[11px] font-semibold leading-tight text-slate-100">
-        {r.full_name}
-      </span>
-      <span className="w-full truncate text-[9px] text-slate-500">{r.note ?? r.role_label}</span>
-      <span className={`flex-none rounded-full px-2 py-0.5 text-[9px] font-semibold ${st.cls}`}>{u.status[r.status]}</span>
-      {/* Vaqt bloki — HAR DOIM chiziladi (kelmagan bo'lsa "—", diff
-          bo'lmasa bo'sh joy saqlanadi): shu bo'lim borligi/yo'qligiga
-          qarab balandlik farqlanmasin. */}
-      <span className="flex h-[26px] flex-none flex-col items-center justify-center leading-tight">
-        <span className={`font-mono text-[9.5px] font-bold ${r.time ? "text-slate-300" : "text-slate-600"}`}>
-          {r.time || "—"}
+    <div className="neon-card flex select-none flex-col overflow-hidden text-left">
+      {/* 🔴 KARTOCHKANING O'ZI BOSILMAYDI — faqat uchta tugma (2026-10-23):
+            · "Kadr"  → bugungi kadr rasmi (toza, ramkasiz);
+            · "Video" → bugungi hodisa videosi;
+            · "Tarix" → shaxs profili (bugungi kun avto tanlangan).
+          ⚠️ ID olib tashlandi, "Reja" ism ostiga ko'tarildi. Tashqi QUTI
+          o'lchamni belgilaydi, `LibraryPhoto`ning o'zi emas (rasmsiz
+          odamda `Avatar` doira chizadi — quti balandligi baribir bir xil). */}
+      {/* Rasm kartochkaning TEPASI va IKKI YONIGA tekis (ichki chekinish yo'q) —
+          burchaklarni kartochkaning o'z `overflow-hidden`i yumaloqlaydi. */}
+      <span className="relative block aspect-[4/5] w-full flex-none overflow-hidden bg-white/[0.03]">
+        <span className="grid h-full w-full place-items-center">
+          <LibraryPhoto personId={r.person_id} name={r.full_name} size={0} className="h-full w-full object-cover" />
         </span>
-        <span className={`font-mono text-[8.5px] font-semibold ${r.status === "late" ? "text-amber-400" : "text-emerald-400"}`}>
-          {diff != null ? `${r.status === "late" ? "+" : "-"}${formatMinutes(Math.abs(diff), u)}` : " "}
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent" />
+        <span
+          style={{ background: "linear-gradient(90deg, var(--n1), var(--n2))" }}
+          className="absolute left-2.5 top-2.5 rounded-full px-3 py-1 text-[11.5px] font-bold text-white shadow-[0_8px_20px_-10px_var(--n1)]"
+        >
+          {klass}
+        </span>
+        <span title={diffTxt ?? undefined} className="absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#070c18]/80 px-2.5 py-1 font-mono text-[11.5px] font-bold text-slate-100 backdrop-blur-sm">
+          <span className={`h-2 w-2 rounded-full ${dot}`} />
+          {r.time || u.status[r.status]}
+          {/* Tor kartochkada (5–6 ustun) farq sig'maydi — faqat vaqt; farq `title`da */}
+          {diffTxt && !compact && <span className={`text-[10px] font-semibold ${late ? "text-amber-400" : "text-emerald-400"}`}>({diffTxt})</span>}
+        </span>
+        {camera && (
+          <span className="absolute bottom-2.5 left-2.5 flex max-w-[78%] items-center gap-1.5 rounded-lg bg-black/35 px-2 py-1 text-[11px] font-semibold text-slate-100">
+            <SecurityCamera size={14} className="flex-none text-slate-300" />
+            <span className="truncate">{camera}</span>
+          </span>
+        )}
+      </span>
+
+      <span className={`flex w-full flex-col gap-1 ${compact ? "px-2 pb-2 pt-2" : "px-3 pb-3 pt-2.5"}`}>
+        <span className="flex items-center justify-between gap-2">
+          <span className={`min-w-0 truncate font-bold leading-tight text-white ${compact ? "text-[13px]" : "text-[16px]"}`} title={r.full_name}>
+            {r.full_name}
+          </span>
+          {settings?.arrival_deadline && (
+            <span className="flex flex-none items-center gap-1 font-mono text-[11.5px] font-semibold text-slate-400">
+              <Clock size={13} className="flex-none" />
+              {compact ? settings.arrival_deadline : u.plan(settings.arrival_deadline)}
+            </span>
+          )}
+        </span>
+        <span className="mt-2 flex items-center gap-1.5">
+          {/* Kelmagan odamda bugungi kadr yo'q — tugmalar o'chiq, sababi `title`da */}
+          <button type="button" onClick={onOpenFrame} disabled={noFrame} title={noFrame ? u.noFrame : u.frame} className={btn}>
+            <ImageIcon size={14} />
+            {!compact && u.frame}
+          </button>
+          <button type="button" onClick={onOpenVideo} disabled={noFrame} title={noFrame ? u.noFrame : u.video} className={btn}>
+            <Play size={13} weight="fill" />
+            {!compact && u.video}
+          </button>
+          <button type="button" onClick={onOpenPerson} title={u.openFull} className={btn}>
+            <ClockCounterClockwise size={14} />
+            {!compact && u.history}
+          </button>
         </span>
       </span>
-    </button>
+    </div>
   );
+}
+
+const CARD_COLS_MIN = 2;
+const CARD_COLS_MAX = 6;
+const CARD_COLS_KEY = "hik-attendance-card-cols";
+
+/** Ustunlar soni — shu brauzerdagi qulaylik (`localStorage`, xato bo'lsa jim). */
+function useCardCols(): [number, (n: number) => void] {
+  const [cols, setColsState] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(CARD_COLS_KEY));
+      if (v >= CARD_COLS_MIN && v <= CARD_COLS_MAX) return v;
+    } catch {
+      /* shaxsiy rejim / bloklangan saqlash — standartga qaytamiz */
+    }
+    return 4;
+  });
+  const setCols = (n: number) => {
+    const v = Math.min(CARD_COLS_MAX, Math.max(CARD_COLS_MIN, Math.round(n)));
+    setColsState(v);
+    try {
+      localStorage.setItem(CARD_COLS_KEY, String(v));
+    } catch {
+      /* jim */
+    }
+  };
+  return [cols, setCols];
 }
 
 /** `HH:MM` → daqiqa; bo'sh/noto'g'ri bo'lsa `null`. */
@@ -768,10 +944,13 @@ function formatMinutes(mins: number, u: AttText): string {
 function AttendanceQuickView({
   r,
   settings,
+  videoOnly = false,
   onClose,
   onOpenFull,
 }: {
   r: NvrAttendanceRow;
+  /** "Video" tugmasidan — kadr rasmi ko'rsatilmaydi, faqat video. */
+  videoOnly?: boolean;
   /** Kech/erta chegarasi — `AttendanceListModal` da ALLAQACHON so'ralgan. */
   settings: NvrAttendanceSettings | null;
   onClose: () => void;
@@ -793,6 +972,63 @@ function AttendanceQuickView({
 
   if (typeof document === "undefined") return null;
 
+  /* 🔵 "Video" tugmasi — TO'LIQ EKRAN (2026-10-23, foydalanuvchi so'rovi:
+     "kadr ko'ruvchisi kabi to'liq ekranga moslab"). Rasm ko'ruvchisi
+     (`ImageLightbox`) bilan AYNI qobiq: qorong'i parda (rang INLINE — yorug'
+     mavzu `bg-black/*` sinfini oqartirib yuboradi), tepada sarlavha qatori,
+     qolgan butun joy video. Bo'sh joy bosilsa yopiladi. */
+  if (videoOnly && r.event_id != null) {
+    return createPortal(
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+        /* `neon-modal--cyan` — faqat `--n1`/`--n2` (tugmalar hover rangi) */
+        className="neon-modal--cyan fixed inset-0 z-[82] flex flex-col backdrop-blur-sm"
+        style={{ background: "rgba(4, 7, 15, 0.95)" }}
+      >
+        <div className="flex min-h-0 flex-1 flex-col" onClick={(e) => e.stopPropagation()}>
+              {/* Sarlavha qatori: chapda gradient ikonka + "Hodisa videosi" +
+                  so'nik izoh (ism · vaqt · kamera), o'ngda "Jonli ko'rish",
+                  "Yuklab olish" va yopish. ⚠️ Yopish tugmasi `absolute` BILAN
+                  burchakka qo'yilmaydi — `.neon-icon-btn` CSS'dagi `position:
+                  relative` Tailwind'ning `absolute`ini bosib ketardi. */}
+              <EventVideo
+                eventId={r.event_id}
+                videoUrl={nvrEventVideoUrl(r.event_id)}
+                minimal
+                heading={
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="neon-chip h-9 w-9">
+                      <Play size={15} weight="fill" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-bold" style={{ color: "#F1F5F9" }}>{u.videoTitle}</p>
+                      <p className="truncate text-[11px]" style={{ color: "#94A3B8" }}>
+                        {[
+                          r.full_name,
+                          r.time || null,
+                          r.channel_id ? `${cameraPlaceLabel(r.channel_id, r.channel_name)} #${r.channel_id}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                  </div>
+                }
+                trailing={
+                  <button type="button" onClick={onClose} title={t.common.close} className="neon-icon-btn h-8 w-8">
+                    <X size={15} />
+                  </button>
+                }
+              />
+        </div>
+      </motion.div>,
+      document.body
+    );
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[82] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
       <motion.div
@@ -800,7 +1036,9 @@ function AttendanceQuickView({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="neon-modal neon-modal--cyan flex w-[min(520px,94vw)] flex-col overflow-hidden"
+        /* "Video" tugmasidan — KATTA oyna, sarlavha (rasm/ism) YO'Q (2026-10-23,
+           foydalanuvchi so'rovi): faqat video, yopish tugmasi o'ng-yuqorida. */
+        className="neon-modal neon-modal--cyan relative flex w-[min(520px,94vw)] flex-col overflow-hidden"
       >
         <header className="flex flex-none items-center gap-3 border-b border-white/[0.08] px-4 py-3">
           <LibraryPhoto
@@ -819,7 +1057,8 @@ function AttendanceQuickView({
         </header>
 
         <div className="flex flex-col gap-3 p-4">
-          {/* Holat + vaqt + kech/erta farqi */}
+          {/* Holat + vaqt + kech/erta farqi — "Video" tugmasida KERAK EMAS */}
+          {!videoOnly && (
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${st.cls}`}>{u.status[r.status]}</span>
             {r.time && (
@@ -830,16 +1069,19 @@ function AttendanceQuickView({
             )}
             {diffLabel && <span className="text-[11px] text-slate-400">— {diffLabel}</span>}
           </div>
+          )}
 
           {/* Bugungi kadr + video — faqat kelgan bo'lsa (`event_id` bor) */}
           {r.event_id != null ? (
             <div className="flex flex-col gap-2">
-              <DetectionThumb
-                id={r.event_id}
-                className="aspect-[16/10] w-full rounded-lg border border-white/[0.08]"
-                alt={r.full_name}
-                eager
-              />
+              {!videoOnly && (
+                <DetectionThumb
+                  id={r.event_id}
+                  className="aspect-[16/10] w-full rounded-lg border border-white/[0.08]"
+                  alt={r.full_name}
+                  eager
+                />
+              )}
               {/* Davomat yozuvi doim kuzatuv postining O'Z hodisasi
                   (2-versiya bunday ro'yxatga umuman qo'shilmaydi) —
                   raqam ko'rinishidagi `nvrEventVideoUrl()` yetarli. */}
@@ -852,12 +1094,14 @@ function AttendanceQuickView({
           )}
         </div>
 
+        {!videoOnly && (
         <footer className="flex-none border-t border-white/[0.08] p-3">
           <button type="button" onClick={onOpenFull} className="neon-btn w-full justify-center py-2.5">
             {u.openFull}
             <ArrowRight size={13} weight="bold" />
           </button>
         </footer>
+        )}
       </motion.div>
     </div>,
     document.body

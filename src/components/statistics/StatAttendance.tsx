@@ -5,9 +5,12 @@ import { CheckCircle, Clock, Prohibit, UsersThree } from "@phosphor-icons/react"
 import { useNvrAttendance, useNvrAttendanceRange, attDay } from "@/hooks/useNvrAttendance";
 import { EventDossier } from "@/components/detections/EventDossier";
 import { saveAttendanceSettings, type NvrAttendanceSettings } from "@/lib/nvr/nvrApi";
-import { fmt } from "@/components/common/panels";
+import { PanelLoader, fmt } from "@/components/common/panels";
 import { AttendanceDrilldown } from "./AttendanceDrilldown";
+import { TodayStateHeading } from "./TodayStateHeading";
 import { useT } from "@/i18n";
+import type { StatPeriod } from "@/hooks/useStatPeriod";
+import { DailyAttendancePanel } from "./DailyAttendancePanel";
 import { useQueryClient } from "@tanstack/react-query";
 
 /**
@@ -33,7 +36,7 @@ import { useQueryClient } from "@tanstack/react-query";
  *   · "Kunlar bo'yicha" (jadval) — KALENDAR bilan ALMASHTIRILDI, pie
  *     panelining chap tomonida.
  */
-export function StatAttendance({ from, to }: { from: string; to: string }) {
+export function StatAttendance({ from, to, period }: { from: string; to: string; period: StatPeriod }) {
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
   const qc = useQueryClient();
@@ -61,19 +64,27 @@ export function StatAttendance({ from, to }: { from: string; to: string }) {
      sanaladi. Endi ular `StatOverview`/`StatCounting` dagi bilan AYNI
      qoidaga bo'ysunadi — periodga UMUMAN bog'liq emas, doim bugungi kun. */
   const kpi = today.summary;
+  /* Davr uzunligi — yuklanish ko'rsatkichining taxminiy muddati uchun */
+  const spanDays = Math.max(1, Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86_400_000) + 1);
 
   return (
     <div className="flex flex-col gap-3">
       
       {/* ── KPI qatori — DOIM BUGUN (yuqoridagi izohga qarang) ── */}
-      <p className="flex-none text-[9.5px] uppercase tracking-wider text-ice-cyan/50">
-        Bugungi holat
-        {/* 🔵 DAM OLISH KUNI (2026-09-13) — u kuni davomat serverda
-            baholanmaydi, shuning uchun holat sonlari `—` bo'lib chiqadi:
-            `0` "hech kim kelmadi" degan yolg'on ma'no berardi. */}
-        {today.isWeekend && <span className="ml-2 text-slate-500">· {t.board.weekend}</span>}
-      </p>
-      <div className="-mt-1.5 grid flex-none grid-cols-2 gap-2 md:grid-cols-4">
+      {/* 🔵 Sarlavha — `TodayStateHeading` (2026-10-23, foydalanuvchi:
+          "bugungiligini bildirib tursin"): jonli nuqta + "BUGUN" nishoni +
+          to'liq sana/hafta kuni. O'qituvchi/O'quvchilar tablaridagi bilan
+          AYNI komponent. DAM OLISH KUNI (2026-09-13) izohi ham shu yerda —
+          u kuni davomat serverda baholanmaydi, sonlar `—` bo'lib chiqadi:
+          `0` "hech kim kelmadi" degan yolg'on ma'no berardi. */}
+      <TodayStateHeading isWeekend={today.isWeekend} />
+      {/* Yuklanish — "Umumiy" tabidagi kabi slayder (2026-10-23, foydalanuvchi:
+          "kutish vaqti ko'payib ketyapti"); ilgari sonlar `0` bo'lib turardi. */}
+      {today.isLoading ? (
+        /* KPI to'ri mobilda 2 qator — yuklanish ham shu balandlikda */
+        <PanelLoader days={1} className="h-[128px] rounded-xl md:h-[62px]" />
+      ) : (
+      <div className="grid flex-none grid-cols-2 gap-2 md:grid-cols-4">
         <KpiCard Icon={UsersThree} value={n(kpi.total)} label="Jami" tone="#85E0FF" active />
         <KpiCard
           Icon={CheckCircle}
@@ -94,6 +105,7 @@ export function StatAttendance({ from, to }: { from: string; to: string }) {
           tone={today.isWeekend ? "#64748B" : "#FB7185"}
         />
       </div>
+      )}
 
       {/* ── "Toifalar kesimi" (statik jadval) BUTUNLAY OLIB TASHLANDI
           (2026-09-10, foydalanuvchi so'rovi) — o'rniga TO'LIQ KENGLIKDA
@@ -104,8 +116,13 @@ export function StatAttendance({ from, to }: { from: string; to: string }) {
           bir xil kesh), qo'shimcha so'rov yo'q. "Vaqtlarni o'zgartirish"
           tugmasi ham shu panelning o'ziga ko'chdi — ilgari "Toifalar
           kesimi" sarlavhasida edi. */}
+      {att.isLoading || range.isLoading ? (
+        <PanelLoader days={spanDays} className="hik-glass-blue min-h-[360px] flex-1 rounded-2xl" />
+      ) : (
       <AttendanceDrilldown
         rows={att.rows}
+        rawRows={att.rawRows}
+        excludedPrimary={att.excludedPrimary}
         day={day}
         from={from}
         to={to}
@@ -116,7 +133,11 @@ export function StatAttendance({ from, to }: { from: string; to: string }) {
         onSelectDay={setDay}
         onOpenEvent={setOpenEvent}
         onOpenSettings={() => setSettingsOpen(true)}
+        /* "Kunlik davomat" — halqa OSTIDA, shu panel ichida (Umumiy tabidagi bilan AYNI komponent) */
+        below={<DailyAttendancePanel period={period} onPickDay={setDay} embedded />}
       />
+      )}
+
 
       {openEvent != null && <EventDossier eventId={openEvent} onClose={() => setOpenEvent(null)} />}
       {settingsOpen && att.settings && (

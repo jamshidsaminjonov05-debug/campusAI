@@ -41,11 +41,12 @@ import { useT } from "@/i18n";
 import { useStudentLabel } from "@/hooks/useStudentLabel";
 import { useAppStore } from "@/store/useAppStore";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
-import { Missing, MissingBlock } from "@/components/common/Missing";
+import { Missing } from "@/components/common/Missing";
 import type { InstitutionRow, Metric } from "@/lib/nvr/institutionRows";
 import { csvName, downloadCsv, sortRows, sumInstitutions, toCsv, type SortDir } from "@/lib/statistics";
 import { DataBadge } from "@/components/dashboard/DataBadge";
-import { CellBar, KpiTile, StatPanel, StatusPill, Th, fmt, rateTone } from "@/components/common/panels";
+import { CellBar, KpiTile, StatPanel, StatusPill, Th, fmt, PanelLoader, rateTone } from "@/components/common/panels";
+import { EmptyState } from "@/components/common/EmptyState";
 
 type SortKey = "name" | "region" | "students" | "teachers" | "cameras" | "attendance" | "alerts";
 
@@ -59,11 +60,22 @@ export function StatInstitutions({
   query,
   regionFilter,
   onClearRegion,
+  range,
+  loaderDays = 1,
+  allTime = false,
+  resolving = false,
 }: {
   query: string;
   /** Hudud bo'yicha qisqartirish — `InstitutionRow.regionFull` bilan aniq mos kelishi shart. */
   regionFilter?: string | null;
   onClearRegion?: () => void;
+  /** Sahifaning DAVR tanlovi — davomat va signallar shu oraliqdan. */
+  range?: { from: string; to: string };
+  /** Slayder taxmini uchun (`PanelLoader`) — davr kunlari va "Butun tarix". */
+  loaderDays?: number;
+  allTime?: boolean;
+  /** Davr hali aniqlanmoqda ("Butun tarix" boshlanish sanasi kelmagan). */
+  resolving?: boolean;
 }) {
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
@@ -85,7 +97,7 @@ export function StatInstitutions({
     }
   };
 
-  const { institutions: source, live } = useLiveInstitutions();
+  const { institutions: source, live, loading } = useLiveInstitutions(range);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -129,6 +141,12 @@ export function StatInstitutions({
     );
     downloadCsv(csvName("statistika-muassasalar"), csv);
   };
+
+  /* Ma'lumot kelguncha bo'sh jadval/nol o'rniga SLAYDER — Statistikadagi
+     `PanelLoader` bilan AYNI (2026-10-26). */
+  if (loading || resolving) {
+    return <PanelLoader days={loaderDays} allTime={allTime} className="hik-glass-blue min-h-[360px] rounded-2xl" />;
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -209,9 +227,7 @@ export function StatInstitutions({
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-slate-500">
-                    {t.stats.nothing}
-                  </td>
+                  <td colSpan={8} className="py-6 text-center text-slate-500"><EmptyState compact title={t.stats.nothing} /></td>
                 </tr>
               )}
               {rows.map((i) => (
@@ -432,16 +448,13 @@ function InstitutionStatsDetail({
         )}
       </div>
 
-      {/* ⚠️ **UCHTA DIAGRAMMA OLIB TASHLANDI** (haftalik davomat chizig'i,
-          kayfiyat halqasi, hodisa turlari halqasi). Uchalasi ham
-          `institutionAnalytics()` FORMULASI bilan chizilardi: server
-          muassasa kesimida na kunlik davomat tarixini, na kayfiyatni, na
-          hodisa turlarini bermaydi (`BACKEND.md` 1 va 6-band). Sabab
-          ekranda OCHIQ yoziladi — jim bo'sh joy qoldirilmaydi. */}
-      <MissingBlock
-        reason={t.stats.detail.noBreakdown}
-        source="GET /api/v1/statistics/institutions/{id}"
-      />
+      {/* ⚠️ Uchta diagramma (haftalik davomat, kayfiyat, hodisa turlari)
+          2026-09-05 da olib tashlangan — `institutionAnalytics()` FORMULASI
+          edi, server muassasa kesimini bermaydi (`BACKEND.md` 1 va 6-band).
+          O'rnidagi "Hali jarayonda — ma'lumotlar qo'shilmoqda" bloki ham
+          2026-10-23 da OLIB TASHLANDI (foydalanuvchi so'rovi, skrinshot
+          bilan) — panel KPI va o'rin qatori bilan tugaydi. Server bu kesimni
+          bera boshlasa diagrammalar shu yerga qaytariladi. */}
     </StatPanel>
   );
 }

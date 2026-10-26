@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Mic } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useVoice } from "./useVoice";
+import { voiceApi } from "./VoiceService";
 
 const busy = (s: string) => s === "recognizing" || s === "executing";
 
@@ -35,12 +37,19 @@ export function FloatingVoiceButton() {
     return () => window.removeEventListener("keydown", onEsc);
   }, [listening, cancelListening]);
 
+  /* Nutq serveri (STT/TTS) hozirgi backendda YO'Q — tugma har sahifada turib,
+     bosilsa "Ovoz xizmati ishlamayapti" derdi. Endi faqat `/speech/health`
+     JSON bilan javob bersa ko'rinadi; kalit `SettingsPage` bilan umumiy. */
+  const health = useQuery({ queryKey: ["speech-health"], queryFn: () => voiceApi.checkHealth(), staleTime: 10 * 60_000, retry: false });
+
   const ringClass = listening ? "hik-glow-ring-red" : status === "idle" ? "hik-glow-ring" : "";
+  if (health.data !== true) return null;
 
   return (
     <motion.button
       type="button"
       title="Ovozli buyruq (bosib ushlab turing)"
+      aria-label="Ovozli buyruq"
       disabled={isBusy}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -49,7 +58,7 @@ export function FloatingVoiceButton() {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: listening ? 1.08 : 1 }}
       transition={{ duration: 0.25 }}
-      className={`hik-glass-blue fixed bottom-6 right-6 z-40 grid h-16 w-16 touch-none place-items-center rounded-full border transition-colors ${ringClass} ${
+      className={`hik-glass-blue fixed bottom-5 right-5 z-40 grid h-12 w-12 touch-none place-items-center rounded-full border transition-colors ${ringClass} ${
         listening
           ? "border-rose-400/60 bg-rose-500/15 text-rose-200"
           : isBusy
@@ -57,7 +66,7 @@ export function FloatingVoiceButton() {
             : "border-ice/25 text-ice-soft hover:border-ice/50 hover:text-ice-bright"
       }`}
     >
-      {isBusy ? <Loader2 size={24} className="animate-spin" /> : <Mic size={24} />}
+      {isBusy ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
     </motion.button>
   );
 }

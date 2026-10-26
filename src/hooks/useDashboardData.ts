@@ -20,7 +20,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useDashboard, useEmotionsDaily } from "@/hooks/useApi";
 import type { Metric } from "@/lib/nvr/institutionRows";
 import { useLiveInstitutions } from "@/hooks/useLiveInstitutions";
 import { useAppStore } from "@/store/useAppStore";
@@ -57,12 +56,15 @@ const pct = (part: Metric, whole: Metric): Metric =>
 
 const diff = (a: Metric, b: Metric): Metric => (a === null || b === null ? null : a - b);
 
-/** Backend qiymati faqat HAQIQATAN to'lgan bo'lsa ishlatiladi. */
-const nz = (v: number | null | undefined): Metric => (typeof v === "number" && v > 0 ? v : null);
-
+/* 🔴 `useDashboard()` (`/statistics/dashboard`, 5.9 s har 60 s) va
+   `useEmotionsDaily()` OLIB TASHLANDI (2026-10-26, `SEKINLIK-TUZATISH.md`
+   13-B/14): kuzatuv posti serveri bu yo'llarga BOSHQA shakl qaytaradi
+   (`{events:…}` / `{by_day:[]}`), bu hookdagi `students`/`teachers`/
+   `total_cameras`/`emotions_today` maydonlari doim `undefined` edi — ya'ni
+   har daqiqadagi og'ir so'rov hech narsa bermasdi. Manba endi FAQAT
+   `useLiveInstitutions` (kuzatuv posti kanallari + davomat). Kayfiyat
+   moduli serverda yo'q — `emotions.total = 0`, `trend` bo'sh. */
 export function useDashboardData(): DashboardView {
-  const { data: dash } = useDashboard();
-  const { data: daily } = useEmotionsDaily(7);
   const selectedTeknikum = useAppStore((s) => s.selectedTeknikum);
   const rows = useLiveInstitutions();
 
@@ -87,61 +89,16 @@ export function useDashboardData(): DashboardView {
           alerts: rows.national.alerts,
         };
 
-    /* Backend `/statistics/dashboard` — respublika miqyosida ustun manba,
-       lekin u amalda deyarli bo'sh (o'lchandi 2026-09-02: 2 talaba,
-       1 o'qituvchi, 0 kamera). Bo'sh bo'lsa kuzatuv posti yig'indisiga o'tamiz. */
-    const backendStudents = inst ? null : nz(dash?.students?.total);
-    const backendTeachers = inst ? null : nz(dash?.teachers?.total);
-
-    const studentsTotal = backendStudents ?? scopeRow.students;
+    const studentsTotal = scopeRow.students;
     const studentsPresent =
-      backendStudents !== null
-        ? dash?.students?.present ?? null
-        : scopeRow.students !== null && scopeRow.attendance !== null
-          ? Math.round((scopeRow.students * scopeRow.attendance) / 100)
-          : null;
-
-    const teachersTotal = backendTeachers ?? scopeRow.teachers;
+      scopeRow.students !== null && scopeRow.attendance !== null
+        ? Math.round((scopeRow.students * scopeRow.attendance) / 100)
+        : null;
+    const teachersTotal = scopeRow.teachers;
     const teachersPresent =
-      backendTeachers !== null
-        ? dash?.teachers?.present ?? null
-        : scopeRow.teachers !== null && scopeRow.attendance !== null
-          ? Math.round((scopeRow.teachers * scopeRow.attendance) / 100)
-          : null;
-
-    const camTotal = (inst ? null : nz(dash?.total_cameras)) ?? scopeRow.cameras;
-    const camActive = (inst ? null : nz(dash?.active_cameras)) ?? scopeRow.activeCameras;
-
-    /* ⚠️ **KAYFIYAT — serverda modul YO'Q** (`ultralytics` o'rnatilmagan;
-       o'lchandi: 30 kun uchun 0 ta qayd). `total: 0` bo'lsa UI halqani
-       CHIZMAYDI va sababini yozadi. Soxta foiz hech qachon ko'rsatilmaydi. */
-    const emo =
-      dash?.emotions_today && dash.emotions_today.total > 0
-        ? dash.emotions_today
-        : { positive: 0, neutral: 0, negative: 0, total: 0 };
-
-    /* ⚠️ `daily.length > 0` YETMAYDI: server 7 kunni qaytaradi-yu,
-       hammasida `total: 0`. Kamida bitta kunda haqiqiy qayd bo'lsin. */
-    /* ⚠️ 2026-09-15: kuzatuv posti serveri `/statistics/dashboard` ga BOSHQA shakl
-       (`{events:{…}}`, `students`/`emotions_today` YO'Q), `/emotions/daily` ga
-       `{days,by_day,note}` OBYEKT, `/attendance/recent` ga `{date,rows}` qaytaradi
-       (o'lchandi). Ilgari `dash?.students.total` shu yerda Statistikani
-       "Cannot read properties of undefined (reading 'total')" bilan yiqitardi. */
-    const dailyRows = Array.isArray(daily) ? daily : [];
-    const dailyHasData = dailyRows.some((d) => d.total > 0);
-    const trend =
-      dailyHasData
-        ? dailyRows.map((d) => ({
-            /* ⚠️ Yorliq bu yerda faqat ZAXIRA — chizuvchi panel uni
-               `dayIndex` bo'yicha LUG'ATDAN oladi (`t.chart.weekdays`).
-               `toLocaleDateString` brauzerda uz ICU ma'lumoti bo'lmasa
-               "Mon"/"M09" qaytaradi (`lib/dateLabel.ts`). */
-            label: d.date.slice(5),
-            value: Math.round(d.positive_pct),
-            // 0 = dushanba: `getDay()` yakshanbadan boshlaydi
-            dayIndex: (new Date(d.date).getDay() + 6) % 7,
-          }))
-        : [];
+      scopeRow.teachers !== null && scopeRow.attendance !== null
+        ? Math.round((scopeRow.teachers * scopeRow.attendance) / 100)
+        : null;
 
     return {
       students: {
@@ -156,13 +113,13 @@ export function useDashboardData(): DashboardView {
         absent: diff(teachersTotal, teachersPresent),
         rate: pct(teachersPresent, teachersTotal),
       },
-      cameras: { active: camActive, total: camTotal, rate: pct(camActive, camTotal) },
-      alarms: (inst ? null : nz(dash?.unresolved_alarms)) ?? scopeRow.alerts,
+      cameras: { active: scopeRow.activeCameras, total: scopeRow.cameras, rate: pct(scopeRow.activeCameras, scopeRow.cameras) },
+      alarms: scopeRow.alerts,
       institutes: inst ? 1 : rows.institutions.length,
-      emotions: emo,
-      trend,
-      live: rows.live || !!dash,
+      emotions: { positive: 0, neutral: 0, negative: 0, total: 0 },
+      trend: [],
+      live: rows.live,
       scope: inst ? { id: inst.id, name: inst.name } : null,
     };
-  }, [dash, daily, rows, selectedTeknikum]);
+  }, [rows, selectedTeknikum]);
 }

@@ -4,9 +4,9 @@ import { INSTITUTIONS, institutionById } from "@/config/institutions";
 import { UNIVERSITIES } from "@/config/universities";
 import { UZ_CENTER, UZ_ZOOM } from "@/config/mapConfig";
 import { cameraHeading, cameraPlaceLabel, placementFor } from "@/config/cameraPlacements";
+import { cameraHintHtml } from "@/map/maplibre/cameraLayer";
 import { useNvrChannels } from "@/hooks/useNvrChannels";
 import { CameraQuickView } from "@/components/cameras/CameraQuickView";
-import type { MetricKey } from "@/lib/geoScope";
 
 /**
  * Geo Analitika xaritasi — BUTUN O'ZBEKISTON, to'liq fon rejimida.
@@ -15,8 +15,9 @@ import type { MetricKey } from "@/lib/geoScope";
  * (2026-09-05). Ular `geoAggregate` dan — 645 muassasa uchun
  * GENERATSIYA qilingan davomat/hodisa/kayfiyat/kamera sonlaridan
  * kelardi. Backend hudud kesimini bermaydi (`BACKEND.md` 1-band),
- * shuning uchun butun qatlam o'chirildi; kuzatuvdagi muassasa ustidagi
- * HAQIQIY nishon (`exactMarker`) joyida qoldi.
+ * shuning uchun butun qatlam o'chirildi. Kuzatuvdagi muassasa ustidagi
+ * ko'rsatkich nishoni (`exactMarker`) ham 2026-10-26 da ketdi — u
+ * sahifadagi "Saralash" paneliga bog'liq edi, panel olib tashlandi.
  *
  * Xaritada chiziladigan HAQIQIY narsalar:
  *   · viloyat va kampus chegaralari (geografiya — bu ma'lumot emas);
@@ -50,17 +51,8 @@ interface Props {
    * (kamera, trevoga, chegaralar) qoladi.
    */
   demo?: boolean;
-  /** Nishonlar qaysi ko'rsatkichni ko'rsatadi (namoyish rejimida). */
-  metric?: MetricKey;
   /** Muassasa SONI nishonlari ("Muassasalar" tugmasi yoqilganda). */
   showCampuses?: boolean;
-  /**
-   * ANIQ rejimdagi ko'rsatkich nishoni — kuzatuvdagi maktabning HAQIQIY
-   * qiymati (`useExactScope`). `demo:false` da viloyat nishonlari
-   * chizilmaydi, lekin saralash pilyulalari baribir ishlashi kerak:
-   * shu nishon tanlangan ko'rsatkichni ko'rsatadi.
-   */
-  exactMarker?: { id: string; label: string; tone: string | null } | null;
   /**
    * OLIY TA'LIM nuqtalari (`config/universities.ts`) chizilsinmi.
    *
@@ -92,7 +84,6 @@ export const GeoMap = memo(function GeoMap({
   selectedCampusId,
   onSelectCampus,
   resetNonce = 0,
-  exactMarker = null,
   showUniversities = true,
   selectedUniversityId = null,
   onSelectUniversity,
@@ -105,22 +96,6 @@ export const GeoMap = memo(function GeoMap({
 
   const markers = useMemo<YMarker[]>(() => {
     const out: YMarker[] = [];
-
-    if (exactMarker) {
-      const inst = INSTITUTIONS.find((i) => i.id === exactMarker.id);
-      if (inst) {
-        out.push({
-          id: `exact-stat-${inst.id}`,
-          lat: inst.lat,
-          lng: inst.lng,
-          kind: "stat",
-          color: exactMarker.tone ?? "#8FB8FF",
-          label: exactMarker.label,
-          tooltip: `${inst.name} — ${exactMarker.label}`,
-          onClick: () => onSelectCampus(inst.id),
-        });
-      }
-    }
 
     /* Kuzatuvdagi muassasalar — nuqta + nomi. Ular 3D kampus konturi bor
        yagona obyektlar, shuning uchun xaritada belgilanadi. */
@@ -188,9 +163,13 @@ export const GeoMap = memo(function GeoMap({
         lng: at.lng,
         kind: "camera",
         color: "#85E0FF",
-        tooltip:
-          `#${c.id} · ${cameraPlaceLabel(c.id, c.name)}` +
-          (dir ? ` · ${Math.round(dir.deg)}°${dir.approx ? " (taxminiy)" : ""}` : ""),
+        hintHtml: cameraHintHtml({
+          channel: c.id,
+          place: cameraPlaceLabel(c.id, c.name),
+          status: c.online ? "online" : "offline",
+          deg: dir?.deg,
+          approx: dir?.approx,
+        }),
         /* ⚠️ Yo'nalish BERILMASA konus chizilmaydi — kuzatuv posti uni bermaydi,
            o'ylab topilmaydi (`cameraHeading()` izohiga qarang). */
         heading: dir?.deg,
@@ -213,7 +192,6 @@ export const GeoMap = memo(function GeoMap({
     return out;
   }, [
     camChannel,
-    exactMarker,
     selectedCampusId,
     onSelectCampus,
     onSelectRegion,

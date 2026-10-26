@@ -16,7 +16,7 @@
  * bo'lgan joylarda qoladi (Statistika → Hodisalar, HUD oqimi, trevoga
  * sanog'i).
  */
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listFaces, liveInterval, type NvrFaceRow, type NvrFacesQuery } from "@/lib/nvr/nvrApi";
 
 /** Bitta so'rovdagi maksimal yozuv — serverning o'z chegarasi. */
@@ -37,6 +37,8 @@ export interface FacesView {
   /** Ko'rilgan qaydlar yig'indisi (birinchi sahifadagi odamlar bo'yicha). */
   events: number;
   isLoading: boolean;
+  /** Eski sahifa ko'rsatilib turib yangisi kelmoqda (`keepPreviousData`). */
+  isFetching: boolean;
   error: unknown;
 }
 
@@ -55,6 +57,9 @@ export function useFaces(opts: FacesOptions = {}): FacesView {
     // SSE ulangan bo'lsa `useLiveSync` ["nvr-faces"] ni o'zi yangilaydi
     refetchInterval: liveInterval(2 * 60_000, 5 * 60_000),
     staleTime: 90_000,
+    /* Sahifa (`offset`) almashganda eski ro'yxat turadi — oyna bo'shab
+       "sakramaydi" (`useNvrEvents` bilan AYNI naqsh, 2026-10-26). */
+    placeholderData: keepPreviousData,
   });
 
   const faces = query.data?.faces ?? [];
@@ -88,6 +93,7 @@ export function useFaces(opts: FacesOptions = {}): FacesView {
     byHour: hours.map((people, hour) => ({ hour, people })),
     events: faces.reduce((s, f) => s + f.count, 0),
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
   };
 }

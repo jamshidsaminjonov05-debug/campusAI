@@ -18,14 +18,16 @@ import {
 } from "@phosphor-icons/react";
 import { useModalHistory } from "@/hooks/useModalHistory";
 import { UnsavedExitDialog } from "@/components/common/UnsavedExitDialog";
-import { Avatar } from "./PeoplePage";
+import { Avatar } from "@/components/common/Avatar";
+import { useAppStore } from "@/store/useAppStore";
 import { FaceHistoryModal } from "./FaceHistoryModal";
 import { DetectionThumb } from "@/components/detections/DetectionThumb";
 import { useNvrClasses, useNvrPeople, useNvrPeopleMutations } from "@/hooks/useNvrPeople";
 import { nvrPersonPhotoUrl, type NvrPerson, type NvrPersonRole } from "@/lib/nvr/nvrApi";
-import { fmt } from "@/components/common/panels";
-import { Missing, MissingBlock } from "@/components/common/Missing";
+import { fmt, CardGridSkeleton } from "@/components/common/panels";
+import { Missing } from "@/components/common/Missing";
 import { useT } from "@/i18n";
+import { EmptyState } from "@/components/common/EmptyState";
 
 /** Elementga ISHORA (`ref`) ekranga kirguncha `false`. Uzun ro'yxatlarda
  *  har bir kartochka o'z rasm so'rovini bir vaqtda boshlab yubormasin. */
@@ -185,15 +187,17 @@ function RoleCard({
   /** `null` — manbasi yo'q (qizil belgi). */
   count: number | null;
   tone: string;
-  onPick: () => void;
+  /** Berilmasa karta BOSILMAYDI (Xodimlar — manba yo'q, 2026-10-26). */
+  onPick?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onPick}
-      title={`${label} — ro'yxatni ochish`}
+      disabled={!onPick}
+      title={onPick ? `${label} — ro'yxatni ochish` : `${label} bo'yicha ma'lumot hozircha yo'q`}
       className="hik-glass-blue group flex flex-col items-start gap-1.5 rounded-xl px-4 py-3.5 text-left
-                 transition-colors hover:border-ice/40 hover:bg-ice/[0.08]"
+                 transition-colors enabled:hover:border-ice/40 enabled:hover:bg-ice/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span className="flex w-full items-center gap-2.5">
         <span
@@ -206,7 +210,7 @@ function RoleCard({
         <CaretRight size={14} className="flex-none text-slate-500 transition-colors group-hover:text-ice-bright" />
       </span>
       <span className="text-[10.5px] text-slate-400">
-        {count === null ? <Missing source="kuzatuv posti /people · role=staff" /> : <b className="font-mono text-[13px] text-slate-200">{count}</b>}
+        {count === null ? <Missing /> : <b className="font-mono text-[13px] text-slate-200">{count}</b>}
         {count === null ? "" : " ta shaxs"}
       </span>
     </button>
@@ -252,7 +256,11 @@ const ROLE_TITLE: Record<string, string> = {
 };
 
 /** Qulflangan (bitta) rol bilan chaqirilganda sarlavha/tavsif shunga mos. */
-const LOCKED_HEADER: Record<NvrPersonRole, { title: string; desc: string }> = {
+const LOCKED_HEADER: Record<NvrPersonRole | "staff", { title: string; desc: string }> = {
+  staff: {
+    title: "Xodimlar",
+    desc: "Kuzatuv posti yuz bazasida «xodim» toifasi yo'q — ma'lumotlar hali qo'shilmoqda.",
+  },
   teacher: {
     title: "O'qituvchilar",
     desc: "Ro'yxatga OLINGAN o'qituvchilar — kuzatuv postining O'Z bazasidan (yagona manba, backend `/persons` EMAS).",
@@ -306,7 +314,7 @@ export function classOrder(name: string): number {
   return Number(m[1]) * 100 + (name.charCodeAt(m[1].length + 1) || 0) / 1000;
 }
 
-export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } = {}) {
+export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole | "staff" } = {}) {
   const t = useT();
   const n = (v: number) => fmt(v, t.locale);
 
@@ -320,10 +328,22 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
   const [debounced, setDebounced] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [openPersonId, setOpenPersonId] = useState<number | null>(null);
+  const [openPerson, setOpenPerson] = useState<NvrPerson | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   /** Tanlangan sinf (`all` — hammasi). Serverga `class=` bo'lib ketadi. */
   const [klass, setKlass] = useState("all");
+  /* Global qidiruv / ovozli "X ni qidir" → "Shaxslar" ochilib, shu ro'yxatda
+     ism bo'yicha qidiriladi. Ilgari bu qiymatni faqat o'chirilgan `PeoplePage`
+     o'qirdi — sahifa ochilardi-yu, qidiruv qo'llanmasdi (2026-10-26). */
+  const voicePersonSearch = useAppStore((s) => s.voicePersonSearch);
+  const setVoicePersonSearch = useAppStore((s) => s.setVoicePersonSearch);
+  useEffect(() => {
+    if (!voicePersonSearch) return;
+    setSearch(voicePersonSearch.value.query);
+    setKlass("all");
+    if (!lockedRole) setRole(voicePersonSearch.value.personType === "teacher" ? "teacher" : "student");
+    setVoicePersonSearch(null);
+  }, [voicePersonSearch, setVoicePersonSearch, lockedRole]);
   /* ⚠️ 397 kishilik bazada BIR SO'ROVDA HAMMASINI (200 tagacha) chizish
      panelni QOTIRIB QO'YARDI — 200 kartochkaning har biri rasm so'rovi
      boshlardi (o'lchandi 2026-09-04). Endi "Ko'proq" bosilgan sari
@@ -438,6 +458,7 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
             className="w-[180px] bg-transparent text-[11.5px] outline-none placeholder:text-slate-600"
           />
         </label>
+        {role !== "staff" && (
         <button
           type="button"
           onClick={() => setAddOpen(true)}
@@ -446,6 +467,7 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
           <Plus size={15} weight="bold" />
           Shaxs qo'shish
         </button>
+        )}
       </header>
 
       {/* ── TOIFA TANLANGANDA: "orqaga" qatori ──
@@ -515,7 +537,6 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
               /* Manbasi YO'Q — `0` emas, qizil belgi (`BACKEND.md` 4-band). */
               count={null}
               tone="#F59E0B"
-              onPick={() => setRole("staff")}
             />
             <RoleCard
               Icon={Student}
@@ -527,17 +548,19 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
           </div>
         ) : role === "staff" ? (
           /* ── XODIMLAR — manba yo'q, sabab OCHIQ yoziladi ── */
-          <MissingBlock
-            className="mt-6"
-            reason={t.dashboard.ui.att.staffMissing}
-            source="kuzatuv posti /people · role=staff"
-          />
+          /* 2026-10-23, foydalanuvchi so'rovi: umumiy "Hali jarayonda…" sarlavhasi va
+             texnik manzil YO'Q — faqat sabab matni, kattaroq. `MissingBlock` bilan
+             AYNI ramka (punktir, qizil emas — bu xato emas, manba hali yo'q). */
+          <div className="mt-6 grid place-items-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+            <div className="flex max-w-[420px] flex-col items-center gap-3">
+              <WarningCircle size={28} weight="duotone" className="text-slate-500" />
+              <p className="text-[15px] font-semibold leading-snug text-slate-200">{t.dashboard.ui.att.staffMissing}</p>
+            </div>
+          </div>
         ) : showClassCards ? (
           /* ── SINFLAR — KARTOCHKA ko'rinishida ── */
           classesQ.isLoading ? (
-            <div className="grid h-40 place-items-center">
-              <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-            </div>
+            <CardGridSkeleton count={8} media="aspect-[2/1]" />
           ) : (
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
               {classes.map((c) => (
@@ -546,17 +569,13 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
             </div>
           )
         ) : q.isLoading ? (
-          <div className="grid h-40 place-items-center">
-            <span className="h-7 w-7 animate-spin rounded-full border-2 border-ice/40 border-t-ice" />
-          </div>
+          <CardGridSkeleton count={10} cols={5} media="aspect-[3/4]" />
         ) : people.length === 0 ? (
-          <p className="py-14 text-center text-[12px] text-slate-500">
-            {debounced
+          <EmptyState fill title={<>{debounced
               ? "Qidiruvga mos yozuv yo'q"
               : klass !== "all"
                 ? `«${klass}» sinfida yozuv yo'q`
-                : "Baza bo'sh"}
-          </p>
+                : "Baza bo'sh"}</>} />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
@@ -564,7 +583,7 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
                 <PersonCard
                   key={p.id}
                   p={p}
-                  onOpen={() => setOpenPersonId(p.id)}
+                  onOpen={() => setOpenPerson(p)}
                   onDelete={() => setDeleteId(p.id)}
                 />
               ))}
@@ -587,7 +606,7 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
 
       {addOpen && (
         <AddPersonModal
-          lockedRole={lockedRole}
+          lockedRole={lockedRole === "staff" ? undefined : lockedRole}
           onClose={() => setAddOpen(false)}
           onDone={(name) => {
             setAddOpen(false);
@@ -622,8 +641,12 @@ export function FaceDatabasePage({ lockedRole }: { lockedRole?: NvrPersonRole } 
         />
       )}
 
-      {openPersonId != null && (
-        <FaceHistoryModal personId={openPersonId} onClose={() => setOpenPersonId(null)} />
+      {openPerson && (
+        <FaceHistoryModal
+          personId={openPerson.id}
+          initial={{ name: openPerson.full_name, subtitle: openPerson.note ?? openPerson.role_label }}
+          onClose={() => setOpenPerson(null)}
+        />
       )}
 
       {toast && (

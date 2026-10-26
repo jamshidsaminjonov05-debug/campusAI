@@ -322,7 +322,7 @@ export const EN: InvestorCopy = {
       "Works offline — an outage does not stop the system",
       "We do not sell hardware — we sell a subscription",
     ],
-    note: "The product itself is demonstrated in a separate deck: /taqdimot",
+    note: "",
   },
 
   detectors: {
@@ -348,7 +348,7 @@ export const EN: InvestorCopy = {
       "Lesson quality and voice analysis",
     ],
     moreTitle: "Other detectors",
-    more: ["Face recognition", "Unknown person", "Fire and smoke", "People counting", "Lateness"],
+    more: ["Face recognition", "Unknown person", "Fire and smoke", "Lateness"],
     note: "A confidence score is computed on every frame and stored with the incident record.",
   },
 
@@ -588,7 +588,6 @@ export const EN: InvestorCopy = {
       "The product is built and live at School 179",
     ],
     ctaTalk: "Get in touch",
-    ctaDeck: "Product deck",
     ctaSite: "Website",
     foot: "Campus AI · artificial intelligence for educational institutions",
   },

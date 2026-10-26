@@ -49,7 +49,7 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
 
     /* Har bir kartochka O'ZIGA tegishli sahifani ochadi. Kamera sonlari shu
        sahifada qoladi (ular allaqachon shu yerdagi ro'yxat), hodisa sonlari
-       esa "Aniqlanganlar" va "Hodisalar" bo'limlariga olib boradi. */
+       esa "Aniqlanganlar" va "Ogohlantirishlar" bo'limlariga olib boradi. */
     const rows: {
       Icon: Icon;
       value: number;
@@ -100,8 +100,8 @@ export function CameraKpiRow({ cameras }: { cameras: CameraOut[] }) {
         label: "Real vaqt xabarlari",
         tone: "#F43F5E",
         hint: alerts > 0 ? "e'tibor talab qiladi" : "trevoga yo'q",
-        page: "Hodisalar",
-        goHint: "Hodisalar bo'limini ochish",
+        page: "Ogohlantirishlar",
+        goHint: "Ogohlantirishlar bo'limini ochish",
       },
     ];
     return rows;

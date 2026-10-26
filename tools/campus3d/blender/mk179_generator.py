@@ -30,13 +30,19 @@ def mat(name, rgb, rough=0.6, metal=0.0, trans=0.0):
     m.diffuse_color = (*rgb, 1); return m
 
 def materials():
-    M["wall"]    = mat("Devor_kulrang", (0.50, 0.51, 0.53), 0.85)
+    # Ranglar Google Earth suratiga moslangan (2026-10-23) — linear qiymatlar,
+    # qavsda sRGB: devor #cac9c4, maktab tomi #a9abab, bir qavatli tom #8b8e90,
+    # yordamchi/qorovulxona tomi #b9b9b7. `public/models/mk-179.glb` ham shu
+    # ranglarda (JSON chunk bevosita yangilangan), qayta eksportda mos tushadi.
+    M["wall"]    = mat("Devor_kulrang", (0.60, 0.59, 0.56), 0.85)
     M["dark"]    = mat("Toq_kulrang", (0.17, 0.18, 0.20), 0.6)
     M["yellow"]  = mat("Sariq_grafika", (0.93, 0.76, 0.16), 0.6)
     M["white"]   = mat("Oq", (0.92, 0.92, 0.91), 0.5)
     M["frame"]   = mat("PVX_rom", (0.95, 0.95, 0.95), 0.35)
     M["glass"]   = mat("Oyna", (0.25, 0.32, 0.38), 0.04, 0.7)
-    M["roof"]    = mat("Tom_plita", (0.62, 0.63, 0.64), 0.8)
+    M["roof"]    = mat("Tom_plita", (0.40, 0.41, 0.41), 0.8)
+    M["roof_dk"] = mat("Tom_kulrang_toq", (0.26, 0.27, 0.28), 0.8)   # bir qavatli bino tomi
+    M["roof_lt"] = mat("Tom_kulrang_och", (0.48, 0.48, 0.47), 0.8)   # yordamchi binolar, qorovulxona
     M["plinth"]  = mat("Tsokol", (0.30, 0.30, 0.31), 0.7)
     M["brown"]   = mat("Yogoch_jigar", (0.36, 0.20, 0.11), 0.55)
     M["gold"]    = mat("Oltin_harf", (0.85, 0.66, 0.30), 0.25, 1.0)
@@ -171,8 +177,11 @@ def school(p_raw, h, parent):
     prism("Maktab_parapet_qopqoq", offset_poly(p, 0.12), h + 0.6, h + 0.75, M["dark"], parent)
     prism("Maktab_tom", offset_poly(p, -0.3), h + 0.05, h + 0.35, M["roof"], parent)
     fr, gl, ye, dk = MB(), MB(), MB(), MB()
-    # Kirish — hovliga (shimolga) qaragan fasad: janubiy qanotning hovli yuzi
-    ent_x = (12.0, 28.0)
+    # Kirish — SHARQIY ichki hovliga qaragan fasad: o'rta korpusning sharq
+    # yuzi (x≈-5.45, y -30.75..-14.75). 2026-10-21: avval janubiy qanotning
+    # shimoliy yuzida (x 12..28) edi, keyin g'arb yuziga, so'ng foydalanuvchi
+    # so'rovi bilan shu (teskari) tomonga ko'chirildi.
+    ENT_FX, ent_y = -5.45, (-30.75, -14.75)
     for i, a, b, u, n, L in edges(p):
         ang = math.atan2(u.y, u.x)
         # qavatlararo to'q kulrang lenta (1-qavat tepasida)
@@ -185,7 +194,7 @@ def school(p_raw, h, parent):
         for k in range(cnt):
             t = st + k * step; q = a + u * t
             for f in range(floors):
-                if f == 0 and abs(n.y - 1) < 0.1 and ent_x[0] - 1 < q.x < ent_x[1] + 1 and q.y < -30: continue
+                if f == 0 and abs(n.x - 1) < 0.1 and abs(q.x - ENT_FX) < 1.0 and ent_y[0] - 1 < q.y < ent_y[1] + 1: continue
                 z0 = f * FLOOR_H + 0.95; hh, w = 1.75, 1.5
                 def at(dt, dn, dz, sx, sy, sz, mb):
                     cc = q + u * dt + n * dn; mb.box(Vector((cc.x, cc.y, z0 + dz)), ang, sx, sy, sz)
@@ -221,13 +230,16 @@ def facade_graphics(p_raw, h, parent):
     text_mesh("Devor_179", "179", 3.2, (q.x, q.y, 2 * FLOOR_H + 1.7), (math.radians(90), 0, math.radians(180)), M["dark"], 0.04)
 
 def entrance(p_raw, parent):
-    """Hovli tomondagi asosiy kirish: soyabon, ustunlar, vitraj, sariq eshik, zina, pandus."""
+    """Sharqiy ichki hovlidagi asosiy kirish: soyabon, ustunlar, vitraj, sariq eshik, zina, pandus."""
     p = ccw(p_raw)
-    e = max((e for e in edges(p) if abs(e[4].y - 1) < 0.1 and e[1].y < -30), key=lambda e: e[5])
-    yf = e[1].y + (20 - e[1].x) / (e[2].x - e[1].x) * (e[2].y - e[1].y)     # fasad Y (x=20 da)
+    # o'rta korpusning sharqqa qaragan qirrasi (normal +X, x≈-5.45, y -34.8..-10.7)
+    e = max((e for e in edges(p) if abs(e[4].x - 1) < 0.1 and -10 < e[1].x < 0), key=lambda e: e[5])
+    xf = (e[1].x + e[2].x) / 2
+    yc = (e[1].y + e[2].y) / 2                                              # fasad markazi (≈ -22.75)
     # Quyidagi o'lchamlar LOKAL freymda yozilgan (fasad -Y ga qaragan, markaz x=20).
-    # 180° burilgan Empty ularni dunyoda +Y (hovli) tomonga o'giradi.
-    E = bpy.data.objects.new("Kirish_asos", None); E.location = (40.0, yf, 0); E.rotation_euler = (0, 0, math.pi)
+    # +90° burilgan Empty lokal -Y ni dunyoda +X (sharqiy hovli) ga, lokal X ni
+    # +Y ga o'giradi: lokal x=20 → dunyo y=yc.
+    E = bpy.data.objects.new("Kirish_asos", None); E.location = (xf, yc - 20.0, 0); E.rotation_euler = (0, 0, math.pi / 2)
     _link(E, parent); parent = E
     y0 = 0.0
     xa, xb = 12.0, 28.0
@@ -264,9 +276,8 @@ def entrance(p_raw, parent):
         ring.aabb(xx - 0.27, y0 - 3.47, 2.3, xx + 0.27, y0 - 2.93, 2.42)
     col.done("Ustunlar", M["white"], parent); ring.done("Ustun_halqalar", M["dark"], parent)
     B("Banner", 14.0, y0 - 3.72, 3.8, 18.0, y0 - 3.68, 4.4, M["white"], parent)
-    # chapdagi oq kiosk (fotodagidek)
-    B("Kiosk", xa - 5.5, y0 - 6.5, 0, xa - 2.0, y0 - 3.5, 2.6, M["white"], parent)
-    B("Kiosk_tom", xa - 5.7, y0 - 6.7, 2.6, xa - 1.8, y0 - 3.3, 2.75, M["dark"], parent)
+    # ⚠️ Oq kiosk olib tashlandi: yangi joyda u shimoliy korpus devoriga
+    # kirib qolardi (g'arbiy hovli eni ~24 m).
 
 def gate(parent):
     """Darvoza: "179-MAKTAB" peshtoqi, oq ustunlar jigarrang chiziqlar bilan, qiya naqshli darvoza.
@@ -276,7 +287,7 @@ def gate(parent):
     # qorovulxona (json: "Kirish posti" x 62.27..70.27, y 43.91..48.91 → Y -48.91..-43.91)
     B("Qorovulxona", 62.27, -48.91, 0, 70.27, -43.91, 3.2, M["white"], parent)
     B("Qorovulxona_tsokol", 62.2, -48.97, 0, 70.35, -43.85, 0.4, M["plinth"], parent)
-    B("Qorovulxona_tom", 62.0, -49.1, 3.2, 70.5, -43.7, 3.45, M["white"], parent)
+    B("Qorovulxona_tom", 62.0, -49.1, 3.2, 70.5, -43.7, 3.45, M["roof_lt"], parent)
     B("Qorovulxona_oyna", 63.2, -48.95, 1.0, 69.2, -48.92, 2.7, M["glass"], parent)
     B("Qorovulxona_oyna_rom", 63.1, -48.99, 0.93, 69.3, -48.9, 1.0, M["frame"], parent)
     wh, br = MB(), MB()
@@ -373,13 +384,13 @@ def build(context=True):
             gate(root)
         elif b.get("ml"):
             prism("Yordamchi_bino", b["p"], 0, b["h"], M["white"], root)
-            prism("Yordamchi_bino_tom", offset_poly(ccw(b["p"]), 0.15), b["h"], b["h"] + 0.15, M["dark"], root)
+            prism("Yordamchi_bino_tom", offset_poly(ccw(b["p"]), 0.15), b["h"], b["h"] + 0.15, M["roof_lt"], root)
         else:  # 1 qavatli bino (sport zali / oshxona) — maktab uslubida
             p = ccw(b["p"])
             prism("Bir_qavatli_bino", p, 0, b["h"] + 1.2, M["wall"], root)
             prism("Bir_qavatli_tsokol", offset_poly(p, 0.05), 0, 0.6, M["plinth"], root)
             prism("Bir_qavatli_sariq_lenta", offset_poly(p, 0.03), b["h"] - 0.2, b["h"] + 0.4, M["yellow"], root)
-            prism("Bir_qavatli_tom", offset_poly(p, 0.2), b["h"] + 1.2, b["h"] + 1.4, M["dark"], root)
+            prism("Bir_qavatli_tom", offset_poly(p, 0.2), b["h"] + 1.2, b["h"] + 1.4, M["roof_dk"], root)
 
     # --- panjara (darvoza va qorovulxona oralig'i ochiq) ---
     fence([(70.3, -49.45), (80.2, -49.45), (80.8, 37.0), (-52.9, 33.9), (-55.3, -47.4), (53.9, -49.45)], root)
@@ -419,7 +430,7 @@ def build(context=True):
         o.rotation_euler = (math.radians(90) + math.atan2(d.z, hz), 0, math.atan2(d.y, d.x) - math.radians(90))
         return o
     c1 = cam("Kamera_Darvoza", (57.6, -60.0, 1.7), (58.1, -49.4, 2.4), 24)
-    cam("Kamera_Kirish", (18.5, -18.0, 1.7), (20.5, -35.0, 4.2), 20)
+    cam("Kamera_Kirish", (13.0, -25.0, 1.7), (-5.45, -22.75, 4.2), 20)
     cam("Kamera_Havo", (-95.0, 120.0, 95.0), (12.0, -8.0, 0.0), 30)
     sc.camera = c1
     sc.render.engine = "CYCLES"; sc.cycles.samples = 128
@@ -459,7 +470,7 @@ def render(path, cam, samples=128, pct=100):
     """Kamera bo'yicha quyosh yo'nalishi: darvoza (shimolga qaragan) va kirish (janubga) ikkalasi ham yoritilsin."""
     sc = bpy.context.scene; sc.camera = bpy.data.objects[cam]
     sun = bpy.data.objects.get("Quyosh")
-    if sun: sun.rotation_euler = (math.radians(45), 0, math.radians(-30 if cam == "Kamera_Darvoza" else 150))
+    if sun: sun.rotation_euler = (math.radians(45), 0, math.radians(-30 if cam == "Kamera_Darvoza" else -120))
     sc.cycles.samples = samples; sc.render.resolution_percentage = pct; sc.render.filepath = path
     bpy.ops.render.render(write_still=True); return path
 

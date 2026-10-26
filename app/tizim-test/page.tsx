@@ -66,10 +66,13 @@ export default function TizimTest() {
         const r = await fetch(row.url, { cache: "no-store" });
         const ms = Math.round(performance.now() - t0);
         const expect: number[] = SERVICES[row.id as ServiceId].expect ?? [200];
-        const ok = expect.includes(r.status);
+        /* Server noma'lum yo'lga 200 + HTML (index.html) qaytaradi — bu "OK"
+           EMAS: yo'l yo'q. Faqat status kodga qarash shuni yashirardi (2026-10-26). */
+        const html = r.status === 200 && (r.headers.get("content-type") ?? "").includes("text/html");
+        const ok = expect.includes(r.status) && !html;
         setRows((prev) => {
           const next = [...prev];
-          next[i] = { ...row, ok, info: `${r.status} · ${ms} ms${ok ? "" : ` (kutilgan: ${expect.join("/")})`}` };
+          next[i] = { ...row, ok, info: `${r.status} · ${ms} ms${html ? " — HTML qaytdi (yo'l yo'q)" : ok ? "" : ` (kutilgan: ${expect.join("/")})`}` };
           return next;
         });
       } catch (e) {
@@ -99,11 +102,6 @@ export default function TizimTest() {
       // Diagnostika uchun xaritani global qilamiz (faqat shu sahifada)
       (window as unknown as { __map?: unknown }).__map = map;
       map.on("load", () => setMapMsg("✅ chizildi"));
-      map.on("styledata", () => console.log("[map] styledata, isStyleLoaded =", map.isStyleLoaded()));
-      map.on("sourcedata", (e: unknown) => {
-        const s = e as { sourceId?: string; isSourceLoaded?: boolean };
-        console.log("[map] sourcedata", s.sourceId, "loaded =", s.isSourceLoaded);
-      });
       map.on("error", (e: unknown) => {
         const err = e as { error?: { message?: string }; sourceId?: string };
         const m = err?.error?.message ?? String(e);
